@@ -1,0 +1,17 @@
+# Caches Python
+__pycache__/
+*.py[cod]
+
+# Artefacts systeme
+Thumbs.db
+.DS_Store
+/.vs/
+
+# Donnees et fichiers locaux
+logs/
+*.db
+NOTES
+/include/ColorSets.sav
+
+# Configuration d exemple, distribuee en Release GitHub
+.pydarts_example/
