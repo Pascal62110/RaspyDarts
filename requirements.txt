@@ -1,0 +1,33 @@
+# Dependances Python de RaspyDarts
+# Installation : pip3 install -r requirements.txt
+#
+# Note : tkinter et sqlite3 ne sont pas installables par pip.
+# Sur Raspberry Pi OS : sudo apt install python3-tk
+
+# --- Coeur du jeu ---
+pygame
+Pillow
+numpy
+requests
+pycurl
+psutil
+netifaces
+qrcode
+
+# --- Raspberry Pi : GPIO et extension de ports ---
+RPi.GPIO
+adafruit-blinka
+adafruit-circuitpython-mcp230xx
+
+# --- Eclairage : rubans LED, afficheur DMD, Philips Hue ---
+rpi-ws281x
+luma.led-matrix
+rgbxy
+
+# --- Reseau et domotique ---
+paho-mqtt
+PyBluez
+
+# --- Envoi des photos webcam vers Google Drive (optionnel) ---
+google-api-python-client
+google-auth-oauthlib
