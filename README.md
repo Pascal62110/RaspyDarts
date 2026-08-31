@@ -35,6 +35,7 @@ et transforme une cible du commerce en borne digne d'une salle de jeux.
 - **Thèmes personnalisables** : couleurs, polices, images, sons et vidéos
 - **Écran tactile**, boutons physiques, télécommande Bluetooth
 - **Scores et records** sauvegardés, joueurs virtuels (PNJ)
+- **DMD** affichage des scores sur un DMD via Raspy2DMD
 
 ## Matériel
 
