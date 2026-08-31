@@ -51,12 +51,18 @@ interface DMX, ampoules Philips Hue, webcam USB, écran tactile.
 
 ### 1. Récupérer le code
 
-Le jeu s'attend à être installé dans `/pydarts` (le lanceur `RaspyDarts.sh` s'y place au démarrage) :
+Le jeu doit actuellement être installé dans `/pydarts` :
 
 ```bash
 sudo git clone https://github.com/rmdelcelier/RaspyDarts.git /pydarts
 cd /pydarts
 ```
+
+> [!NOTE]
+> Ce chemin est pour l'instant codé en dur dans les scripts shell (`RaspyDarts.sh`,
+> `scripts/Backup.sh`). Le code Python, lui, travaille déjà en chemins relatifs.
+> Rendre l'emplacement d'installation configurable est une évolution prévue, et
+> constitue une bonne première contribution.
 
 ### 2. Installer les dépendances
 
