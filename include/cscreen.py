@@ -5107,28 +5107,27 @@ class Screen(pygame.Surface):
                 version = update[0].get_version(self.logs)
                 try:
                     self.update_screen(self.message(['update-check'], 0, None, 'middle'))
-                    last, new_version, size = update[0].get_last(self.logs, \
-                            update[1]['servers'].split(',')[0].split(':')[0], '5000', version)
-                    
+                    last = update[0].get_last(self.logs, version)
+
                     if last is None:
                         self.update_screen(self.message(['no-update-available'], 1500, None, 'middle'))
                     else:
-                        self.update_screen(self.message(['update-download'], 0, None, 'middle'))
-                        last, size = update[0].download_update(self.logs, \
-                                update[1]['servers'].split(',')[0].split(':')[0], '5000', last, size)
-                        
-                        if last is None:
-                            self.update_screen(self.message(['update-failed'], 1500, None, 'middle'))
-                        else:
-                            response = self.wait_validation("update-available")
-                            if response:
+                        response = self.wait_validation("update-available")
+                        if response:
+                            self.update_screen(self.message(['update-download'], 0, None, 'middle'))
+                            new_version = None
+                            if update[0].download_update(self.logs, last):
                                 self.update_screen(self.message(['updating'], 0, None, 'middle'))
-                                update[0].apply_update(self.logs, last, new_version)
+                                new_version = update[0].apply_update(self.logs, last)
+
+                            if new_version is None:
+                                self.update_screen(self.message(['update-failed'], 1500, None, 'middle'))
+                            else:
                                 self.update_screen(self.message([f'Version {new_version} installée', 'restarting'], \
                                         1000,  'middle', bg_color='menu-ok'))
                                 version = new_version
-                        
-                                response = self.wait_validation("Voulez-vous redémarrer?")                            
+
+                                response = self.wait_validation("Voulez-vous redémarrer?")
                                 if response:
                                     return 'restart'
                 except Exception as exception:

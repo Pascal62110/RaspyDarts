@@ -320,22 +320,21 @@ version = cupdate.get_version(logs)
 if Config.get_value('SectionGlobals', 'check_for_updates', False):
     try:
         display.message(['update-check'], 0, None, 'middle')
-        last, new_version, size = cupdate.get_last(logs, \
-                config_favorites['servers'].split(',')[0].split(':')[0], '5000', version)
+        update = cupdate.get_last(logs, version)
 
-        if last is not None:
-            display.message(['update-download'], 0, None, 'middle')
-            last, size = cupdate.download_update(logs, \
-                    config_favorites['servers'].split(',')[0].split(':')[0], '5000', last, size)
-
-            if last is None:
-                display.message(['update-failed'], 0, None, 'middle')
-                logs.error("Update failed")
-            else:
-                response = display.wait_validation("update-available")
-                if response:
+        if update is not None:
+            response = display.wait_validation("update-available")
+            if response:
+                display.message(['update-download'], 0, None, 'middle')
+                new_version = None
+                if cupdate.download_update(logs, update):
                     display.message(['updating'], 0, None, 'middle')
-                    cupdate.apply_update(logs, last, new_version)
+                    new_version = cupdate.apply_update(logs, update)
+
+                if new_version is None:
+                    display.message(['update-failed'], 1500, None, 'middle')
+                    logs.error("Update failed")
+                else:
                     display.message([f'Version {new_version} installée', 'restarting'], \
                             1000,  'middle', bg_color='menu-ok')
                     version = new_version

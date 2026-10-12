@@ -9,7 +9,6 @@ pygame
 Pillow
 numpy
 requests
-pycurl
 psutil
 netifaces
 qrcode
