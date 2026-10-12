@@ -8657,7 +8657,8 @@ class Screen(pygame.Surface):
             else:
                 speed = 150
 
-            subprocess.run(f'espeak -a {volume} -s {speed} -v mb-fr1 "{text}" --stdout |aplay 2> /dev/null', shell=True)
+            # Non-blocking : if the audio output stalls, aplay may hang for ~30s and freeze the game loop
+            subprocess.Popen(f'espeak -a {volume} -s {speed} -v mb-fr1 "{text}" --stdout |aplay 2> /dev/null', shell=True)
             return True
         except Exception as e:
             self.logs.warning(f"Problem trying to use espeak : {e}")
