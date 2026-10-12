@@ -2049,11 +2049,11 @@ msgstr "Tuez votre adversaire avant qu'il ne vous tue, pour cela, il vous faudra
 "\n"
 "Si vous n'êtes pas le killer :\n"
 "- Si vous touchez votre chiffre, vos points augmenteront.\n"
-"- Si vous touchez le chiffre de l'un de vos adversaires, vos points diminueront.\n"
+"- Si vous touchez le chiffre de l'un de vos adversaires, vos points diminueront (option suicide).\n"
 "\n"
 "Si vous êtes le killer :\n"
 "- Si vous touchez le chiffre de l'un de vos adversaire, ses points diminueront.\n"
-"- Si vous touchez votre chiffre, vos points diminueront.\n"
+"- Si vous touchez votre chiffre, vos points diminueront (option suicide).\n"
 " "
 
 msgid "Killer-random"
@@ -2070,6 +2070,9 @@ msgstr "Le bulls est activé"
 
 msgid "Killer-max"
 msgstr "Ne dépasse pas le max de killer"
+
+msgid "Killer-suicide"
+msgstr "Une erreur de cible fait perdre des points"
 
 ######## KINITO ######
 

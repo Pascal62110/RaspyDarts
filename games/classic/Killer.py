@@ -10,7 +10,7 @@ from include import cgame
 
 LOGO = 'Killer.png'
 HEADERS = ['Hom', 'Hit', 'Kil', '-', 'D1', 'D2', 'D3']
-OPTIONS = {'theme': 'default', 'max_round': 100, 'vie': 0, 'killer': 5, 'bulls': False, 'max': False, 'random': True}
+OPTIONS = {'theme': 'default', 'max_round': 100, 'vie': 0, 'killer': 5, 'bulls': False, 'max': False, 'random': True, 'suicide': False}
 NB_DARTS = 3
 GAME_RECORDS = {'Score': 'DESC', 'Points Per Round': 'DESC', 'Points de Hit': 'DESC'}
 VERSION = '1.00'
@@ -58,7 +58,9 @@ class Game(cgame.Game):
         self.killer = int(options['killer'])
         self.bulls = options['bulls']
         self.max = options['max']
-        
+        # Lose points on a wrong hit (own segment as killer, opponent's segment otherwise)
+        self.suicide = options.get('suicide', False)
+
         self.infos = ''
         self.winner = None
         
@@ -82,7 +84,8 @@ class Game(cgame.Game):
 
                 if index == actual_player:
                     if player.killer:
-                        player.score -= to_add
+                        if self.suicide:
+                            player.score -= to_add
                     else:
                         player.score += to_add
                         if self.max :
@@ -98,7 +101,8 @@ class Game(cgame.Game):
                     players[actual_player].columns[player_launch +3] = (f'{hit}', 'str')
                 elif to_play is None:
                     to_play = 'whatamess'
-                    players[actual_player].score -= to_add
+                    if self.suicide:
+                        players[actual_player].score -= to_add
                 
             index += 1
         
@@ -130,13 +134,14 @@ class Game(cgame.Game):
                 if to_play == 'gunshotsimple':
                     self.display.play_sound('gunshotsimple')
                 to_play = 'harmonica'
-            elif player.killer and player.score < 5:
+            elif player.killer and player.score < self.killer:
                 to_play = 'gunshotsimple'  ###'divise2categories'
 
             if player.score >= self.killer:
                 player.killer = True
                 player.columns[2] = ('killer_santiag', 'image')
             elif player.score < 0:
+                player.killer = False
                 player.alive = False
                 player.columns[2] = ('killer_skull', 'image')
             else:
@@ -152,12 +157,16 @@ class Game(cgame.Game):
         else:
             handler['sound'] = to_play
 
-        # Check if there is a winner (only on last dart thrown, except if winner is current player)
+        # Check if there is a winner (last player alive)
         self.winner = self.check_winner(players, self.nb_players)
-        if self.winner is not None and (player_launch == self.nb_darts or actual_player == self.winner):
+        if self.winner is not None:
             # If the function check_winner returns the id of a winner
             self.display.play_sound('harmonica')
             handler['return_code'] = 3 # Tell the main loop there is a winner
+        elif not any(player.alive for player in players):
+            # Everybody is dead : nobody can play anymore
+            self.infos += f"Nobody left alive{self.lf}"
+            handler['return_code'] = 2
 
         # Check last round
         if actual_round >= self.max_round and actual_player == self.nb_players - 1 \
@@ -281,18 +290,11 @@ class Game(cgame.Game):
         '''
         Check if there is a winner
         '''
-        nb_killer = 0
-        nb_dead = 0
-        winner = None
+        # The winner is the last player alive, killer or not (the others may have killed themselves)
+        alive = [player.ident for player in players if player.alive]
+        winner = alive[0] if len(alive) == 1 else None
 
-        for player in players:
-            if player.killer:
-                winner = player.ident
-                nb_killer += 1
-            if not player.alive:
-                nb_dead += 1
-
-        if winner is not None and nb_dead == nb_players - 1:
+        if winner is not None:
             self.infos += f"Player {winner} wins !{self.lf}"
             return winner
         else:
