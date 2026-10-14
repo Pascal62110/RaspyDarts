@@ -5,6 +5,7 @@ import subprocess
 import pygame
 
 from include import cvideos
+from include import cperf
 # For GPIO Extender
 from RPi import GPIO as gpio
 from . import cgpio_extender
@@ -412,11 +413,13 @@ class Craspberry():
 
         return gpio_input
 
+    @cperf.timed('read_target')
     def read_target(self):
         """
         Read GPIO inputs (Target's)
         """
         gpio_input = None
+        contact = None
         # Read segments (S1, D2, T4...)
         if self.inputs and self.outputs:
             # Make GPIO readable and value is False / Down / 0
@@ -434,6 +437,7 @@ class Craspberry():
                         gpio.setup(pinin, gpio.IN, pull_up_down=gpio.PUD_DOWN)
                         if gpio.input(pinin):
                             gpio_input = f'{pinin}{pinout}'
+                            contact = (pinin, pinout)
 
                     gpio.output(pinout, gpio.LOW)
             else:
@@ -450,11 +454,28 @@ class Craspberry():
                     for pinin in self.inputs:
                         if gpio.input(pinin):
                             gpio_input = f'{pinin}{pinout}'
+                            contact = (pinin, pinout)
 
                     gpio.output(pinout, gpio.LOW)
 
+        if cperf.ENABLED and contact is not None:
+            self.measure_contact(contact[0], contact[1], self.keys.get(gpio_input, None))
+
         return self.keys.get(gpio_input, None)
 
+    def measure_contact(self, pinin, pinout, segment):
+        """
+        Performance measures only : how long the contact of a dart stays closed once
+        detected (it tells how often the target must be read not to miss any dart)
+        """
+        start = time.perf_counter()
+        gpio.output(pinout, gpio.HIGH)
+        while gpio.input(pinin) and time.perf_counter() - start < 0.5:
+            pass
+        gpio.output(pinout, gpio.LOW)
+        cperf.event(f"Dart {segment} ({pinin}{pinout}) : contact still closed {(time.perf_counter() - start) * 1000:.1f} ms after its detection")
+
+    @cperf.timed('read_buttons')
     def read_buttons(self):
         """
         Read GPIO (Button's)
@@ -571,6 +592,8 @@ class Craspberry():
         count = 0
         miss = 0
         while True:
+            if cperf.ENABLED:
+                cperf.add('listen_inputs loop')
             count += 1
             if count % 1000 == 0:
                 count = 0
@@ -652,6 +675,7 @@ class Craspberry():
             if miss > 0:
                 miss += 1
 
+    @cperf.timed('keyboard_mouse')
     def keyboard_mouse(self, k_type, specials, context=None, wait_events=None, firstname=None):
         """ KEYBOARD & MOUSE (from pygame)
         Context can be different, dependanding from where this method is used.  So

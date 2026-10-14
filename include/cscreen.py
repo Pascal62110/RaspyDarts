@@ -39,6 +39,7 @@ from include.ColorSets import *
 
 from include import cpaths
 from include import ccamera
+from include import cperf
 
 try:
     from include import cqrcode
@@ -573,6 +574,7 @@ class Screen(pygame.Surface):
         return rect
 
     #@debug
+    @cperf.timed('blit_text')
     def blit_text(self, text, pos_x, pos_y, width, height, color=None, dafont=None, image=None, align='Center', valign='center', margin=True, divider=1.5, Alpha=255, game=None):
         '''
         Render text in a box, directly at best size
@@ -7612,6 +7614,7 @@ class Screen(pygame.Surface):
             self.thread.setDaemon(True)
             self.thread.start()
 
+    @cperf.timed('refresh_scores')
     def refresh_scores(self, players, actual_player, refresh=True):
         # Get number of players
         nb_players = len(players)
@@ -7648,6 +7651,7 @@ class Screen(pygame.Surface):
             self.update_screen(rect)
             self.save_background()
 
+    @cperf.timed('refresh_game_screen')
     def new_refresh_game_screen(self, players, actual_round, max_round, remaining, nb_darts, logo, headers, actual_player, text_on_logo=False, wait=False, onscreen_buttons=None, showScores=True, end_of_game=False, end_of_set=None, set_number=None, max_set=None):
 
         '''
@@ -7998,6 +8002,7 @@ class Screen(pygame.Surface):
         if wait:
             pygame.time.wait(wait)    # Wait if requested
 
+    @cperf.timed('display_background')
     def display_background(self, image=None, rect=None, display_version=False):
         '''
         Display background
@@ -8058,6 +8063,7 @@ class Screen(pygame.Surface):
         return (pygame.transform.scale(image, (image_width, image_height)), (image_width, image_height))
 
     #@debug
+    @cperf.timed('display_image')
     def display_image(self, imagepath, pos_x, pos_y, width=0, height=0, Scale=False, center_x=False, center_y=False, rect=None, Screen=None, change_colors=None, enabledImage=True, UseCache=True):
         '''
         Scale and display an image
@@ -8771,6 +8777,7 @@ class Screen(pygame.Surface):
 
         self.update_screen()
 
+    @cperf.timed('update_screen')
     def update_screen(self, rect=None, rect_array=None):
         '''
         Simply update the screen (after multiple updates for example)
