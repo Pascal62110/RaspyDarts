@@ -419,7 +419,6 @@ class Craspberry():
         Read GPIO inputs (Target's)
         """
         gpio_input = None
-        contact = None
         # Read segments (S1, D2, T4...)
         if self.inputs and self.outputs:
             # Make GPIO readable and value is False / Down / 0
@@ -437,7 +436,6 @@ class Craspberry():
                         gpio.setup(pinin, gpio.IN, pull_up_down=gpio.PUD_DOWN)
                         if gpio.input(pinin):
                             gpio_input = f'{pinin}{pinout}'
-                            contact = (pinin, pinout)
 
                     gpio.output(pinout, gpio.LOW)
             else:
@@ -454,26 +452,10 @@ class Craspberry():
                     for pinin in self.inputs:
                         if gpio.input(pinin):
                             gpio_input = f'{pinin}{pinout}'
-                            contact = (pinin, pinout)
 
                     gpio.output(pinout, gpio.LOW)
 
-        if cperf.ENABLED and contact is not None:
-            self.measure_contact(contact[0], contact[1], self.keys.get(gpio_input, None))
-
         return self.keys.get(gpio_input, None)
-
-    def measure_contact(self, pinin, pinout, segment):
-        """
-        Performance measures only : how long the contact of a dart stays closed once
-        detected (it tells how often the target must be read not to miss any dart)
-        """
-        start = time.perf_counter()
-        gpio.output(pinout, gpio.HIGH)
-        while gpio.input(pinin) and time.perf_counter() - start < 0.5:
-            pass
-        gpio.output(pinout, gpio.LOW)
-        cperf.event(f"Dart {segment} ({pinin}{pinout}) : contact still closed {(time.perf_counter() - start) * 1000:.1f} ms after its detection")
 
     @cperf.timed('read_buttons')
     def read_buttons(self):
@@ -591,9 +573,14 @@ class Craspberry():
 
         count = 0
         miss = 0
+        turn_start = None
         while True:
             if cperf.ENABLED:
-                cperf.add('listen_inputs loop')
+                # Time between two reads of the target
+                now = time.perf_counter()
+                if turn_start is not None:
+                    cperf.add('listen_inputs loop', now - turn_start)
+                turn_start = now
             count += 1
             if count % 1000 == 0:
                 count = 0

@@ -5,7 +5,10 @@ when the game starts (touch perf / rm perf, then restart the game).
 
 Results are written every 10 seconds in logs/perf.log :
     name : number of calls, calls per second, mean / max duration in ms
-Each dart detected on the target is also written with the time its contact stayed closed.
+
+A dart closes its contact for 1.1 to 3.7 ms only (measured on the target with the Pi 5
+version) : the max duration of a "listen_inputs loop" turn must stay well below, else
+the target is not read often enough and a fast dart can be missed.
 """
 
 import os
@@ -60,13 +63,6 @@ def add(name, duration=0.0):
     count, total, maximum = _stats.get(name, (0, 0.0, 0.0))
     _stats[name] = (count + 1, total + duration, max(maximum, duration))
     _flush_if_due(now)
-
-
-def event(text):
-    '''
-    Write a single event (a dart, for example)
-    '''
-    _write(text)
 
 
 def timed(name):

@@ -11,9 +11,9 @@
 # - with py-spy installed (sudo pip3 install --break-system-packages py-spy) : where the
 #   game spends its time, in logs/pyspy_<situation>_<date>.svg (to open in a browser)
 #
-# For the measures made inside the game (target reads per second, time of each screen
-# refresh, contact time of each dart) : touch perf in the game folder, restart the
-# game, then read logs/perf.log. rm perf to stop them.
+# For the measures made inside the game (time between two reads of the target, time of
+# each screen refresh) : touch perf in the game folder, restart the game, then read
+# logs/perf.log. rm perf to stop them.
 
 cd "$(dirname "$(readlink -f "$0")")/.."
 
