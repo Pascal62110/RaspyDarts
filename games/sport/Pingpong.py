@@ -115,19 +115,115 @@ class Game(cgame.Game):
         self.logs.debug(self.infos)
         return return_code
 
-    def pnj_score(self, players, actual_player, level, player_launch):
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
         """
-        pnj score
+        Intelligence Artificielle (PNJ) pour le jeu Ping-Pong :
+        - Plafonne l'ambition des scores (ex: ~60 max en intermédiaire) pour éviter des scores irréalistes.
+        - Intègre la précision par niveau, les chiffres voisins, les MISS purs et l'analyse des adversaires.
         """
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende du format par niveau [p_exact, p_neighbor, p_miss] :
+        #   * p_exact    : Probabilité de toucher la cible exacte (%)
+        #   * p_neighbor : Probabilité de toucher un secteur voisin géométrique (%)
+        #   * p_miss     : Probabilité d'un raté complet / MISS pur (%)
+        # - Ajustement : Pour renforcer l'IA, augmente p_exact et réduis p_miss.
+        # =========================================================================
+
+        dartboard_order = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
+
+        # 1. Analyse des scores des autres joueurs sur la volée en cours
+        max_opponent_score = 0
+        has_opponents_played = False
+        
+        for i, p in enumerate(players):
+            if i != actual_player:
+                try:
+                    score_val = p.columns[4][0]
+                    if isinstance(score_val, int):
+                        has_opponents_played = True
+                        if score_val > max_opponent_score:
+                            max_opponent_score = score_val
+                except (IndexError, TypeError, ValueError):
+                    pass
+
+        # Niveaux de difficulté : [Chance cible exacte, Chance chiffre voisin, Chance miss pur]
+        levels = [
+            [20, 45, 35],  # Niveau 1 : Noob (20% exact, 45% voisin, 35% miss)
+            [35, 45, 20],  # Niveau 2 : Débutant (35% exact, 45% voisin, 20% miss)
+            [55, 35, 10],  # Niveau 3 : Intermédiaire (55% exact, 35% voisin, 10% miss - Moyenne visée ~60 pts)
+            [75, 20,  5],  # Niveau 4 : Pro (75% exact, 20% voisin, 5% miss)
+            [90, 10,  0]   # Niveau 5 : Expert (90% exact, 10% voisin, 0% miss)
+        ]
+
+        try:
+            comp_lvl = int(computer_level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        p_exact = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+        p_miss = levels[lvl_idx][2]
+
+        # 2. Stratégie de ciblage équilibrée (pour tourner autour de ~60 max en Intermédiaire/Niveau 3)
+        if not has_opponents_played or (player_launch == 1 and not has_opponents_played):
+            # Premier joueur : cible des scores corrects sans excès
+            target_value = random.choice([20, 19, 18, 16, 15])
+            # Moins de triples automatiques pour modérer la moyenne
+            multi = random.choice(['T', 'D', 'S', 'S']) if comp_lvl >= 4 else random.choice(['D', 'S', 'S', 'S'])
+            bull_chance = 5
+        else:
+            high_pression = max_opponent_score >= 50
+            is_under_pression = max_opponent_score >= 35
+
+            if high_pression:
+                # S'adapte si l'adversaire fait un très gros score
+                target_value = random.choice([20, 19, 18, 20])
+                multi = random.choice(['T', 'D', 'S']) if comp_lvl >= 3 else random.choice(['D', 'S'])
+                bull_chance = 15
+            elif is_under_pression:
+                target_value = random.choice([20, 19, 18, 17])
+                multi = random.choice(['D', 'S', 'S'])
+                bull_chance = 8
+            else:
+                target_value = random.randint(1, 20)
+                rand_multi = random.randrange(100)
+                if comp_lvl >= 4 and rand_multi < 25:
+                    multi = 'T'
+                elif comp_lvl >= 2 and rand_multi < 60:
+                    multi = 'S'
+                else:
+                    multi = random.choice(['S', 'D'])
+                bull_chance = 3
+
+        # Tentative de Bull modérée
+        if random.randrange(100) < bull_chance:
+            return 'SB' if comp_lvl < 4 or random.randrange(100) < 70 else 'DB'
+
+        rand_val = random.randrange(100)
+
+        # 3. Application de la précision (Cible exacte vs Voisin vs Miss pur)
+        if rand_val < p_exact:
+            return f"{multi}{target_value}"
+
+        elif rand_val < p_exact + p_neighbor:
+            # Raté partiel : touche un chiffre voisin sur la cible
+            if target_value in dartboard_order:
+                idx = dartboard_order.index(target_value)
+                left_neighbor = dartboard_order[(idx - 1) % len(dartboard_order)]
+                right_neighbor = dartboard_order[(idx + 1) % len(dartboard_order)]
+                neighbor_num = random.choice([left_neighbor, right_neighbor])
+            else:
+                neighbor_num = random.randint(1, 20)
+            
+            # Les voisins baissent aussi le risque (majoritairement des simples)
+            neighbor_multi = 'S' if random.randrange(100) < 70 else multi
+            return f"{neighbor_multi}{neighbor_num}"
+
+        else:
+            # Raté complet (MISS)
+            return ''
 
     def best_score(self, players):
         """

@@ -71,6 +71,108 @@ class Game(cgame.Game):
         self.high_score = 0
         self.player_score = 0
 
+    def pnj_score(self, players, actual_player, computerLevel, player_launch):
+        '''
+        IA réaliste pour Kinito : gère le respect des contraintes, 
+        la tentative de Kinito si le PNJ est à la traîne, et la division des scores adverses.
+        '''
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [Taux de miss pur (miss_rate, %), Taux de glissement/déviation sur la matrice (slip_rate, %)]
+        # - Plus fort / précis : Diminuer le miss_rate et le slip_rate.
+        # - Plus humain / brouillon : Augmenter le miss_rate et le slip_rate.
+        # =========================================================================
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+        levels = [
+                 [45, 80],  # 1 : Noob 
+                 [30, 70],  # 2 : Débutant
+                 [18, 60],  # 3 : Intermédiaire 
+                 [6, 25],   # 4 : Pro 
+                 [2, 8]     # 5 : Expert 
+                ]
+
+        lvl_idx = max(0, min(computerLevel - 1, len(levels) - 1))
+        miss_rate = levels[lvl_idx][0]
+        slip_rate = levels[lvl_idx][1]
+
+        # 1. Test du MISS pur
+        if random.randrange(100) < miss_rate:
+            players[actual_player].columns[player_launch + 3] = ('MISS', 'str')
+            self.display.play_sound('miss')
+            players[actual_player].darts_thrown += 1
+            return 'MISSDART'
+
+        current_player_obj = players[actual_player]
+        possible_hits = []
+
+        # Cas A : Le PNJ a déjà ouvert son Kinito -> il vise les scores des adversaires (le leader en priorité)
+        if current_player_obj.kinito:
+            valid_targets = []
+            for player in players:
+                if player.kinito_score != 'K\'to' and player.ident != actual_player and player.kinito_score != "":
+                    valid_targets.append(player)
+            
+            if valid_targets:
+                valid_targets.sort(key=lambda p: p.score, reverse=True)
+                target_adversary = valid_targets[0]
+                possible_hits.extend(self.get_possibilitirs(target_adversary.kinito_score, True))
+            else:
+                for player in players:
+                    if player.kinito_score != 'K\'to' and player.ident != actual_player and player.kinito_score != "":
+                        possible_hits.extend(self.get_possibilitirs(player.kinito_score, True))
+
+        # Cas B : Le PNJ n'a pas ouvert son Kinito, mais il est à la traîne (ex: J1 à 10 points face à des adversaires à 140/170)
+        else:
+            # On cherche si le meilleur adversaire a un score nettement supérieur (ex: > 50 points d'écart)
+            max_adversary_score = max([p.score for p in players if p.ident != actual_player], default=0)
+            
+            if max_adversary_score - current_player_obj.score > 50 and player_launch < 3:
+                # Tentative de tenter le Kinito (valeur 21 ou T7 / S21 selon la configuration, ici le score 21)
+                # On récupère les possibilités pour faire exactement le score du Kinito (21)
+                possible_hits = self.get_possibilitirs(self.kinito, True)
+
+            # Si le PNJ ne tente pas le Kinito ou qu'il n'y a pas de possibilité, il joue sa contrainte classique de score minimum
+            if not possible_hits:
+                min_target = current_player_obj.min_score if current_player_obj.min_score is not None else 1
+                possible_hits = self.get_possibilitirs(min_target, False)
+
+        # Si aucune cible valide n'est trouvée, repli par défaut sur un simple 20
+        if not possible_hits:
+            hit_str = 'S20'
+        else:
+            hit_str = random.choice(possible_hits)
+
+        # Extraction du multiplicateur et du numéro cible pour simuler le glissement
+        mult = hit_str[0]
+        try:
+            target_num_val = int(hit_str[1:])
+        except ValueError:
+            target_num_val = 25
+
+        # 2. Simulation de la déviation / glissement de la matrice physique
+        if random.randrange(100) < slip_rate:
+            if mult in ['D', 'T']:
+                mult = 'S'
+            elif isinstance(target_num_val, int) and target_num_val != 25 and target_num_val in geo_neighbors:
+                target_num_val = random.choice(geo_neighbors[target_num_val])
+            
+            if target_num_val == 25:
+                hit_str = 'SB'
+            else:
+                hit_str = f'{mult}{target_num_val}'
+
+        return hit_str
+
+
+
+
     def pre_dart_check(self, players, actual_round, actual_player, player_launch):
         '''
         Actions done before each dart throw - for example, check if the player is allowed to play

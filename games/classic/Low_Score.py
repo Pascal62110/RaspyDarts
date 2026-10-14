@@ -5,6 +5,9 @@ Game by ... David ! Low Score
 ########
 from include import cplayer
 from include import cgame
+import random
+#### TROPHEES
+from include import ctrophies
 
 ############
 # Game Variables
@@ -66,12 +69,68 @@ class Game(cgame.Game):
 
         self.winner = None
 
+    def pnj_score(self, players, actual_player, computerLevel, player_launch):
+        '''
+        IA réaliste pour Low Score : cherche à faire un minimum de points.
+        Le PNJ privilégie les zones à très faible valeur (simples 1, 5, 20, etc.) 
+        et évite les gros triples ou doubles, tout en gérant le taux de raté.
+        '''
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [Taux de miss pur (miss_rate, %), Taux de glissement/déviation sur la matrice (slip_rate, %)]
+        # - Plus fort / précis : Diminuer le miss_rate et le slip_rate.
+        # - Plus humain / brouillon : Augmenter le miss_rate et le slip_rate.
+        # =========================================================================
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+        levels = [
+                 [45, 80],  # 1 : Noob 
+                 [30, 70],  # 2 : Débutant
+                 [18, 60],  # 3 : Intermédiaire 
+                 [6, 25],   # 4 : Pro 
+                 [2, 8]     # 5 : Expert 
+                ]
+
+        lvl_idx = max(0, min(computerLevel - 1, len(levels) - 1))
+        miss_rate = levels[lvl_idx][0]
+        slip_rate = levels[lvl_idx][1]
+
+        # 1. Test du MISS pur : On retourne simplement 'MISSDART' pour laisser 
+        # le système principal gérer la pénalité une seule et unique fois.
+        if random.randrange(100) < miss_rate:
+            players[actual_player].columns[player_launch - 1] = ('MISS', 'str')
+            self.display.play_sound('miss')
+            self.display.play_sound('penality')
+            players[actual_player].darts_thrown += 1
+            return 'MISS'
+
+        # Stratégie Low Score : viser volontairement de petits chiffres simples
+        low_value_targets = [1, 5, 2, 3, 4, 9, 12]
+        target_num = random.choice(low_value_targets)
+        mult = 'S'
+
+        # 2. Simulation de la déviation / glissement de la matrice physique
+        if random.randrange(100) < slip_rate:
+            if target_num in geo_neighbors:
+                target_num = random.choice(geo_neighbors[target_num])
+            mult = 'S'
+
+        return f'{mult}{target_num}'
+
+
     def pre_dart_check(self, players, actual_round, actual_player, player_launch):
         '''
         Actions done before each dart throw - for example, check if the player is allowed to play
         '''
         return_code = 0
-
+        self.actual_round = actual_round
+        
         if player_launch == 1:
             players[actual_player].reset_darts()
 
@@ -121,6 +180,10 @@ class Game(cgame.Game):
 
         players[actual_player].darts_thrown = player_launch
 
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+
+        
         handler['show'] = (players[actual_player].darts, hit, True)
         handler['sound'] = hit
 
@@ -136,6 +199,12 @@ class Game(cgame.Game):
         players[actual_player].columns[player_launch - 1] = (score, 'int')
 
         players[actual_player].add_dart(actual_round, player_launch, hit, score=score)
+        
+        # TROPHEES
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
 
         # Record total dart thrown, total hits (S=1, D=2, T=3) and refresh players stats
         players[actual_player].increment_hits(hit)
@@ -148,11 +217,22 @@ class Game(cgame.Game):
         # Check for end of game (no more rounds to play)
         if player_launch == self.nb_darts and actual_round >= self.max_round \
                 and actual_player == len(players) - 1:
+            
             self.winner = self.check_winner(players, high=False)
+           
             if self.winner is not None:
+                winning_player = players[self.winner].name
+                
+                print('winner lowscore')
+                print(winning_player)
+                
+                # On enregistre les stats uniquement si on a un vrai gagnant
+                ctrophies.check_game_end_stats(players, winning_player, "low_score")
+                
                 handler['return_code'] = 3
             else:
                 # No winner : last round reached
+                ctrophies.check_game_end_stats(players, None, "low_score")
                 handler['return_code'] = 2
 
         # Time for shot or video ?
@@ -168,6 +248,18 @@ class Game(cgame.Game):
         players[actual_player].columns[player_launch-1] = ('MISS', 'str')
         self.display.play_sound('miss')
         players[actual_player].darts_thrown += 1
+        
+        hit = 'MISS'
+        print('CONTENU DE HIT  DEF MISS')
+        print(hit)
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+        
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+        
         # play penality sound
         self.display.play_sound('penality')
         # Refresh stats

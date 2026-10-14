@@ -3,6 +3,7 @@
 Hue Server : In order to light your Hue lights from raspydarts
 """
 
+import os
 import sys
 import re
 import time
@@ -19,7 +20,13 @@ import paho.mqtt.client as mqtt
 import Colors as CColors
 
 DISCOVERY_URL = "https://discovery.meethue.com/"
-GATEWAY_FILE = "/home/pi/.pydarts/other/gateway.hue"
+# If launched with sudo, the file is in the home of the user who runs the game
+USER_HOME = os.path.expanduser('~' + os.environ.get('SUDO_USER', ''))
+# ~/.raspydarts, or ~/.pydarts on installations made before the renaming
+USER_DIR = f"{USER_HOME}/.raspydarts"
+if not os.path.isdir(USER_DIR) and os.path.isdir(f"{USER_HOME}/.pydarts"):
+    USER_DIR = f"{USER_HOME}/.pydarts"
+GATEWAY_FILE = f"{USER_DIR}/other/gateway.hue"
 
 converter = Converter(GamutA)
 

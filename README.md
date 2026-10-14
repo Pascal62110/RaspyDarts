@@ -9,10 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rmdelcelier/RaspyDarts/releases/latest"><img src="https://img.shields.io/github/v/release/rmdelcelier/RaspyDarts?label=version" alt="Version"></a>
+  <a href="https://github.com/rmdelcelier/RaspyDarts/releases"><img src="https://img.shields.io/badge/version-4.6.1-brightgreen" alt="Version 4.6.1"></a>
   <a href="licence/glpv3.txt"><img src="https://img.shields.io/badge/licence-GPLv3-blue" alt="Licence GPLv3"></a>
   <img src="https://img.shields.io/badge/langues-FR%20%7C%20EN%20%7C%20DE%20%7C%20ES%20%7C%20IT-green" alt="Langues">
-  <img src="https://img.shields.io/badge/jeux-56-orange" alt="56 jeux">
+  <img src="https://img.shields.io/badge/jeux-61-orange" alt="61 jeux">
+  <img src="https://img.shields.io/badge/Raspberry%20Pi%20OS-Trixie%2032%20bits-c51a4a" alt="Raspberry Pi OS Trixie 32 bits">
   <a href="https://raspydarts.wordpress.com/"><img src="https://img.shields.io/badge/site-raspydarts.wordpress.com-lightgrey" alt="Site officiel"></a>
 </p>
 
@@ -26,7 +27,8 @@ et transforme une cible du commerce en borne digne d'une salle de jeux.
 
 ## Fonctionnalités
 
-- **56 jeux** répartis en trois familles : classiques, fun et sport
+- **61 jeux** répartis en trois familles : classiques, fun et sport
+- **Trophées** : 139 trophées à débloquer, statistiques par joueur
 - **5 langues** : français, anglais, allemand, espagnol, italien
 - **Jeu en réseau** entre plusieurs bornes, avec serveur maître et statistiques
 - **Éclairage synchronisé** : rubans WS281x, cible rétroéclairée, DMX, Philips Hue, afficheur DMD
@@ -39,7 +41,10 @@ et transforme une cible du commerce en borne digne d'une salle de jeux.
 
 ## Matériel
 
-**Raspberry Pi** — du Pi Zero 2 au Pi 5.
+**Raspberry Pi** — Pi Zero 2 W, Pi 3 ou Pi 4, sous **Raspberry Pi OS 13 (Trixie) 32 bits**
+avec bureau. Comme sous Buster, les vidéos sont jouées par le processeur graphique au-dessus
+de tout : la vidéo d'introduction démarre dès la fin de l'écran de démarrage et le menu est là
+dès qu'elle se termine. Le Pi 5 n'est pas pris en charge pour l'instant.
 
 **Cible électronique** — Décathlon ED110, VDarts, GranBoard, ou n'importe quelle autre cible
 électronique. Le câblage des segments se fait via les GPIO, avec extension par MCP23017
@@ -50,42 +55,47 @@ interface DMX, ampoules Philips Hue, webcam USB, écran tactile.
 
 ## Installation
 
-### 1. Récupérer le code
+### Avec l'image RaspyDarts (recommandé)
 
-Le jeu doit actuellement être installé dans `/pydarts` :
+1. Installez [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
+2. Dans ses options (*App Options* → *Content Repository* → *Use custom*), indiquez :
+   ```
+   https://raw.githubusercontent.com/rmdelcelier/RaspyDarts/main/rpi-imager.json
+   ```
+3. Choisissez votre modèle de Pi puis l'image **RaspyDarts**, personnalisez le Wi-Fi, le nom de
+   la borne et l'utilisateur (`raspydarts` conseillé), et écrivez la carte SD.
+4. Au premier démarrage, la borne s'adapte à l'écran branché (elle redémarre une fois si
+   l'écran a une résolution particulière, comme les écrans 7 pouces en 1024x600), puis lance
+   la vidéo d'introduction et le jeu.
+
+Le jeu est installé dans `/raspydarts` ; la configuration, les thèmes, les scores et les
+trophées sont dans `~/.raspydarts`.
+
+### Venir d'une borne en 4.5 (Raspberry Pi OS Buster)
+
+La 4.6.1 change de système : elle s'installe avec la nouvelle image, pas par une mise à jour.
+Les bornes en 4.5 ne se voient d'ailleurs jamais proposer la 4.6 par le menu de mise à jour.
+
+Pour garder vos réglages :
+
+- **La configuration** : copiez votre `pydarts.cfg` à la racine de la carte SD juste après
+  l'avoir écrite (la partition visible depuis Windows). La borne le récupère et le convertit
+  en `raspydarts.cfg` au premier démarrage.
+- **Vos thèmes, sons et vidéos** (souvent plusieurs centaines de Mo, trop pour cette petite
+  partition) : après le premier démarrage, copiez le contenu de votre ancien dossier
+  `.pydarts` dans le partage réseau **Personnalisation Raspydarts** de la borne (son dossier
+  `~/.raspydarts`), depuis l'explorateur de fichiers de votre ordinateur.
+
+### Mises à jour
+
+Depuis le menu *Paramètres* → *Vérifier les mises à jour*. Elles sont publiées dans les
+[Releases](https://github.com/rmdelcelier/RaspyDarts/releases) nommées `_vX.Y.Z` (version
+pour Trixie) ; les releases `vX.Y.Z` sont celles des bornes sous Buster.
+
+### Lancer le jeu à la main
 
 ```bash
-sudo git clone https://github.com/rmdelcelier/RaspyDarts.git /pydarts
-cd /pydarts
-```
-
-> [!NOTE]
-> Ce chemin est pour l'instant codé en dur dans les scripts shell (`RaspyDarts.sh`,
-> `scripts/Backup.sh`). Le code Python, lui, travaille déjà en chemins relatifs.
-> Rendre l'emplacement d'installation configurable est une évolution prévue, et
-> constitue une bonne première contribution.
-
-### 2. Installer les dépendances
-
-```bash
-sudo apt install python3-tk
-pip3 install -r requirements.txt
-```
-
-### 3. Installer la configuration d'exemple
-
-Les ressources personnalisables (thèmes, polices, images, sons, vidéos) ne sont pas
-versionnées dans le dépôt : elles pèsent 387 Mo. Elles sont fournies dans la
-[dernière Release](https://github.com/rmdelcelier/RaspyDarts/releases/latest) :
-
-```bash
-unzip pydarts_example.zip -d /home/pi/.pydarts
-```
-
-### 4. Lancer
-
-```bash
-./RaspyDarts.sh
+/raspydarts/RaspyDarts.sh
 ```
 
 Pour le jeu en réseau, `./pydarts_server.sh` sur chaque borne et `./MasterServer.sh`
@@ -94,20 +104,20 @@ sur la machine qui centralise les parties.
 ## Les jeux
 
 <details>
-<summary><strong>Classiques (21)</strong></summary>
+<summary><strong>Classiques (24)</strong></summary>
 
-321_Zlip · Batard · Bermuda_Triangle · Big6 · Bob27 · By_Fives · Color · Cricket ·
+321_Zlip · Batard · Bermuda_Triangle · Big6 · Bob27 · By_Fives · Color · Cricket · Duel ·
 High_Score · Ho_One · Kapital · Killer · Kinito · Low_Score · Mickey · Practice ·
-Round_the_clock · Scram_Cricket · Shanghai · Slider · Up_Down_Count_Up
+Round_the_clock · Routine · Scram_Cricket · Shanghai · Shoot-out · Slider · Up_Down_Count_Up
 
 </details>
 
 <details>
-<summary><strong>Fun (24)</strong></summary>
+<summary><strong>Fun (26)</strong></summary>
 
-Bingo · Bulls · Castle · Challenge · Chaos · Conquer · Dragon · GameOfGoose · Hangman ·
-Morpion · Othello · Puissance4 · Pursuit · Risk · Robin_Drink · Robin_Strip · Sabotage ·
-Simon · Switch · Target · Tower · Treasure · Voleur · Yahtzydarts
+Bingo · Bulls · Castle · Challenge · Chaos · Conquer · Dragon · Dungeon · GameOfGoose ·
+Hangman · Incendie · Morpion · Othello · Puissance4 · Pursuit · Risk · Robin_Drink ·
+Robin_Strip · Sabotage · Simon · Switch · Target · Tower · Treasure · Voleur · Yahtzydarts
 
 </details>
 

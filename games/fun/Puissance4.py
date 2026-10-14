@@ -7,6 +7,9 @@ from include import cgame
 import random
 import subprocess
 import pygame
+#### TROPHEES
+from include import ctrophies
+
 
 # Dictionnay of options - Text format only
 OPTIONS = {'theme': 'default', 'win_points':'2', 'fleche':'2', 'regenere': True}
@@ -110,6 +113,27 @@ class Game(cgame.Game):
       self.leds = []
       self.miss = []
 
+   def check_win_condition(self, players):
+        """
+        Vérifie si la condition de victoire est atteinte.
+        - En 2 joueurs : le joueur qui atteint winpoints gagne.
+        - En 4 joueurs : l'équipe (0 et 2) ou (1 et 3) gagne.
+        Renvoie la liste des indices des joueurs gagnants, ou [] si pas de gagnant.
+        """
+        if self.nb_players == 2:
+            for idx, player in enumerate(players):
+                if player.score >= self.winpoints:
+                    return [idx]
+        elif self.nb_players == 4:
+            scoreJ1 = sum(p.score for p in players if p.ident in (0, 2))
+            scoreJ2 = sum(p.score for p in players if p.ident in (1, 3))
+            
+            if scoreJ1 >= self.winpoints:
+                return [idx for idx, p in enumerate(players) if p.ident in (0, 2)]
+            elif scoreJ2 >= self.winpoints:
+                return [idx for idx, p in enumerate(players) if p.ident in (1, 3)]
+        return []
+
    # Actions done before each dart throw - for example, check if the player is allowed to play
    def pre_dart_check(self, players, actual_round, actual_player, player_launch):
         
@@ -125,9 +149,6 @@ class Game(cgame.Game):
             for Player in players:
                 # Init score
                 Player.score = 0
-
-            #change background
-            #self.display.display_background('puissance4/background.jpg')
 
             # define the first grid
             self.creategrid()
@@ -149,7 +170,6 @@ class Game(cgame.Game):
               pygame.time.delay(1500)
               return_code = 1 
                 
-          
         # Each new player
         if player_launch == 1:
             players[actual_player].segments = ['__','__','__']
@@ -200,78 +220,247 @@ class Game(cgame.Game):
  
         self.rpi.set_target_leds('|'.join(f"{mult}{segment}" for mult in ('S', 'D', 'T') for segment in self.leds))         
         
-        
+     
         # test for a winner
-        if self.nb_players == 2 :
-            if players[actual_player].score >= self.winpoints:
-                self.winner =  players[actual_player].ident
-                return_code = 3
-        elif self.nb_players == 4 :
-            scoreJ1 = 0
-            scoreJ2 = 0
-            for player in players :
-                if player.ident == 0 :
-                    scoreJ1 += player.score 
-                if player.ident == 2 :
-                    scoreJ1 += player.score
-                if player.ident == 1 :
-                    scoreJ2 += player.score 
-                if player.ident == 3 :
-                    scoreJ2 += player.score    
-                    
-            if scoreJ1 >= self.winpoints :
-                self.winner = players[actual_player].ident
-                return_code = 3
-            elif scoreJ2 >= self.winpoints :
-                self.winner = players[actual_player].ident    
-                return_code = 3      
+        winners_indices = self.check_win_condition(players)
+        if winners_indices:
+            self.winner = winners_indices[0]
+            if self.nb_players == 2:
+                ctrophies.check_game_end_stats(players, players[winners_indices[0]].name, "PUISSANCE4")
+            else:
+                winning_names = [players[idx].name for idx in winners_indices]
+                ctrophies.check_team_game_end_stats(players, winning_names, "PUISSANCE4")
+            return_code = 3
                 
         handler['return_code'] = return_code
         return handler
-                
-        #return return_code
+
+   def pnj_score(self, players, actual_player, level, player_launch):
+      """
+      Intelligence Artificielle (PNJ) pour le Puissance 4 :
+      - Analyse globale (Horizontal, Vertical, Diagonales).
+      - Table standardisée des 5 niveaux [Précis, Voisin, Raté/Miss].
+      - Utilisation de la vraie matrice physique de la cible de fléchettes pour les voisins (ex: 20 -> 1 ou 5).
+      """
+      # =========================================================================
+      # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+      # - Légende des niveaux : [p_exact, p_neighbor, p_miss]
+      #   * p_exact    : Probabilité de toucher exactement la cible calculée (%)
+      #   * p_neighbor : Probabilité de dévier vers un secteur voisin via la matrice (%)
+      #   * p_miss     : Probabilité de rater complètement (retourne 'MISS') (%)
+      # - Plus fort / précis : Augmenter p_exact, réduire p_neighbor et p_miss.
+      # - Plus humain / brouillon : Augmenter p_miss et p_neighbor, réduire p_exact.
+      # =========================================================================
+
+      levels = [
+          [20, 40, 40],  # Niveau 1 (Noob)
+          [35, 45, 20],  # Niveau 2 (Débutant)
+          [55, 35, 10],  # Niveau 3 (Intermédiaire)
+          [75, 20,  5],  # Niveau 4 (Pro)
+          [90, 10,  0]   # Niveau 5 (Expert)
+      ]
+      
+      try:
+          comp_lvl = int(level)
+      except (ValueError, TypeError):
+          comp_lvl = 3
+
+      lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+      p_exact = levels[lvl_idx][0]
+      p_neighbor = levels[lvl_idx][1]
+
+      player_ident = players[actual_player].ident
+      if player_ident in (0, 2):
+          my_val = 1
+          opp_val = -1
+      else:
+          my_val = -1
+          opp_val = 1
+
+      playable_cols = []
+      for col in range(7):
+          if self.grille[0][col] == 0:
+              playable_cols.append(col)
+
+      if not playable_cols:
+          return 'MISS'
+
+      col_to_segment = {}
+      segment_to_col = {}
+      for item in self.grid:
+          seg, col = item[0], item[1]
+          col_to_segment[col] = seg
+          segment_to_col[seg] = col
+
+      def simulate(grille_state, col, val):
+          for r in range(5, -1, -1):
+              if grille_state[r][col] == 0:
+                  new_g = [row[:] for row in grille_state]
+                  new_g[r][col] = val
+                  return new_g, r
+          return None, None
+
+      def check_win(grille_state, val):
+          for r in range(6):
+              for c in range(4):
+                  if grille_state[r][c] == val and grille_state[r][c+1] == val and grille_state[r][c+2] == val and grille_state[r][c+3] == val:
+                      return True
+          for r in range(3):
+              for c in range(7):
+                  if grille_state[r][c] == val and grille_state[r+1][c] == val and grille_state[r+2][c] == val and grille_state[r+3][c] == val:
+                      return True
+          for r in range(3):
+              for c in range(4):
+                  if grille_state[r][c] == val and grille_state[r+1][c+1] == val and grille_state[r+2][c+2] == val and grille_state[r+3][c+3] == val:
+                      return True
+          for r in range(3):
+              for c in range(3, 7):
+                  if grille_state[r][c] == val and grille_state[r+1][c-1] == val and grille_state[r+2][c-2] == val and grille_state[r+3][c-3] == val:
+                      return True
+          return False
+
+      def evaluate_grid(grille_state, me, opp):
+          score = 0
+          def score_window(window):
+              s = 0
+              m = window.count(me)
+              o = window.count(opp)
+              e = window.count(0)
+              if m > 0 and o > 0:
+                  return 0
+              if m == 3 and e == 1:
+                  s += 200
+              elif m == 2 and e == 2:
+                  s += 20
+              elif m == 1 and e == 3:
+                  s += 2
+              if o == 3 and e == 1:
+                  s -= 150
+              elif o == 2 and e == 2:
+                  s -= 15
+              return s
+
+          for r in range(6):
+              for c in range(4):
+                  score += score_window([grille_state[r][c+i] for i in range(4)])
+          for r in range(3):
+              for c in range(7):
+                  score += score_window([grille_state[r+i][c] for i in range(4)])
+          for r in range(3):
+              for c in range(4):
+                  score += score_window([grille_state[r+i][c+i] for i in range(4)])
+          for r in range(3):
+              for c in range(3, 7):
+                  score += score_window([grille_state[r+i][c-i] for i in range(4)])
+          return score
+
+      scored_moves = []
+      for col in playable_cols:
+          if col not in col_to_segment:
+              continue
+          seg = col_to_segment[col]
+          score = 0
+
+          new_g_self, _ = simulate(self.grille, col, my_val)
+          if new_g_self and check_win(new_g_self, my_val):
+              score += 100000
+
+          new_g_opp, _ = simulate(self.grille, col, opp_val)
+          if new_g_opp and check_win(new_g_opp, opp_val):
+              score += 50000
+
+          if new_g_self:
+              score += evaluate_grid(new_g_self, my_val, opp_val)
+
+          distance_center = abs(col - 3)
+          if seg == "B":
+              score -= 70
+          else:
+              score += (3 - distance_center) * 15
+
+          scored_moves.append((score, col, seg))
+
+      if not scored_moves:
+          return 'MISS'
+
+      scored_moves.sort(key=lambda x: x[0], reverse=True)
+      best_target = scored_moves[0][2]
+
+      dartboard_neighbors = {
+          20: [1, 5],   1: [20, 18], 18: [1, 4],   4: [18, 13], 13: [4, 6],
+          6: [13, 10], 10: [6, 15],  15: [10, 2],  2: [15, 17], 17: [2, 3],
+          3: [17, 19], 19: [3, 7],   7: [19, 16], 16: [7, 8],   8: [16, 11],
+          11: [8, 14], 14: [11, 9],  9: [14, 12], 12: [9, 5],   5: [12, 20]
+      }
+      valid_segments = list(segment_to_col.keys())
+      roll = random.randint(1, 100)
+
+      if roll <= p_exact:
+          target_segment = best_target
+      elif roll <= p_exact + p_neighbor:
+          try:
+              target_int = int(best_target)
+          except (ValueError, TypeError):
+              target_int = None
+
+          if target_int in dartboard_neighbors:
+              neighbors = dartboard_neighbors[target_int]
+              valid_neighbors = [
+                  n for n in neighbors 
+                  if n in valid_segments and self.grille[0][segment_to_col[n]] == 0
+              ]
+              if valid_neighbors:
+                  target_segment = random.choice(valid_neighbors)
+              else:
+                  return 'MISS'
+          else:
+              return 'MISS'
+      else:
+          return 'MISS'
+
+      if target_segment == "B":
+          mult = random.choice(['SB', 'DB'])
+          return f"{mult}"
+      else:
+          mult = random.choice(['S', 'S', 'S', 'D'])
+          return f"{mult}{target_segment}"
 
 
    def post_dart_check(self,hit,players,actual_round,actual_player,player_launch):
         return_code = 0
-        
         handler = self.init_handler()
         self.show_hit = True
 
-        # Record total dart thrown, total hits (S=1, D=2, T=3) and refresh players stats
         players[actual_player].darts_thrown += 1
         players[actual_player].segments[player_launch-1] = hit
+        
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+        
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
 
-        ### recupere la colonne du chiffre que l on touche   
         if hit == 'SB' or hit == 'DB' :
               for k,v in enumerate(self.grid):  
                   if v[0] == 'B':
-                    # gestion fleche lancee touchee
                     self.touche += 1
                     colonne = 3     
-                    # boucle sur les lignes de bas en haut
                     ligne = 5  
                     stop = False
                     while ligne >= 0 and stop == False:
                       if self.grille[ligne][colonne] == 0:
-                        if players[actual_player].ident == 0 or players[actual_player].ident == 2:
+                        if players[actual_player].ident in (0, 2):
                           self.grille[ligne][colonne] = 1
                           self.jeton += 1
-                          #self.display.play_sound('p4_hit')
                           handler['sound'] = 'p4_hit'
-                          
-                          ### quitte le while
                           stop = True
-                        
-                        if players[actual_player].ident == 1 or players[actual_player].ident == 3:
+                        elif players[actual_player].ident in (1, 3):
                           self.grille[ligne][colonne] = -1
                           self.jeton += 1
-                          #self.display.play_sound('p4_hit')
                           handler['sound'] = 'p4_hit'
-                          
-                          
                           stop = True
-                      ### remonte d une ligne si un jeton est deja present  
                       ligne = ligne - 1 
 
         else :            
@@ -279,43 +468,31 @@ class Game(cgame.Game):
                   if v[0] == int(hit[1:]):
                     self.touche += 1
                     colonne = v[1]    
-                    # boucle sur les lignes de bas en haut
                     ligne = 5  
                     stop = False
                     while ligne >= 0 and stop == False:
                       if self.grille[ligne][colonne] == 0:
-                        if players[actual_player].ident == 0 or players[actual_player].ident == 2:
+                        if players[actual_player].ident in (0, 2):
                           self.grille[ligne][colonne] = 1
                           self.jeton += 1
-                          #self.display.play_sound('p4_hit')
                           handler['sound'] = 'p4_hit'
-                          
-                          ### quitte le while 
                           stop = True
-                          
-                        if players[actual_player].ident == 1 or players[actual_player].ident == 3 :
+                        elif players[actual_player].ident in (1, 3) :
                           self.grille[ligne][colonne] = -1
                           self.jeton += 1
-                          #self.display.play_sound('p4_hit')
                           handler['sound'] = 'p4_hit'
-                          
-                          
-                          ### quitte le while 
                           stop = True
-                      ### remonte d une ligne si un jeton est deja present  
                       ligne = ligne - 1 
         
         if str(hit[1:]) not in (self.miss) :    
-              #self.display.play_sound('p4_miss')
               handler['sound'] = 'p4_miss'
               
-        ### verifie si il y a un gagnant en H-V-D
         self.verif_horiz()
         self.verif_vert()
         self.verif_diag()
-        ### maj a jour l affichage des jetons    
         self.DrawCase(k, True)
         self.display.update_screen()
+
 
         # si ligne gagnante - ajoute point et nouvelle grille
         if self.win != "" :
@@ -323,58 +500,43 @@ class Game(cgame.Game):
               self.win = ""
               self.jeton = 0
               self.display.play_sound(f'p4_win',wait_finish = True)
-              self.grille = [
-            [0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0]
-        ]
-              self.creategrid()
-              self.display.play_sound(f'p4_falling',wait_finish = True)
-              #pygame.time.delay(500)
-              return_code = 1   
               
-        # test for a winner
-        if self.nb_players == 2 :
-            if players[actual_player].score >= self.winpoints:
-                self.winner =  players[actual_player].ident
+              winners_indices = self.check_win_condition(players)
+              if winners_indices:
+                  self.winner = winners_indices[0]
+                  if self.nb_players == 2:
+                      ctrophies.check_game_end_stats(players, players[winners_indices[0]].name, "PUISSANCE4")
+                  else:
+                      winning_names = [players[idx].name for idx in winners_indices]
+                      ctrophies.check_team_game_end_stats(players, winning_names, "PUISSANCE4")
+                  return_code = 3
+              else:
+                  self.grille = [[0]*7 for _ in range(6)]
+                  self.creategrid()
+                  self.display.play_sound(f'p4_falling', wait_finish = True)
+                  return_code = 1 
+ 
+        # test for a winner standard
+        if return_code != 3:
+            winners_indices = self.check_win_condition(players)
+            if winners_indices:
+                self.winner = winners_indices[0]
+                if self.nb_players == 2:
+                    ctrophies.check_game_end_stats(players, players[winners_indices[0]].name, "PUISSANCE4")
+                else:
+                    winning_names = [players[idx].name for idx in winners_indices]
+                    ctrophies.check_team_game_end_stats(players, winning_names, "PUISSANCE4")
                 return_code = 3
-        elif self.nb_players == 4 :
-            scoreJ1 = 0
-            scoreJ2 = 0
-            for player in players :
-                if player.ident == 0 :
-                    scoreJ1 += player.score 
-                if player.ident == 2 :
-                    scoreJ1 += player.score
-                if player.ident == 1 :
-                    scoreJ2 += player.score 
-                if player.ident == 3 :
-                    scoreJ2 += player.score    
-                    
-            if scoreJ1 >= self.winpoints :
-                self.winner = players[actual_player].ident
-                return_code = 3
-            elif scoreJ2 >= self.winpoints :
-                self.winner = players[actual_player].ident    
-                return_code = 3         
 
-        #passe au joueur suivant qd joueur touche X fois une case selon les options
-        if self.fleche == 1 :
-            if self.touche == 1 :
+        if return_code != 3:
+            if self.fleche == 1 and self.touche == 1 :
                 return_code = 1
-        elif self.fleche == 2 :
-            if self.touche == 2 :
+            elif self.fleche == 2 and self.touche == 2 :
                 return_code = 1
 
-        # Time for shot or video ?
         handler['take_shot'] = self.time_to_take_shot_or_video(hit)
         handler['return_code'] = return_code
         return handler
-
-        #return return_code
 
    def creategrid(self):
       self.grid.clear()
@@ -382,100 +544,79 @@ class Game(cgame.Game):
       for i in range (0, 6) :
          h = random.randint(0, len(hits) - 1)
          if i < 3 :
-           self.grid.append((hits[h], i)) # segment,numero de la colonne  
+           self.grid.append((hits[h], i))  
            hits.pop(h)
          if i >= 3 :
-           self.grid.append((hits[h], i+1)) # segment,numero de la colonne   
+           self.grid.append((hits[h], i+1))   
            hits.pop(h)
-      ### insere le bull en 4eme position  
       self.grid.insert(3, ("B", 3))
 
-
-   ###############
-   # Method to frefresh player.stat - Adapt to the stats you want. They represent mathematical formulas used to calculate stats. Refreshed after every launch
    def refresh_stats(self, players, actual_round):
       for player in players:
          player.stats['Points Per Round'] = player.avg(actual_round)
 
-   ###############
-   # Set if a message is shown to indicate the segment hitted !
-   #
    def display_segment(self):
       return False   
 
-   ###############
-   #verifie si 4 pions sont alignes horizontalement
    def verif_horiz(self):
       ligne = 5
       stop = False
-      # pour se deplacer de la derniere ligne (5) a la premiere ligne (0)
       while ligne >= 0 and stop == False:
-          for colonne in range(4):  # pour se deplacer dans les colonne
-              ### si la valeur de 4 colonnes consecutives est = a 4 (J1) ou -4 (J2) , le joueur marque le point
+          for colonne in range(4):  
               if self.grille[ligne][colonne] + self.grille[ligne][colonne + 1] + self.grille[ligne][colonne + 2] + self.grille[ligne][colonne + 3] == 4:  
                   self.win = "jaune"
                   stop = True
               if self.grille[ligne][colonne] + self.grille[ligne][colonne + 1] + self.grille[ligne][colonne + 2] + self.grille[ligne][colonne + 3] == -4: 
                   self.win = "rouge"
                   stop = True
-          # si pas de gagnant, on remonte d 1 ligne
           ligne = ligne - 1
 
-   ###############
-   #verifie si 4 pions sont alignes verticalement   
    def verif_vert(self):
-      # pour se deplacer dans les colonnes
       for colonne in range(7) :
           for ligne in range(5, 2, -1):
-              ### si la valeur de 4 lignes consecutives est = a 4 (J1) ou -4 (J2), le joueur marque le point 
               if self.grille[ligne][colonne] + self.grille[ligne - 1][colonne] + self.grille[ligne - 2][colonne] + self.grille[ligne - 3][colonne] == 4:
                   self.win = "jaune"
-
               if self.grille[ligne][colonne] + self.grille[ligne - 1][colonne] + self.grille[ligne - 2][colonne] + self.grille[ligne - 3][colonne] == -4:
                   self.win = "rouge"
 
-   ###############
-   #verifie si 4 pions sont alignes en diagonal      
    def verif_diag(self) :
-      # diagonale haut/gauche vers en bas/droite
       for ligne in range(3):
           for colonne in range(4):
-              # on teste les lignes et colonne en diagonale
               if self.grille[ligne][colonne] + self.grille[ligne + 1][colonne + 1] + self.grille[ligne + 2][colonne + 2] + self.grille[ligne + 3][colonne + 3] == 4:
                   self.win = "jaune"
-              
               if self.grille[ligne][colonne] + self.grille[ligne + 1][colonne + 1] + self.grille[ligne + 2][colonne + 2] + self.grille[ligne + 3][colonne + 3] == -4:
                   self.win = "rouge"
       
-      # diagonale haut/droite vers bas/gauche
-      for ligne in range(3): # 0 1 2 3, commence a la ligne 0 pour aller a la ligne 3
-          for colonne in range(3, 7): # 3 4 5 6, commence a la colonne 3 pour aller vers la colonne 6
+      for ligne in range(3): 
+          for colonne in range(3, 7): 
               if self.grille[ligne][colonne] + self.grille[ligne + 1][colonne - 1] + self.grille[ligne + 2][colonne - 2] + self.grille[ligne + 3][colonne - 3] == 4:
                   self.win = "jaune"
-              
               if self.grille[ligne][colonne] + self.grille[ligne + 1][colonne - 1] + self.grille[ligne + 2][colonne - 2] + self.grille[ligne + 3][colonne - 3] == -4:
                   self.win = "rouge"
 
    def miss_button(self, players, actual_player, actual_round, player_launch):
-
       players[actual_player].segments[player_launch-1] = 'MISS'
       self.display.play_sound('miss')
-      players[actual_player].darts_thrown += 1
 
+      players[actual_player].darts_thrown += 1
         
-   #################
-   # Refresh In-game screen
-   #
+      hit = 'MISS'
+      print('CONTENU DE HIT  DEF MISS')
+      print(hit)
+      ### TROPHEES
+      ctrophies.process_single_dart(players[actual_player], hit)
+        
+      # On vérifie les trophées de volée uniquement à la 3ème fléchette
+      if player_launch == 3:
+          round_darts = players[actual_player].darts[-3:]
+          ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+        
    def refresh_game_screen(self, Players, actual_round, max_round, RemDarts, nb_darts, logo, headers, actual_player,TxtOnLogo=False, Wait=False, OnScreenButtons=None, showScores=True, end_of_game=False, endOfSet=None, Set=None, MaxSet=None):
-      # do not show the table scores
       ClickZones = {}
 
-      # Clear
       self.display.screen.fill( (0,0,0) )
-      # background image
       self.display.display_background('puissance4/background.jpg')
 
-      #### ancienne variable -- A GARDER
       bw = self.bw
       y = self.y
       x = self.x
@@ -483,44 +624,36 @@ class Game(cgame.Game):
 
       self.display.display_image(self.display.file_class.get_full_filename('puissance4/p4_board_back', 'images'), self.x_board, self.y_board, self.x_echelle_board, self.y_echelle_board, True, False, False)
 
-      # show values in grid
       for k,v in enumerate(self.grid ):
          self.DrawCase(k)
 
       self.display.display_image(self.display.file_class.get_full_filename('puissance4/p4_board', 'images'), self.x_board, self.y_board, self.x_echelle_board, self.y_echelle_board, True, False, False)
 
-      #### ancienn variable - A GARDER
       pad = bw/20
       pw = x-pad*2
       
-      ### Affiche les segments touches
       self.display.display_image(self.display.file_class.get_full_filename('puissance4/p4_dartbg', 'images'),pad, self.display.res['y']-pw/4, pw, pw/4, True, False, False)
       self.display.blit_text(Players[actual_player].segments[0],pad, self.display.res['y']-pw/4, pw/3, pw/4, color=(255,255,255))
       self.display.blit_text(Players[actual_player].segments[1],pad+pw/3, self.display.res['y']-pw/4, pw/3, pw/4, color=(255,255,255))
       self.display.blit_text(Players[actual_player].segments[2],pad+pw/3*2, self.display.res['y']-pw/4, pw/3, pw/4, color=(255,255,255))
       
-      ### Affiche les nb de tours
       self.display.display_image(self.display.file_class.get_full_filename('puissance4/p4_turnbg', 'images'),x+bw+pad, self.display.res['y']-pw/4, pw, pw/4, True, False, False)
       self.display.blit_text(str(self.display.lang.translate('round')) +' '+str(actual_round) ,x+bw+pad, self.display.res['y']-pw/4, pw, pw/4, color=(255,255,255))
       
-      ### Affiche le nom du joueur 1
       self.display.display_image(self.display.file_class.get_full_filename('puissance4/p4_name0', 'images'),pad, y, pw,pw/4, True, False, False)
       self.display.blit_text(Players[0].name,pad, y, pw,pw/4, color=(255,255,255) if actual_player==0 else (0,0,0) )
       self.display.blit_text(str(Players[0].score),pad+pw*3/4, y+pw/4, pw/4,pw/4, color=(255,255,255) if actual_player==0 else (0,255,255) )
       
-      ### Affiche le nom du joueur 2
       if len(Players) > 1:
         self.display.display_image(self.display.file_class.get_full_filename('puissance4/p4_name1', 'images'),x+bw+pad, y, pw,pw/4, True, False, False)
         self.display.blit_text(Players[1].name,x+bw+pad, y, pw,pw/4, color=(255,255,255) if actual_player==1 else(0,0,0))
         self.display.blit_text(str(Players[1].score),x+bw+pad+pw*3/4,y+pw/4, pw/4,pw/4, color=(255,255,255) if actual_player==1 else(0,255,255))
       
-       ### Affiche le nom du joueur 3
       if len(Players) > 2:
         self.display.display_image(self.display.file_class.get_full_filename('bingo/bingo_name0', 'images'),pad, y+bw/2, pw,pw/4, True, False, False)
         self.display.blit_text(Players[2].name,pad, y+bw/2, pw,pw/4, color=(255,255,255) if actual_player==2 else(0,0,0))
         self.display.blit_text(str(Players[2].score),pad+pw*3/4, y+bw/2+pw/4 , pw/4,pw/4, color=(255,255,255) if actual_player==2 else (0,255,255) )
       
-      ### Affiche le nom du joueur 4
       if len(Players) > 3:
         self.display.display_image(self.display.file_class.get_full_filename('bingo/bingo_name1', 'images'),x+bw+pad, y+bw/2, pw,pw/4, True, False, False)
         self.display.blit_text(Players[3].name,x+bw+pad, y+bw/2, pw,pw/4, color=(255,255,255) if actual_player==3 else(0,0,0))
@@ -531,12 +664,9 @@ class Game(cgame.Game):
           return ClickZones
 
       self.display.update_screen()
-
       return ClickZones
 
-   #######################"
    def DrawCase(self, case, redrawgrid = False) :
-      ### AFFICHE LES PIONS DES JOUEURS DANS LA GRILLE
       for ligne in range(len(self.grille)):
         for colonne in range(len(self.grille[ligne])):
           if self.grille[ligne][colonne] == 1:
@@ -544,7 +674,6 @@ class Game(cgame.Game):
           elif self.grille[ligne][colonne] == -1 :
             self.display.display_image(self.display.file_class.get_full_filename(f'puissance4/pion_2', 'images'), int((self.display.res['x'] * (self.pos[ligne][colonne][0] - self.taille_pion)) /1920), int((self.display.res['y'] * (self.pos[ligne][colonne][1] - self.taille_pion)) /1080) , self.echelle_pion, self.echelle_pion, True, False, False)
             
-      ### AFFICHE LES CHIFFRES A JOUER AU DESSUS DE LA GRILLE 
       self.display.blit_text(str(self.grid[0][0]), int((self.display.res['x']*(679-self.decal_chiffre) /1920)), self.y_board - self.echelle_chiffre , self.echelle_pion, self.echelle_pion, color=(255,255,255), dafont='Impact', align='center', valign='center', margin=False)
       self.display.blit_text(str(self.grid[1][0]), int((self.display.res['x']*(803-self.decal_chiffre) /1920)), self.y_board - self.echelle_chiffre  , self.echelle_pion, self.echelle_pion, color=(255,255,255), dafont='Impact', align='center', valign='center', margin=False)
       self.display.blit_text(str(self.grid[2][0]), int((self.display.res['x']*(930-self.decal_chiffre) /1920)), self.y_board - self.echelle_chiffre  , self.echelle_pion, self.echelle_pion, color=(255,255,255), dafont='Impact', align='center', valign='center', margin=False)
@@ -553,6 +682,5 @@ class Game(cgame.Game):
       self.display.blit_text(str(self.grid[5][0]), int((self.display.res['x']*(1307-self.decal_chiffre) /1920)), self.y_board - self.echelle_chiffre  , self.echelle_pion, self.echelle_pion, color=(255,255,255), dafont='Impact', align='center', valign='center', margin=False)
       self.display.blit_text(str(self.grid[6][0]), int((self.display.res['x']*(1432-self.decal_chiffre) /1920)), self.y_board - self.echelle_chiffre  , self.echelle_pion, self.echelle_pion, color=(255,255,255), dafont='Impact', align='center', valign='center', margin=False)
 
-      # REAFFICHE LA GRILLE
       if redrawgrid :
         self.display.display_image(self.display.file_class.get_full_filename('puissance4/p4_board', 'images'), self.x_board, self.y_board, self.x_echelle_board, self.y_echelle_board, True, False, False)

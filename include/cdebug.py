@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+Debug
+"""
 
 import pygame
 from pygame import gfxdraw
 from math import sqrt
 from include import cgame
+from include import cpaths
 
 seg_pos = {'E': (143,151),'D' : (133,141), 'S' : (81,131,20,70), 'T':(72,79), 'SB' : (10,18), 'DB' : (0,8)}
         
@@ -18,7 +22,7 @@ class Debug(cgame.Game):
         self.L = 200
         self.H = 400
         self.nb_players = nb_players
-        self.root_dir = '/pydarts'
+        self.root_dir = cpaths.ROOT_DIR
         self.logsDir = f'{self.root_dir}/logs'
         self.name = game
         self.gameDebugFile = f'{self.logsDir}/{self.name}-{nb_players}.dbg'

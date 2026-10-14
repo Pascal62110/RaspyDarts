@@ -213,6 +213,156 @@ class Game(cgame.Game):
         return handler
         #return return_code
 
+
+    ###############
+    # PNJ SCORE METHOD FOR PURSUIT
+    ###############
+    def pnj_score(self, players, actual_player, level, player_launch):
+        """
+        Intelligence Artificielle (PNJ) pour le jeu Pursuit :
+        - Option REVERSE : Vise le Bull dès qu'un adversaire est à moins de 3-4 cases derrière,
+          avec un taux de réussite/raté dépendant strictement du niveau.
+        - Utilise la matrice physique de la cible pour les voisins des segments (1-20).
+        - Option MASTER : Adapte les multiplicateurs (S, D, T) aux capacités de chaque niveau.
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [p_exact, p_neighbor, p_miss]
+        #   * p_exact    : Probabilité de toucher exactement la cible visée (%)
+        #   * p_neighbor : Probabilité de dévier vers un secteur voisin physique (%)
+        #   * p_miss     : Probabilité de rater complètement (retourne 'MISS') (%)
+        # - Ajustement : Pour renforcer l'IA, augmente p_exact et réduis p_miss.
+        # =========================================================================
+
+        levels = [
+            [20, 40, 40],  # Niveau 1 (Noob)
+            [35, 45, 20],  # Niveau 2 (Débutant)
+            [55, 35, 10],  # Niveau 3 (Intermédiaire)
+            [75, 20,  5],  # Niveau 4 (Pro)
+            [90, 10,  0]   # Niveau 5 (Expert)
+        ]
+        
+        try:
+            comp_lvl = int(level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        p_exact = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        player = players[actual_player]
+        current_score = player.score
+
+        if current_score <= 0:
+            return 'MISS'
+
+        # 1. OPTION REVERSE : Viser le Bull si un adversaire est à moins de 3-4 cases derrière
+        if self.reverse:
+            try:
+                curr_idx = self.sequence.index(current_score)
+                is_close_pursuit = False
+                # Vérifie un écart de 1 à 4 cases derrière
+                for step in range(1, 5):
+                    behind_idx = (curr_idx - step) % 20
+                    behind_seg = self.sequence[behind_idx]
+                    for other_p in players:
+                        if other_p != player and other_p.score == behind_seg:
+                            is_close_pursuit = True
+                            break
+                    if is_close_pursuit:
+                        break
+                
+                if is_close_pursuit:
+                    # L'IA tente le Bull avec le risque de rater selon son niveau
+                    roll_bull = random.randint(1, 100)
+                    if roll_bull <= p_exact:
+                        # Succès précis (DB pour les niveaux experts, SB ou DB pour les autres)
+                        return 'DB' if comp_lvl >= 4 else random.choice(['SB', 'DB'])
+                    elif roll_bull <= p_exact + p_neighbor:
+                        # Raté maîtrisé : touche le Single Bull (SB)
+                        return 'SB'
+                    else:
+                        # Raté total (Miss)
+                        return 'MISS'
+            except Exception:
+                pass
+
+        best_target = current_score
+        target_mult = 'S'
+        
+        # 2. Option MASTER / Gestion des adversaires devant (D/T adaptés au niveau humain)
+        try:
+            curr_idx = self.sequence.index(current_score)
+            next_segments = []
+            for step in range(1, 4):
+                idx = (curr_idx + step) % 20
+                next_segments.append(self.sequence[idx])
+
+            required_mult = 'S'
+            found_opponent_distance = 0
+            for i, seg in enumerate(next_segments):
+                for other_p in players:
+                    if other_p != player and other_p.score == seg:
+                        found_opponent_distance = i + 1
+                        if found_opponent_distance == 1:
+                            required_mult = 'S'
+                        elif found_opponent_distance == 2:
+                            required_mult = 'D'
+                        elif found_opponent_distance == 3:
+                            required_mult = 'T'
+                        break
+                if found_opponent_distance > 0:
+                    break
+
+            if found_opponent_distance > 1:
+                success_chances = {
+                    1: {2: 0, 3: 0},
+                    2: {2: 15, 3: 0},
+                    3: {2: 40, 3: 20},
+                    4: {2: 70, 3: 50},
+                    5: {2: 90, 3: 75}
+                }
+                chance = success_chances.get(comp_lvl, {2: 30, 3: 15}).get(found_opponent_distance, 0)
+                if random.randint(1, 100) <= chance:
+                    target_mult = required_mult
+                else:
+                    target_mult = 'S'
+            else:
+                if comp_lvl >= 4 and random.randint(1, 100) <= (comp_lvl * 4):
+                    target_mult = 'D'
+                else:
+                    target_mult = 'S'
+        except Exception:
+            target_mult = 'S'
+
+        # 3. Vraie matrice de voisinage physique de la cible de fléchettes (1-20)
+        dartboard_neighbors = {
+            20: [1, 5],   1: [20, 18], 18: [1, 4],   4: [18, 13], 13: [4, 6],
+            6: [13, 10], 10: [6, 15],  15: [10, 2],  2: [15, 17], 17: [2, 3],
+            3: [17, 19], 19: [3, 7],   7: [19, 16], 16: [7, 8],   8: [16, 11],
+            11: [8, 14], 14: [11, 9],  9: [14, 12], 12: [9, 5],   5: [12, 20]
+        }
+
+        # 4. Application du tir normal (Exact, Voisin, Miss)
+        roll = random.randint(1, 100)
+        final_target = best_target
+
+        if roll <= p_exact:
+            final_target = best_target
+        elif roll <= p_exact + p_neighbor:
+            if best_target in dartboard_neighbors:
+                neighbors = dartboard_neighbors[best_target]
+                final_target = random.choice(neighbors)
+            else:
+                return 'MISS'
+        else:
+            return 'MISS'
+
+        return f"{target_mult}{final_target}"
+
+
+
     ###############
     # Function run after each dart throw - for example, add points to player
     def post_dart_check(self,hit,players,actual_round,actual_player,player_launch):

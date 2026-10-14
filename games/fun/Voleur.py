@@ -278,20 +278,118 @@ class Game(cgame.Game):
         self.logs.debug(self.infos)
         return return_code
 
+###############
+    # PNJ SCORE METHOD FOR VOLEUR
+    ###############
     def pnj_score(self, players, actual_player, level, player_launch):
         """
-        pnj score
+        Intelligence Artificielle (PNJ) pour le jeu Voleur :
+        - Stratégie humaine : vise en priorité les gros scores (20, 19, 18) en T/D et le Bull (non volable).
+        - Gère les 5 niveaux de difficulté avec taux de réussite, voisins physiques et ratés (MISS).
         """
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
-        
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [p_exact, p_neighbor, p_miss]
+        #   * p_exact    : Probabilité de toucher exactement la cible visée (%)
+        #   * p_neighbor : Probabilité de dévier vers un secteur voisin physique (%)
+        #   * p_miss     : Probabilité de rater complètement (retourne 'MISS') (%)
+        # - Ajustement : Pour renforcer l'IA, augmente p_exact et réduis p_miss.
+        # =========================================================================
+
+        # Table de précision par niveau : [ % Exact, % Voisin, % Miss ]
+        levels = [
+            [15, 45, 40],  # Niveau 1 (Noob) : 15% exact, 45% voisin, 40% miss
+            [30, 50, 20],  # Niveau 2 (Débutant) : 30% exact, 50% voisin, 20% miss
+            [45, 35, 15],  # Niveau 3 (Intermédiaire) : 45% exact, 35% voisin, 15% miss
+            [72, 23,  5],  # Niveau 4 (Pro) : 72% exact, 23% voisin, 5% miss
+            [90, 10,  0]   # Niveau 5 (Expert) : 90% exact, 10% voisin, 0% miss
+        ]
+
+        try:
+            comp_lvl = int(level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        p_exact = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        # 1. Choix stratégique de la cible (maximiser les points et viser le Bull sécurisé)
+        if comp_lvl >= 4:
+            high_values = [20, 19, 18, 17]
+            mult_options = ['T', 'T', 'D', 'S']
+        elif comp_lvl == 3:
+            high_values = [20, 19, 18, 20, 19]
+            mult_options = ['T', 'D', 'S', 'S']
+        else:
+            high_values = [20, 19, 18, 16, 15, 14]
+            mult_options = ['S', 'S', 'S', 'D']
+
+        # Occasionnellement viser le Bull (car il rapporte des points et ne peut pas être volé)
+        bull_chance = 15 if comp_lvl >= 3 else 5
+        if random.randint(1, 100) <= bull_chance:
+            intended_hit = 'DB' if (comp_lvl >= 4 and random.randint(1, 100) <= 50) else 'SB'
+        else:
+            val = random.choice(high_values)
+            mult = random.choice(mult_options)
+            
+            # Comportement humain : les niveaux bas évitent ou ratent les triples trop ambitieux
+            if comp_lvl <= 2 and mult == 'T':
+                mult = 'S'
+            elif comp_lvl == 3 and mult == 'T' and random.randint(1, 100) <= 40:
+                mult = 'S'
+                
+            intended_hit = f"{mult}{val}"
+
+        # 2. Extraction du multiplicateur et de la valeur
+        mult = intended_hit[0] if intended_hit[:1] in ['S', 'D', 'T'] else 'S'
+        try:
+            val_str = intended_hit[1:] if mult in ['S', 'D', 'T'] else intended_hit
+            if val_str in ['SB', 'DB', 'B']:
+                base_val = val_str
+            else:
+                base_val = int(val_str)
+        except ValueError:
+            base_val = 20
+            mult = 'S'
+
+        # 3. Gestion si la cible est un Bull (SB / DB)
+        if base_val in ['SB', 'DB', 'B']:
+            roll = random.randint(1, 100)
+            if roll <= p_exact:
+                return 'DB' if (comp_lvl >= 4 and base_val == 'DB') else 'SB'
+            elif roll <= p_exact + p_neighbor:
+                return 'SB' if base_val == 'DB' else 'MISS'
+            else:
+                return 'MISS'
+
+        # 4. Matrice de voisinage physique de la cible de fléchettes (1-20)
+        dartboard_neighbors = {
+            20: [1, 5],   1: [20, 18], 18: [1, 4],   4: [18, 13], 13: [4, 6],
+            6: [13, 10], 10: [6, 15],  15: [10, 2],  2: [15, 17], 17: [2, 3],
+            3: [17, 19], 19: [3, 7],   7: [19, 16], 16: [7, 8],   8: [16, 11],
+            11: [8, 14], 14: [11, 9],  9: [14, 12], 12: [9, 5],   5: [12, 20]
+        }
+
+        # 5. Évaluation physique du tir (Exact, Voisin, Miss)
+        roll = random.randint(1, 100)
+
+        if roll <= p_exact:
+            # Succès exact
+            return f"{mult}{base_val}"
+        elif roll <= p_exact + p_neighbor:
+            # Raté de précision : déviation sur un segment voisin physique
+            neighbors = dartboard_neighbors.get(base_val, [1, 5])
+            hit_val = random.choice(neighbors)
+            
+            # Si on visait un Double ou Triple et qu'on rate, la fléchette glisse en Simple
+            if mult in ['D', 'T']:
+                mult = 'S'
+                
+            return f"{mult}{hit_val}"
+        else:
+            # Raté total (Miss)
+            return 'MISS'
    
     def post_dart_check(self, hit, players, actual_round, actual_player, player_launch):
         """
@@ -561,7 +659,7 @@ class Game(cgame.Game):
         
         for dart in players[actual_player].darts:
             if dart is None:
-                dart = '___'
+                dart = 'MISS'
             if darts is None:
                 darts = dart
             else:

@@ -1,9 +1,8 @@
 [Desktop Entry]
-[Desktop Entry]
-Version=3.3.2
-Comment=Raspydarts
-Terminal=false
-Name=Raspydarts
-Exec=/pydarts/RaspyDarts.sh
+Version=1.0
 Type=Application
-Icon=/pydarts/images/icon.png
+Name=Raspydarts
+Comment=Raspydarts
+Exec=/raspydarts/RaspyDarts.sh
+Icon=/raspydarts/images/icon.png
+Terminal=false

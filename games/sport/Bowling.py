@@ -261,20 +261,87 @@ class Game(cgame.Game):
         return handler
         #return return_code
 
-    def pnj_score(self, players, actual_player, level, player_launch):
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
         """
-        pnj score
+        Intelligence Artificielle (PNJ) pour le jeu Bowling :
+        - Gère la 1ère fléchette pour le choix de la piste parmi les cibles disponibles.
+        - Mémorise la piste choisie et y concentre les tirs pour les fléchettes suivantes.
+        - Gère les 5 niveaux de difficulté avec les taux d'erreur, simple, double et triple.
         """
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende du format par niveau : [miss_chance, simple_chance, double_chance, triple_chance]
+        #   * miss_chance   : Probabilité de rater (retourne 'MISSDART') (%)
+        #   * simple_chance : Probabilité d'obtenir un Simple (S) (%)
+        #   * double_chance : Probabilité d'obtenir un Double (D) (%)
+        #   * triple_chance : Probabilité résiduelle pour obtenir un Triple (T) (%)
+        # - Ajustement : Pour renforcer l'IA, réduis miss_chance et augmente les multiplicateurs.
+        # =========================================================================
 
+        # Niveaux de difficulté : [miss_chance, simple_chance, double_chance, triple_chance]
+        levels = [
+            [50, 40,  8,  2],  # Niveau 1 (Noob) : 50% miss, 40% simple, 8% double, 2% triple
+            [35, 50, 10,  5],  # Niveau 2 (Débutant) : 35% miss, 50% simple, 10% double, 5% triple
+            [15, 60, 15, 10],  # Niveau 3 (Intermédiaire) : 15% miss, 60% simple, 15% double, 10% triple
+            [ 5, 65, 20, 10],  # Niveau 4 (Pro) : 5% miss, 65% simple, 20% double, 10% triple
+            [ 0, 70, 20, 10]   # Niveau 5 (Expert) : 0% miss, 70% simple, 20% double, 10% triple
+        ]
+        
+        try:
+            comp_lvl = int(computer_level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        miss_chance = levels[lvl_idx][0]
+        p_simple = levels[lvl_idx][1]
+        p_double = levels[lvl_idx][2]
+        # Le reste est attribué au triple
+
+        current_player = players[actual_player]
+
+        # FLÉCHETTE 1 : Choix de la piste
+        if player_launch == 1 or getattr(current_player, 'choix', True):
+            # Si le PNJ rate sa sélection de piste (miss)
+            if random.randrange(100) < miss_chance:
+                current_player.darts_thrown += 1
+                return 'MISSDART'
+            
+            # Récupère les pistes disponibles dans les cibles du joueur
+            available_tracks = []
+            for t in current_player.targets:
+                if t.startswith('S'):
+                    # Extrait le numéro après le 'S' et avant le '#'
+                    track_num = t.split('#')[0][1:]
+                    if track_num not in available_tracks:
+                        available_tracks.append(track_num)
+            
+            if available_tracks:
+                chosen_track = random.choice(available_tracks)
+                # Sauvegarde la piste choisie pour que le PNJ s'y tienne aux fléchettes 2 et 3
+                current_player.pnj_track = chosen_track
+                return f'S{chosen_track}'
+            else:
+                return 'S20'
+
+        # FLÉCHETTE 2, 3 (ou 4 pour le tour 10) : Tir sur la piste choisie
+        target_track = getattr(current_player, 'pnj_track', '20')
+
+        # Gestion du raté sur la piste
+        if random.randrange(100) < miss_chance:
+            current_player.darts_thrown += 1
+            return 'MISSDART'
+
+        # Choix du multiplicateur selon les probabilités du niveau
+        rand_val = random.randrange(100)
+        if rand_val < p_simple:
+            multi = 'S'
+        elif rand_val < p_simple + p_double:
+            multi = 'D'
+        else:
+            multi = 'T'
+
+        return f'{multi}{target_track}'
     def best_score(self, players):
         """
         Find the winner

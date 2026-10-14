@@ -108,6 +108,68 @@ class Game(cgame.Game):
         self.show_hit = True
         
         self.alea = options['alea']
+   
+   
+    def pnj_score(self, players, actual_player, computerLevel, player_launch):
+        '''
+        IA pour le Jeu de l'Oie : cherche à atteindre les segments cibles autorisés (1 à 6 selon la difficulté) 
+        tout en gérant le taux de raté (miss) et le glissement de la matrice physique.
+        '''
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [miss_rate, slip_rate]
+        #   * miss_rate : Probabilité d'un raté pur (MISSDART, score à 0) (%)
+        #   * slip_rate : Probabilité de déviation/glissement vers un voisin géographique si non raté (%)
+        # - Plus fort / précis : Diminuer miss_rate et slip_rate.
+        # - Plus humain / brouillon : Augmenter miss_rate et slip_rate.
+        # =========================================================================
+        
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+        # Niveaux de difficulté [Taux de raté (miss), Taux de glissement (slip)]
+        levels = [
+                 [45, 80],  # Niveau 1 : Noob
+                 [30, 70],  # Niveau 2 : Débutant
+                 [15, 40],  # Niveau 3 : Intermédiaire
+                 [6, 25],   # Niveau 4 : Pro
+                 [2, 8]     # Niveau 5 : Expert
+                ]
+
+        lvl_idx = max(0, min(computerLevel - 1, len(levels) - 1))
+        miss_rate = levels[lvl_idx][0]
+        slip_rate = levels[lvl_idx][1]
+
+        # 1. Test du MISS pur : On retourne 'MISSDART' pour indiquer le raté
+        if random.randrange(100) < miss_rate:
+            if player_launch == 1:
+                self.onlyOneDart = True
+            else:
+                self.twoDartsThrown = True
+            self.dartScore = 0
+            players[actual_player].darts_thrown += 1
+            self.display.play_sound('miss')
+            return 'MISSDART'
+
+        # Stratégie Jeu de l'Oie : viser en priorité les segments de 1 à 6 autorisés par les règles
+        allowed_targets = [1, 2, 3, 4, 5, 6]
+        target_num = random.choice(allowed_targets)
+        mult = 'S'
+
+        # 2. Simulation de la déviation / glissement de la matrice physique
+        if random.randrange(100) < slip_rate:
+            if target_num in geo_neighbors:
+                target_num = random.choice(geo_neighbors[target_num])
+            mult = 'S'
+
+        return f'{mult}{target_num}'
+   
+   
     
     def advance(self, player, spaces): # player can move
         self.video_player.play_video(self.display.file_class.get_full_filename('gameofgoose/' + self.videos['advance'], 'videos'))

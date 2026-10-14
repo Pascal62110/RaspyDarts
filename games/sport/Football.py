@@ -7,6 +7,8 @@ Game by ... Olivier Lu !
 
 from include import cplayer
 from include import cgame
+import random
+
 VERSION = '1.00'
 LOGO = 'Football.png'
 HEADERS = ['1', '2', '3', 'Drib', '', '', 'Ball']
@@ -58,6 +60,105 @@ class Game(cgame.Game):
         self.infos = ''
         self.translate = self.display.lang.translate
         self.show_hit = True
+
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
+        """
+        Intelligence Artificielle (PNJ) pour le jeu Football :
+        - Situation 1 (Sans le ballon) : Le PNJ vise le Bull (SB / DB) avec des chances d'échec spécifiques par niveau.
+        - Situation 2 (Avec le ballon) : Le PNJ vise un segment aléatoire (1 à 20) avec gestion des ratés (voisins géographiques) et multiplicateurs équilibrés.
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Niveaux généraux (miss_chance) : Probabilité de rater la cible visée et de dévier vers un voisin (%) [50, 40, 30, 10, 0]
+        # - Proportions de multiplicateurs [p_simple, p_double] :
+        #   * p_simple : Probabilité d'obtenir un Simple (S) (%)
+        #   * p_double : Probabilité d'obtenir un Double (D) (%)
+        #   * Triple résiduel : Le reste (100 - p_simple - p_double) est attribué au Triple (T), valeur égale au Double.
+        # - Situations spécifiques :
+        #   * bull_miss_chances : Probabilité de rater le tir sur le Bull lorsque le PNJ n'a pas le ballon [90, 80, 70, 50, 30]
+        # - Ajustement : Pour renforcer l'IA, réduis miss_chance et augmente les pourcentages de réussite.
+        # =========================================================================
+
+        current_player = players[actual_player]
+
+        # Matrice géographique des voisins sur une cible de fléchettes standard
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+        try:
+            comp_lvl = int(computer_level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        # Niveaux de difficulté généraux : [miss_chance]
+        levels = [50, 40, 30, 10, 0]  # Du niveau 1 au niveau 5
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        miss_chance = levels[lvl_idx]
+
+        # Tableaux des proportions : [p_simple, p_double] 
+        # Le reste (100 - p_simple - p_double) va au Triple, ce qui donne la même valeur que le Double.
+        hit_probabilities = {
+            0: [80, 10],  # Niveau 1 : Noob (80% S, 10% D, 10% T)
+            1: [70, 15],  # Niveau 2 : Débutant (70% S, 15% D, 15% T)
+            2: [60, 20],  # Niveau 3 : Intermédiaire (60% S, 20% D, 20% T)
+            3: [50, 25],  # Niveau 4 : Pro (50% S, 25% D, 25% T)
+            4: [40, 30]   # Niveau 5 : Expert (40% S, 30% D, 30% T)
+        }
+        p_simple = hit_probabilities[lvl_idx][0]
+        p_double = hit_probabilities[lvl_idx][1]
+
+        # ----------------------------------------------------
+        # SITUATION 1 : Le PNJ n'a PAS le ballon -> Il vise le Bull
+        # ----------------------------------------------------
+        if not current_player.ball:
+            bull_miss_chances = [90, 80, 70, 50, 30]
+            bull_miss = bull_miss_chances[lvl_idx]
+
+            if getattr(self, 'master', False):
+                db_miss = min(100, bull_miss + 15)
+                current_player.darts_thrown += 1
+                if random.randrange(100) < db_miss:
+                    return 'SB' if random.randrange(100) < 40 else f"S{random.randint(1, 20)}"
+                return 'DB'
+            else:
+                if random.randrange(100) < bull_miss:
+                    current_player.darts_thrown += 1
+                    return f"S{random.randint(1, 20)}"
+                
+                db_chance = comp_lvl * 5
+                return 'DB' if random.randrange(100) < db_chance else 'SB'
+
+        # ----------------------------------------------------
+        # SITUATION 2 : Le PNJ A LE BALLON -> Il vise un segment de 1 à 20
+        # ----------------------------------------------------
+        else:
+            target_chosen = random.choice(list(range(1, 21)))
+
+            # Gestion du raté (Miss) avec la matrice des voisins
+            if random.randrange(100) < miss_chance:
+                current_player.darts_thrown += 1
+                if target_chosen in geo_neighbors:
+                    target_chosen = random.choice(geo_neighbors[target_chosen])
+                else:
+                    target_chosen = random.randint(1, 20)
+                return f"S{target_chosen}"
+
+            # Jet normal avec D et T strictement égaux
+            rand_val = random.randrange(100)
+            if rand_val < p_simple:
+                multi = 'S'
+            elif rand_val < p_simple + p_double:
+                multi = 'D'
+            else:
+                multi = 'T'
+
+            return f"{multi}{target_chosen}"
+
 
     def pre_dart_check(self,  players, actual_round, actual_player, player_launch):
         """

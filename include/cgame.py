@@ -4,6 +4,8 @@ Generic game class
 from copy import deepcopy  # For backupTurn
 import collections
 import random
+### TROPHEES
+from include import ctrophies
 
 # This class is used for common methods and var shared by games - All games have a inherited version of this class
 
@@ -37,6 +39,8 @@ class Game:
         self.play_video = False
         self.max_round = 10
         self.nb_darts = 3
+        
+        ctrophies.init_trophy_display(self.display)
 
         self.neighbors = {'1': ['20', '18', '4', '5', 'B'],
                 '2': ['17', '15', '3', '10', 'B'],
@@ -290,6 +294,11 @@ class Game:
         """
         Get players's info by ident
         """
+        
+        # --- AJOUT POUR ENNEMI GAGNE - code "return -1" dans check_winner du jeu ---
+        if ident == -1:
+            return "Ennemi"
+            
         for player in players:
             if player.ident == ident:
                 return player.name

@@ -1,10 +1,26 @@
 #!/bin/sh
 
 
-PYDARTS_CFG=pydarts.cfg
-PYDARTS_HOME=/home/pi/.pydarts
-PYDARTS_VIDEOS=/pydarts/videos
-PYDARTS_THEME="`grep 'colorset:' $PYDARTS_HOME/$PYDARTS_CFG  | cut -d':' -f 2`"
+RASPYDARTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ "$(id -u)" -eq 0 ]; then
+	# Launched by root (rc.local) : configuration is in the home of the owner of the game
+	USER_HOME="$(getent passwd "$(stat -c %U "$RASPYDARTS_DIR")" | cut -d: -f6)"
+else
+	USER_HOME="$HOME"
+fi
+
+# ~/.raspydarts and raspydarts.cfg, or ~/.pydarts and pydarts.cfg before the renaming
+PYDARTS_HOME="${USER_HOME:-/home/pi}/.raspydarts"
+if [ ! -d "$PYDARTS_HOME" -a -d "${USER_HOME:-/home/pi}/.pydarts" ]; then
+	PYDARTS_HOME="${USER_HOME:-/home/pi}/.pydarts"
+fi
+PYDARTS_CFG=raspydarts.cfg
+if [ ! -s "$PYDARTS_HOME/$PYDARTS_CFG" ]; then
+	PYDARTS_CFG=pydarts.cfg
+fi
+PYDARTS_VIDEOS="$RASPYDARTS_DIR/videos"
+PYDARTS_THEME="`grep 'colorset:' $PYDARTS_HOME/$PYDARTS_CFG 2> /dev/null | cut -d':' -f 2`"
 PYDARTS_THEME_VIDEOS=$PYDARTS_HOME/themes/$PYDARTS_THEME/videos
 
 if [ -s $PYDARTS_HOME/$PYDARTS_CFG ]; then
@@ -35,4 +51,38 @@ if [ "$video" = "" ]; then
 	fi
 fi
 
-omxplayer --vol -1500 -o hdmi "$video"
+# omxplayer only exists on Raspbian Buster
+if command -v omxplayer > /dev/null 2>&1; then
+	omxplayer -o hdmi "$video"
+elif command -v cvlc > /dev/null 2>&1; then
+	# The game starts at the same time : it loads behind the video and goes up to its menu
+	# in a hidden window, shown as soon as this script is finished (see intro_is_playing
+	# in include/cscreen.py)
+	cvlc --play-and-exit --fullscreen --video-on-top --no-video-title-show --no-osd "$video" > /dev/null 2>&1 &
+	vlc=$!
+	if command -v xdotool > /dev/null 2>&1; then
+		# VLC needs some time to close after the end of the video, its window is already
+		# gone : the script ends with the window, the menu of the game appears at once.
+		# Its existence is watched, not its visibility : it is hidden for a moment when
+		# going full screen
+		i=0
+		while [ $i -lt 100 ] && kill -0 $vlc 2> /dev/null && ! xdotool search --class vlc > /dev/null 2>&1
+		do
+			sleep 0.1
+			i=$((i + 1))
+		done
+		missing=0
+		while kill -0 $vlc 2> /dev/null && [ $missing -lt 2 ]
+		do
+			if xdotool search --class vlc > /dev/null 2>&1
+			then
+				missing=0
+			else
+				missing=$((missing + 1))
+			fi
+			sleep 0.1
+		done
+	else
+		wait $vlc
+	fi
+fi

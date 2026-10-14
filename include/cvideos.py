@@ -5,7 +5,66 @@ Class used to play videos
 """
 
 from math import log as math_log
+import shutil
 import subprocess as subp
+
+# Players by order of preference : omxplayer only exists on Raspbian Buster
+PLAYERS = ('omxplayer', 'cvlc')
+
+FOUND_PLAYER = []
+
+def find_player():
+    """
+    Return the first video player installed, None if there is none
+    """
+    if len(FOUND_PLAYER) == 0:
+        FOUND_PLAYER.append(None)
+        for player in PLAYERS:
+            if shutil.which(player) is not None:
+                FOUND_PLAYER[0] = player
+                break
+    return FOUND_PLAYER[0]
+
+def player_command(player, video, volume=None, window=None):
+    """
+    Build the command line used to play a video
+    volume : in millibels (0 = original volume, -6000 = muted)
+    window : (x, y, width, height) to play in a part of the screen, else fullscreen
+    """
+    if player == 'omxplayer':
+        command = ['omxplayer']
+        if volume is not None:
+            command += ['--vol', f'{volume}']
+        if window is not None:
+            pos_x, pos_y, width, height = window
+            command += ['--win', f'{pos_x},{pos_y},{pos_x + width},{pos_y + height}', '--aspect-mode', 'letterbox']
+        return command + ['-o', 'alsa', f'{video}']
+
+    command = ['cvlc', '--play-and-exit', '--no-video-title-show', '--no-osd']
+    if volume is not None:
+        command += [f'--gain={min(10 ** (volume / 2000), 8):.3f}']
+    if window is not None:
+        pos_x, pos_y, width, height = window
+        command += ['--no-fullscreen', '--no-embedded-video', '--no-video-deco', '--video-on-top',
+                    f'--video-x={pos_x}', f'--video-y={pos_y}', f'--width={width}', f'--height={height}']
+    else:
+        command += ['--fullscreen']
+    return command + [f'{video}']
+
+def stop_player(player, process):
+    """
+    Stop a video launched without waiting for its end
+    """
+    if process is None or not hasattr(process, 'poll') or process.poll() is not None:
+        return
+    if player == 'omxplayer':
+        # omxplayer is a script which launch omxplayer.bin : only the 'q' key stops both
+        process.stdin.write(b'q')
+        process.stdin.flush()
+        process.stdin.close()
+    else:
+        # vlc needs more than 2 seconds to close when asked politely
+        process.kill()
 
 
 class Videos():
@@ -21,6 +80,11 @@ class Videos():
         self.multiplier = multiplier
         self.set_volume(volume)
         self.played_video = None
+        self.player = find_player()
+        if self.player is None:
+            self.logs.warning(f"No video player found ({' or '.join(PLAYERS)}) : videos are disabled")
+        else:
+            self.logs.debug(f"Video player is {self.player}")
 
     def set_level(self, level):
         """
@@ -42,19 +106,19 @@ class Videos():
         """
         Play video
         """
-        if video is None:
+        if video is None or self.player is None:
             return False
 
         self.logs.debug(f"Play {video} wait={wait}")
-        msg = f'omxplayer --vol {self.volume} -o alsa "{video}"'
+        command = player_command(self.player, video, self.volume)
 
-        self.logs.debug(f"{msg}")
+        self.logs.debug(f"{' '.join(command)}")
         if wait:
-            with subp.Popen(['omxplayer', '--vol', f'{self.volume}', '-o', 'alsa', f'{video}'], stdout=subp.DEVNULL, stderr=subp.DEVNULL) as process :
+            with subp.Popen(command, stdout=subp.DEVNULL, stderr=subp.DEVNULL) as process :
                 process.wait()
                 return True
         else:
-            return subp.Popen(['omxplayer', '--vol', f'{self.volume}', '-o', 'alsa', f'{video}'], stdin=subp.PIPE, stdout=subp.DEVNULL, stderr=subp.DEVNULL)
+            return subp.Popen(command, stdin=subp.PIPE, stdout=subp.DEVNULL, stderr=subp.DEVNULL)
 
     ################################################################
     ### Methode pour lire un plusieurs videos
@@ -77,14 +141,13 @@ class Videos():
             return None
         if self.played_video is not None:
             try:
-                self.played_video.stdin.write(b'q')
-                self.played_video.stdin.flush()
-                self.played_video.stdin.close()
+                stop_player(self.player, self.played_video)
                 self.played_video = None
             except Exception as error:
                 print(f"exception is {error}")            
         video = None
-        if 'X' not in darts and None not in darts:
+        # Special moves need the three darts of the round (some games give less)
+        if len(darts) >= 3 and 'X' not in darts and None not in darts:
             video = self.special_move(darts[0], darts[1], darts[2], play_special)
             if video is not None:
                 self.played_video = self.play_video(self.file.get_full_filename(video, 'videos'), wait=False)

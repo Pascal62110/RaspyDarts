@@ -185,6 +185,92 @@ class Game(cgame.Game):
 
         return handler
 
+
+    def pnj_score(self, players, actual_player, computerLevel, player_launch):
+        '''
+        IA réaliste pour Killer : gère intelligemment la cible du joueur (si non Killer) 
+        ou la cible des adversaires (si Killer), tout en respectant la matrice et le niveau.
+        '''
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [Taux de miss pur (miss_rate, %), Taux de glissement/déviation sur la matrice (slip_rate, %)]
+        # - Plus fort / précis : Diminuer le miss_rate et le slip_rate.
+        # - Plus humain / brouillon : Augmenter le miss_rate et le slip_rate.
+        # =========================================================================
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+        levels = [
+                 [45, 80],  # 1 : Noob 
+                 [30, 70],  # 2 : Débutant
+                 [18, 60],  # 3 : Intermédiaire 
+                 [6, 25],   # 4 : Pro 
+                 [2, 8]     # 5 : Expert 
+                ]
+
+        lvl_idx = max(0, min(computerLevel - 1, len(levels) - 1))
+        miss_rate = levels[lvl_idx][0]
+        slip_rate = levels[lvl_idx][1]
+
+        # 1. Test du MISS pur
+        if random.randrange(100) < miss_rate:
+            players[actual_player].columns[player_launch + 3] = ('MISS', 'str')
+            self.display.play_sound('miss')
+            players[actual_player].darts_thrown += 1
+            return 'MISSDART'
+
+        current_player_obj = players[actual_player]
+        target_num = 20
+        mult = 'S'
+
+        # 2. Détermination de la cible selon l'état du PNJ (Killer ou non)
+        if not current_player_obj.killer:
+            # Pas encore Killer : il vise en priorité son propre nombre pour marquer des points
+            try:
+                target_num = int(current_player_obj.target)
+            except (ValueError, TypeError):
+                target_num = 20
+            # S'il cherche à monter ses points, il peut viser des Simples, ou tenter quelques Doubles/Triples selon son niveau
+            mult = random.choices(['S', 'D', 'T'], weights=[70, 20, 10], k=1)[0]
+        else:
+            # Déjà Killer : il choisit de viser un adversaire encore en vie pour lui baisser son score
+            alive_adversaries = [p for i, p in enumerate(players) if p.alive and i != actual_player]
+            if alive_adversaries:
+                target_adv = random.choice(alive_adversaries)
+                try:
+                    target_num = int(target_adv.target)
+                except (ValueError, TypeError):
+                    target_num = 20
+                # En tant que Killer, il cherche à faire mal (préfère les Simples solides ou Doubles)
+                mult = random.choices(['S', 'D'], weights=[60, 40], k=1)[0]
+            else:
+                try:
+                    target_num = int(current_player_obj.target)
+                except (ValueError, TypeError):
+                    target_num = 20
+                mult = 'S'
+
+        # 3. Simulation de la déviation réaliste basée sur la matrice physique
+        if random.randrange(100) < slip_rate:
+            if mult in ['D', 'T']:
+                if random.randrange(100) < 60:
+                    mult = 'S'  # Glisse du double/triple vers le simple du même numéro
+                else:
+                    mult = 'S'
+                    if target_num in geo_neighbors:
+                        target_num = random.choice(geo_neighbors[target_num])
+            else:
+                if target_num in geo_neighbors:
+                    target_num = random.choice(geo_neighbors[target_num])
+                mult = 'S'
+
+        return f'{mult}{target_num}'
+
     def pre_dart_check(self, players, actual_round, actual_player, player_launch):
         '''
         Executed before every dart throw

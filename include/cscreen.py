@@ -22,6 +22,8 @@ import re
 import importlib
 # For debug
 import time
+
+import shutil
 # For IP addresses
 from netifaces import interfaces
 from netifaces import ifaddresses
@@ -35,6 +37,7 @@ import pygame
 from pygame.locals import *
 from include.ColorSets import *
 
+from include import cpaths
 from include import ccamera
 
 try:
@@ -82,6 +85,34 @@ def debug(func):
         return result
     return wrapper
      
+# Rounded corners and accurate transparency need pygame 2. The test was written for the
+# version 2.0.0 only : with a more recent one, buttons lost their rounded corners
+PYGAME2 = pygame.version.vernum[0] >= 2
+
+# Size of the audio buffer, in samples (about 0.1 second)
+MIXER_BUFFER = 4096
+
+def intro_is_playing():
+    '''
+    True while the intro video launched when the session opens (scripts/Intro.sh) is playing
+    '''
+    try:
+        return subprocess.call(['pgrep', '-f', 'scripts/Intro.sh'],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    except OSError:
+        return False
+
+def intro_over_screen():
+    '''
+    True if the intro video is played by omxplayer : on a layer of the firmware, above the
+    whole screen (as on Buster). The game is displayed normally behind it.
+    '''
+    return shutil.which('omxplayer') is not None
+
+# Sent by the background task watching the intro video when it is finished : the main loop
+# then shows the window of the game (see craspberry.keyboard_mouse)
+INTRO_END_EVENT = pygame.event.custom_type() if hasattr(pygame.event, 'custom_type') else pygame.USEREVENT + 30
+
 class Screen(pygame.Surface):
     '''
     Class for display
@@ -119,7 +150,20 @@ class Screen(pygame.Surface):
         self.old_volume = self.sound_volume
         self.sound_multiplier = 100
 
-        pygame.init()
+        # Audio buffer : with the default one (a few milliseconds), sounds are chopped and
+        # cut as soon as the game is busy
+        pygame.mixer.pre_init(44100, -16, 2, MIXER_BUFFER)
+
+        # While the intro video is playing, the audio output is not opened : this chops
+        # the sound of the video. It is opened as soon as the video is finished.
+        self.hidden = False
+        self.intro = intro_is_playing()
+        self.audio_deferred = self.intro and not intro_over_screen()
+        if self.audio_deferred:
+            pygame.display.init()
+            pygame.font.init()
+        else:
+            pygame.init()
         # Used resolution
         self.res = {}
         # Minimal resolution
@@ -148,6 +192,11 @@ class Screen(pygame.Surface):
         # Margin
         self.margin = int(self.res['y'] / 200)
         self.rpi = rpi
+        if self.intro:
+            # The target is read once the intro video is finished and the menu shown
+            rpi.target_enabled = False
+            rpi.set_intro_end(INTRO_END_EVENT, self.show)
+            Thread(target=self.watch_intro, daemon=True).start()
         self.dmd = dmd
         self.video_player = video_player
         self.image_player = image_player
@@ -185,7 +234,7 @@ class Screen(pygame.Surface):
         self.image_player.level = int(self.config.get_value('SectionGlobals', 'videos'))
 
     def blit(self, source, destination, area=None):
-        if str(pygame.version.ver) == '2.0.0':
+        if PYGAME2:
             if area is not None:
                 self.screen.blit(source, destination, area=area, special_flags=pygame.BLEND_ALPHA_SDL2)
             else:
@@ -197,11 +246,11 @@ class Screen(pygame.Surface):
 
     def blit_screen(self, screen, source, destination, area=None):
         if area is None:
-            if str(pygame.version.ver) == '2.0.0':
+            if PYGAME2:
                 screen.blit(source, destination, special_flags=pygame.BLEND_ALPHA_SDL2)
             else:
                 screen.blit(source, destination)
-        elif str(pygame.version.ver) == '2.0.0':
+        elif PYGAME2:
             screen.blit(source, destination, area=area, special_flags=pygame.BLEND_ALPHA_SDL2)
         else:
             screen.blit(source, destination,special_flags=pygame.BLEND_ALPHA_SDL2)
@@ -214,7 +263,7 @@ class Screen(pygame.Surface):
         rect = pygame.Rect(0, 0, self.res_x, self.res_y)
         sub = self.screen.subsurface(rect)
         screenshot = pygame.Surface((self.res_x, self.res_y))
-        if str(pygame.version.ver) == '2.0.0':
+        if PYGAME2:
             screenshot.blit(sub, (0, 0), special_flags=pygame.BLEND_ALPHA_SDL2)
         else:
             screenshot.blit(sub, (0, 0))
@@ -244,6 +293,7 @@ class Screen(pygame.Surface):
             self.imagecache = {}
         self.background = background
         self.logs.debug(f"Background is now {self.background}")
+        self.set_intro_background(background)
 
     def mcp_error(self, error):
         '''
@@ -339,12 +389,18 @@ class Screen(pygame.Surface):
         self.init_resolution(newresolution)
         # Define screen constants (depends on resolution)
         self.define_constants(Font = Font)
+        # While the intro video is playing, the game loads behind it, goes up to its menu
+        # and plays no sound (it would chop the sound of the video) : like omxplayer on
+        # Buster, the menu is there as soon as the video ends. Its window stays hidden until
+        # then, else it would cover the video. See show()
+        self.hidden = not Toggle and hasattr(pygame, 'HIDDEN') and intro_is_playing() and not intro_over_screen()
+        hidden_flag = pygame.HIDDEN if self.hidden else 0
         # Tell pygame it is fullscreen if it is
         if self.fullscreen:
             self.flags = pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF
-            self.screen = pygame.display.set_mode((0, 0), self.flags, 16)    # Set fullscreen with actual resolution
+            self.screen = pygame.display.set_mode((0, 0), self.flags | hidden_flag, 16)    # Set fullscreen with actual resolution
         else:
-            self.screen = pygame.display.set_mode((self.res['x'], self.res['y']), pygame.RESIZABLE) # Start windowed with settings
+            self.screen = pygame.display.set_mode((self.res['x'], self.res['y']), pygame.RESIZABLE | hidden_flag) # Start windowed with settings
 
         # If Toggling, blit the new screen
         if Toggle:
@@ -407,11 +463,17 @@ class Screen(pygame.Surface):
         self.online_icon = self.file_class.get_full_filename('online', 'images')
 
         try:
-            if os.path.isfile(self.colorset['font']):
-                self.defaultfontpath = self.colorset['font']
+            # A theme made on another installation keeps the path it had there
+            font = cpaths.relocate(self.colorset['font'])
+            if os.path.isfile(font):
+                self.defaultfontpath = font
+                self.colorset['font'] = font
             else:
                 self.defaultfontpath = f"{self.config.fontsDir}/{self.colorset['font']}"
             self.logs.info(f"Font defined in your colorset : {self.colorset['font']}")
+            if not os.path.isfile(self.defaultfontpath):
+                self.logs.warning(f"Font {self.defaultfontpath} not found : default font is used")
+                self.defaultfontpath = f"{self.config.fontsDir}/FreeSansBold.ttf"
         except Exception as e:
             self.logs.info("No font defined in your colorset")
 
@@ -592,10 +654,81 @@ class Screen(pygame.Surface):
                 self.new_blit_rect2(rect, self.colorset['menu-header'], alpha=255)
             self.blit_text2(centertxt, rect, self.colorset['menu-text'])
 
+    def watch_intro(self):
+        '''
+        Background task : as soon as the intro video is finished, asks the main loop to show
+        the window of the game (show() cannot be called from here)
+        '''
+        while intro_is_playing():
+            time.sleep(0.1)
+        self.logs.debug("End of the intro video")
+        if self.hidden or self.audio_deferred:
+            pygame.event.post(pygame.event.Event(INTRO_END_EVENT))
+        else:
+            # Intro played over the game (omxplayer) : the menu is already displayed
+            self.rpi.target_enabled = True
+            self.logs.debug("Target read")
+
+    def set_intro_background(self, background):
+        '''
+        While the intro video is playing, the background of the menu replaces the startup
+        image on the screen : it is what is seen during the short time between the end of
+        the video and the window of the game
+        '''
+        if self.hidden and background and os.path.isfile(background) and shutil.which('feh'):
+            subprocess.Popen(['feh', '--no-fehbg', '--bg-fill', background],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def show(self):
+        '''
+        Once the intro video is finished : show the window of the game (hidden during the
+        video, with what is already drawn on it), open the audio output and start reading
+        the target. Does nothing while the video is playing.
+        '''
+        if not self.hidden and not self.audio_deferred:
+            return
+        if intro_is_playing():
+            return
+
+        if self.hidden:
+            # Same mode without the hidden flag : pygame shows the window, but what is
+            # already drawn on it is lost
+            drawn = self.screen.copy()
+            if self.fullscreen:
+                self.screen = pygame.display.set_mode((0, 0), self.flags, 16)
+            else:
+                self.screen = pygame.display.set_mode((self.res['x'], self.res['y']), pygame.RESIZABLE)
+            self.hidden = False
+            # The window appears first with its normal size, then goes full screen : it is
+            # drawn again until the window manager is done (longer while starting up)
+            for _ in range(12):
+                pygame.event.pump()
+                self.screen.blit(drawn, (0, 0))
+                self.display.flip()
+                pygame.time.wait(100)
+
+        if self.audio_deferred:
+            # Modules left aside at startup, audio output included. After the window is
+            # shown : their initialization takes time, the desktop would be seen meanwhile
+            pygame.init()
+            self.audio_deferred = False
+            self.rpi.target_enabled = True
+            self.logs.debug("Window of the game shown, audio output opened, target read")
+
+    def loading(self, percent):
+        '''
+        Startup screen : only the progress of the loading is displayed
+        '''
+        self.message([f"{self.lang.translate('Loading')} {percent} %"], 0, None, 'middle')
+        pygame.event.pump()
+        # Intro video finished before the end of the loading : its progress is shown
+        self.show()
+
     def wait_touch(self):
         '''
         Wait for touch
         '''
+        self.show()
 
         press = self.rpi.listen_inputs(
                     ['alpha', 'num', 'fx', 'math', 'arrows'],
@@ -1892,7 +2025,7 @@ class Screen(pygame.Surface):
 
 
     def rect(self, surface, color, rect, border_size=0, top_left=None, top_right=None, bottom_left=None, bottom_right=None):
-        if str(pygame.version.ver) == '2.0.0':
+        if PYGAME2:
             pygame.draw.rect(surface
                 , color
                 , rect
@@ -3297,6 +3430,8 @@ class Screen(pygame.Surface):
         '''
         Display Changelog
         '''
+        if os.path.isfile(f'{self.config.changelogFile}.{version}') or os.path.isfile(f'{self.config.changelogFile}.{version}.1'):
+            self.show()
 
         try:
             with open(f'{self.config.changelogFile}.{version}', 'r') as changelog:
@@ -6208,7 +6343,7 @@ class Screen(pygame.Surface):
         if bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
             nb_elements = 3
         else:
-            nb_elements = 6
+            nb_elements = 7
 
         #self.dmd.send_text(self.lang.translate('Welcome') + "!")
         self.dmd.send_text('Raspydarts')
@@ -6244,18 +6379,19 @@ class Screen(pygame.Surface):
                 click_zones['F4'] = self.menu_item((4, nb_elements, selected), ("F4", "miscellaneous", \
                         BTN_CHOICE, None), exit=False)
 
-            # Restart game
-            #click_zones['F11'] = self.menu_item((5, nb_elements, selected), ("F11", "menu-restart", \
-            #        BTN_CHOICE, None), space = 0.5, exit=False)
+            #### AJOUT TROPHEES
+            click_zones['F5'] = self.menu_item((5, nb_elements, selected), ("F5", "trophees", \
+                        BTN_CHOICE, None), exit=False)
+            ### FIN TROPHEES
 
             if not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
                 # Back to desktop
-                click_zones['F12'] = self.menu_item((5, nb_elements, selected), ("F12", "back-to-desktop", BTN_CHOICE, None), space=1.5, exit=False)
+                click_zones['F12'] = self.menu_item((6, nb_elements, selected), ("F12", "back-to-desktop", BTN_CHOICE, None), space=1.5, exit=False)
 
                 # Exit
-                click_zones['escape'] = self.menu_item((6, nb_elements, selected), ("ESC", "exit", BTN_CHOICE, None), space=2, exit=False)
+                click_zones['escape'] = self.menu_item((7, nb_elements, selected), ("ESC", "exit", BTN_CHOICE, None), space=2, exit=False)
 
-            ################
+                ################
             # Update screen
             if refresh or True:
                 self.update_screen()
@@ -6264,7 +6400,7 @@ class Screen(pygame.Surface):
                 self.update_screen(rect_array=[click_zones[click_zone] for click_zone in click_zones])
 
             key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha', 'math'],
-                 ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON',
+               ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON',
                 'single-click', 'double-click', 'resize', 'VOLUME-UP', 'VOLUME-DOWN', 'enter', 'space'],
                  events=[(self.wait_event_time, 'EVENT', 'wait')])
 
@@ -6277,11 +6413,11 @@ class Screen(pygame.Surface):
 
             # Keyboard cases
             if key in ENTER_KEYS :    # First position please, because eventually construct F1, F2 or F3
-                #if selected == 5:
-                #    key = 'F11'
                 if selected == 5:
-                    key = 'F12'
+                    key = 'F5'
                 elif selected == 6:
+                    key = 'F12'
+                elif selected == 7:
                     key = 'escape'
                 else:
                     key = f'F{selected}'
@@ -6297,6 +6433,11 @@ class Screen(pygame.Surface):
 
             if key == 'F4':
                 return 'miscellaneous'
+                
+            ### AJOUT TROPHEES
+            if key == 'F5':
+                return 'trophees'
+            #### FIN TROPHEES
 
             if key == 'F9':
                 return 'infos'
@@ -6306,7 +6447,7 @@ class Screen(pygame.Surface):
 
             if key == 'F12':
                 return 'quit'
-            
+              
             if key in ESCAPE_KEYS :
                 key = 'escape'
 
@@ -6933,8 +7074,8 @@ class Screen(pygame.Surface):
                 
         # Add description
         description = description.splitlines()
-        height = int((int(self.res['x']) / 1920) * 27)
-        indice = 78
+        height = int((int(self.res['x']) / 1920) * 25)
+        indice = 85
         if(self.colorset.get('font') is None):
             font = pygame.font.Font(f'{self.config.fontsDir}/FreeSansBold.ttf', height)
         else:
@@ -8677,10 +8818,16 @@ class Screen(pygame.Surface):
         '''
         Play given sound. Search first in the home folder, then play default sound, or beep1 if not found.
         '''
+        if self.audio_deferred:
+            # Audio output opened at the first sound after the intro video
+            self.show()
+        if self.hidden or self.audio_deferred:
+            # The intro video is playing : opening the audio output would chop its sound
+            return
         sound_file = self.file_class.get_full_filename(filename, 'sounds')
         if sound_file is not None:
             try:
-                pygame.mixer.init(22050, -16, 2)
+                pygame.mixer.init(22050, -16, 2, MIXER_BUFFER)
                 sound = pygame.mixer.Sound(sound_file)
                 # Play only if sound is set
                 if sound:

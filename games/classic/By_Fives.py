@@ -14,7 +14,7 @@ HEADERS = ['D1', 'D2', 'D3', 'Check', '', '', 'Rnd']
 OPTIONS = {'theme': 'default', 'winscore': 5, 'score51': False, 'max_round': 20}
 NB_DARTS = 3
 GAME_RECORDS = {'Score': 'DESC'}
-VERSION = '1.00'
+VERSION = '1.01'
 
 def check_players_allowed(nb_players):
     """
@@ -120,18 +120,99 @@ class Game(cgame.Game):
 
     def pnj_score(self, players, actual_player, level, player_launch):
         """
-        Compute pnj score
+        Compute pnj score with exact finish calculation for 51 points option
         """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [Taux de miss (%), Taux de réussite/précision du 3e tir (%)]
+        # - Plus fort / précis : Diminuer le MISS et augmenter le taux de réussite.
+        # - Plus humain / brouillon : Augmenter le MISS et baisser le taux de réussite.
+        # =========================================================================
+        levels = [
+            [25, 15],  # 1 : Noob
+            [21, 30],  # 2 : Débutant
+            [17, 45],  # 3 : Intermédiaire
+            [13, 60],  # 4 : Pro
+            [2,  75]   # 5 : Expert
+        ]
 
+        lvl_idx = max(0, min(level - 1, len(levels) - 1))
+        miss_chance = levels[lvl_idx][0]
+        success_probability = levels[lvl_idx][1]
+
+        target_scores = []
+        winning_scores = []
+        current_points = players[actual_player].round_points
+        player_score = players[actual_player].score
+        
+        # Gestion de la probabilité de faire un pneu (MISSDART) selon le niveau
+        if random.randint(1, 100) < miss_chance:
+            return 'MISSDART'
+
+        # Au 3ème tir, le PNJ analyse ses options de fin de partie ou de score sécurisé
+        if player_launch == 3:
+            for val in range(1, 21):
+                for mult_val, mult_str in [(1, 'S'), (2, 'D'), (3, 'T')]:
+                    dart_score = val * mult_val
+                    total_round = current_points + dart_score
+                    if total_round % 5 == 0:
+                        gained = total_round // 5
+                        if self.score51:
+                            new_total_score = player_score + gained
+                            if new_total_score == 51:
+                                winning_scores.append(f"{mult_str}{val}")
+                            elif new_total_score < 51:
+                                target_scores.append(f"{mult_str}{val}")
+                        else:
+                            target_scores.append(f"{mult_str}{val}")
+                            
+            # Vérification pour le Bull
+            for bull_val, bull_str in [(25, 'SB'), (50, 'DB')]:
+                total_round = current_points + bull_val
+                if total_round % 5 == 0:
+                    gained = total_round // 5
+                    if self.score51:
+                        new_total_score = player_score + gained
+                        if new_total_score == 51:
+                            winning_scores.append(bull_str)
+                        elif new_total_score < 51:
+                            target_scores.append(bull_str)
+                    else:
+                        target_scores.append(bull_str)
+            
+            # Priorité absolue : si un coup lui permet de gagner exactement à 51, il le tente
+            if winning_scores and random.randint(1, 100) <= success_probability:
+                return random.choice(winning_scores)
+                
+            # Sinon, s'il y a des cibles valides qui ne font pas dépasser 51
+            if target_scores and random.randint(1, 100) <= success_probability:
+                return random.choice(target_scores)
+
+        # Comportement standard / tirs 1 et 2
         letters = 'SDT'
-        value = random.randint(1,20)
+        value = random.randint(1, 20)
         multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0,100)
+        bull = random.randint(0, 100)
+        
         if 85 < bull <= 95:
             return 'SB'
         if bull > 95:
             return 'DB'
+            
         return f'{multi}{value}'
+
+    def check_winner(self, players):
+        """
+        Check if a player has won the game according to options
+        """
+        for player in players:
+            if self.score51:
+                if player.score == 51:
+                    return player.ident
+            else:
+                if player.score >= self.winscore:
+                    return player.ident
+        return None
 
     def post_dart_check(self, hit, players, actual_round, actual_player, player_launch):
         """
@@ -140,17 +221,39 @@ class Game(cgame.Game):
 
         handler = self.init_handler()
         check = False
-        score = self.score_map[hit]
+        
+        # Gestion du pneu (MISSDART)
+        if hit == 'MISSDART':
+            score = 0
+            players[actual_player].columns[player_launch - 1] = ('MISS', 'str')
+            self.display.play_sound('miss')
+        else:
+            score = self.score_map[hit]
+            players[actual_player].columns[player_launch - 1] = (score, 'int')
+            self.display.play_sound(hit)
 
         players[actual_player].round_points += score
 
         if player_launch == 3:
-            checkpoints = self.mod_by_5(players[actual_player].round_points)
+            # Règle du pneu à la dernière flèche : si la 3ème est un miss, le tour est invalidé
+            if hit == 'MISSDART':
+                players[actual_player].round_points = 0
+                checkpoints = False
+            else:
+                checkpoints = self.mod_by_5(players[actual_player].round_points)
+
             if checkpoints:
                 if self.score51:
-                    if players[actual_player].score + players[actual_player].round_points / 5 <= self.winscore:
-                        score = players[actual_player].round_points / 5
-                        players[actual_player].score += score
+                    points_gagnes = players[actual_player].round_points / 5
+                    new_score = players[actual_player].score + points_gagnes
+                    
+                    if new_score == 51:
+                        players[actual_player].score = 51
+                        score = points_gagnes
+                        check = True
+                    elif new_score < 51:
+                        players[actual_player].score = new_score
+                        score = points_gagnes
                         check = True
                     else:
                         score = 0
@@ -162,24 +265,16 @@ class Game(cgame.Game):
                 players[actual_player].columns[3] = ('check-mark', 'image')
             else:
                 players[actual_player].columns[3] = ('cross-mark', 'image')
-
-            if players[actual_player].score == self.winscore:
-                self.infos = "Game should be over\n"
-        players[actual_player].columns[player_launch - 1] = (self.score_map[hit], 'int') ###(score, 'int')
+                if hit == 'MISSDART':
+                    score = 0
 
         players[actual_player].add_dart(actual_round, player_launch, hit, check=check, score=score)
 
         # Change table displayed
         players[actual_player].columns[6] = (players[actual_player].round_points, 'int')
 
-        # You may want to count how many touches
-        # Simple = 1 touch, Double = 2 touches, Triple = 3 touches
         players[actual_player].increment_hits(hit)
-
-        # You may want to count darts played
         players[actual_player].darts_thrown += 1
-
-        # It is recommanded to update stats every dart thrown
         self.refresh_stats(players, actual_round)
 
         # Check last round
@@ -188,9 +283,8 @@ class Game(cgame.Game):
             self.infos += f"Last round reached ({actual_round}){self.lf}"
             handler['return_code'] = 2
 
-        #Check if there is a winner
+        # Check if there is a winner using our custom method
         self.winner = self.check_winner(players)
-        #self.infos = f"Check winner module was run. Winner reports {winner}{self.lf}"
         if self.winner is not None:
             self.infos += f"player {self.winner} wins !{self.lf}"
             handler['return_code'] = 3
@@ -206,21 +300,16 @@ class Game(cgame.Game):
     def miss_button(self, players, actual_player, actual_round, player_launch):
         """
         In case of miss dart
-        If 51 option is activated, round is unavaiable
         """
-        if self.score51:
-            self.valid = False
-            
         print('miss')
         
         players[actual_player].columns[player_launch-1] = ('MISS', 'str')
         self.display.play_sound('miss')
         players[actual_player].darts_thrown += 1       
-        # play penality sound
-        #self.display.play_sound('penality')    
         
-        #si miss a la derniere fleche alors pas de point mm si les 2 premieres fleches est un score divisible par 5
-        if player_launch == 3 :
+        # Si on fait un miss à la dernière flèche, on invalide le tour
+        if player_launch == 3:
+            players[actual_player].round_points = 0
             players[actual_player].columns[3] = ('cross-mark', 'image')
             return 1
 
@@ -229,4 +318,3 @@ class Game(cgame.Game):
         Return True if score is divisible by 5
         """
         return score % 5 == 0
-

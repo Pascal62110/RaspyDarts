@@ -140,19 +140,116 @@ class Game(cgame.Game):
       
         return handler
 
+###############
+    # PNJ SCORE METHOD FOR SWITCH
+    ###############
     def pnj_score(self, players, actual_player, level, player_launch):
         """
-        pnj score
+        Intelligence Artificielle (PNJ) pour le jeu Switch :
+        - Cible tactiquement les segments non activés (False) du joueur dans self.grid.
+        - Gère les 5 niveaux de difficulté avec les taux exact, voisin et miss.
+        - Utilise la matrice des voisins physiques et une répartition mesurée des multiplicateurs (S, D, T, Bull).
         """
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [p_exact, p_neighbor, p_miss]
+        #   * p_exact    : Probabilité de toucher exactement la cible visée (%)
+        #   * p_neighbor : Probabilité de dévier vers un secteur voisin physique (%)
+        #   * p_miss     : Probabilité de rater complètement (retourne 'MISS') (%)
+        # - Ajustement : Pour renforcer l'IA, augmente p_exact et réduis p_miss.
+        # =========================================================================
+
+        # Table de précision par niveau : [ % Exact, % Voisin, % Miss ]
+        levels = [
+            [15, 45, 40],  # Niveau 1 (Noob) : 15% exact, 45% voisin, 40% miss
+            [30, 50, 20],  # Niveau 2 (Débutant) : 30% exact, 50% voisin, 20% miss
+            [50, 40, 10],  # Niveau 3 (Intermédiaire) : 50% exact, 40% voisin, 10% miss
+            [72, 23,  5],  # Niveau 4 (Pro) : 72% exact, 23% voisin, 5% miss
+            [90, 10,  0]   # Niveau 5 (Expert) : 90% exact, 10% voisin, 0% miss
+        ]
+
+        try:
+            comp_lvl = int(level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        p_exact = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        # 1. Recherche des cibles tactiques : segments non encore activés pour ce PNJ dans self.grid
+        inactive_segments = []
+        for v in self.grid:
+            if v[3] == players[actual_player].ident and v[2] == False:
+                inactive_segments.append(v[0])
+
+        # S'il reste des segments inactifs, l'IA en choisit un
+        if inactive_segments:
+            if comp_lvl >= 4 and any(s in ['SB', 'DB'] for s in inactive_segments) and random.randint(1, 100) <= 40:
+                target_choice = random.choice([s for s in inactive_segments if s in ['SB', 'DB']])
+            else:
+                numeric_inactive = [s for s in inactive_segments if s not in ['SB', 'DB']]
+                if numeric_inactive and random.randint(1, 100) <= 85:
+                    target_choice = random.choice(numeric_inactive)
+                else:
+                    target_choice = random.choice(inactive_segments)
+        else:
+            # Si tout est déjà activé, l'IA vise au hasard (ce qui risque de désactiver des cases en fin de partie)
+            target_choice = random.choice(['20', '19', '18', 'SB', 'DB'])
+
+        # 2. Si le choix est un Bull (SB ou DB)
+        if target_choice in ['SB', 'DB']:
+            roll = random.randint(1, 100)
+            if roll <= p_exact:
+                return target_choice
+            elif roll <= p_exact + p_neighbor:
+                return 'SB' if target_choice == 'DB' else 'MISS'
+            else:
+                return 'MISS'
+
+        # 3. Choix du multiplicateur (S, D, T) mesuré selon le niveau
+        try:
+            base_val = int(target_choice)
+        except ValueError:
+            base_val = 20
+
+        if comp_lvl == 1:
+            mult = random.choices(['S', 'D'], weights=[90, 10], k=1)[0]
+        elif comp_lvl == 2:
+            mult = random.choices(['S', 'D', 'T'], weights=[78, 15, 7], k=1)[0]
+        elif comp_lvl == 3:
+            mult = random.choices(['S', 'D', 'T'], weights=[65, 22, 13], k=1)[0]
+        elif comp_lvl == 4:
+            mult = random.choices(['S', 'D', 'T'], weights=[45, 27, 28], k=1)[0]
+        else:  # Niveau 5 (Expert)
+            mult = random.choices(['S', 'D', 'T'], weights=[35, 30, 35], k=1)[0]
+
+        # 4. Matrice de voisinage physique de la cible de fléchettes (1-20)
+        dartboard_neighbors = {
+            20: [1, 5],   1: [20, 18], 18: [1, 4],   4: [18, 13], 13: [4, 6],
+            6: [13, 10], 10: [6, 15],  15: [10, 2],  2: [15, 17], 17: [2, 3],
+            3: [17, 19], 19: [3, 7],   7: [19, 16], 16: [7, 8],   8: [16, 11],
+            11: [8, 14], 14: [11, 9],  9: [14, 12], 12: [9, 5],   5: [12, 20]
+        }
+
+        # 5. Évaluation du tir (Exact, Voisin, Miss)
+        roll = random.randint(1, 100)
+
+        if roll <= p_exact:
+            return f"{mult}{base_val}"
+
+        elif roll <= p_exact + p_neighbor:
+            neighbors = dartboard_neighbors.get(base_val, [1, 5])
+            hit_val = random.choice(neighbors)
+            
+            # En cas d'erreur de précision sur un Double ou Triple, la fléchette glisse en Simple
+            if mult in ['D', 'T']:
+                mult = 'S'
+
+            return f"{mult}{hit_val}"
+
+        else:
+            return 'MISS'
 
     def best_score(self, players):
         """

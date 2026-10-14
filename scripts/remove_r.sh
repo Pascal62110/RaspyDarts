@@ -1,17 +1,18 @@
+DIR="$(dirname "$(readlink -f "$0")")"
 #!/bin/sh
 
-cat /pydarts/scripts/Backup.sh | tr -d '\r' > /pydarts/scripts/BackupNew.sh
+cat $DIR/Backup.sh | tr -d '\r' > $DIR/BackupNew.sh
 
-rm /pydarts/scripts/Backup.sh
+rm $DIR/Backup.sh
 
-mv /pydarts/scripts/BackupNew.sh /pydarts/scripts/Backup.sh
+mv $DIR/BackupNew.sh $DIR/Backup.sh
 
-chmod +x /pydarts/scripts/Backup.sh
+chmod +x $DIR/Backup.sh
 
-cat /pydarts/scripts/Intro.sh | tr -d '\r' > /pydarts/scripts/IntroNew.sh
+cat $DIR/Intro.sh | tr -d '\r' > $DIR/IntroNew.sh
 
-rm /pydarts/scripts/Intro.sh
+rm $DIR/Intro.sh
 
-mv /pydarts/scripts/IntroNew.sh /pydarts/scripts/Intro.sh
+mv $DIR/IntroNew.sh $DIR/Intro.sh
 
-chmod +x /pydarts/scripts/Intro.sh
+chmod +x $DIR/Intro.sh

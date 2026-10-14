@@ -358,19 +358,114 @@ class Game(cgame.Game):
         return handler
         #return return_code
 
-    def pnj_score(self, players, actual_player, level, player_launch):
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
         """
-        pnj score
+        Intelligence Artificielle (PNJ) pour le jeu Snooker :
+        - Phase 1 : Alterne entre les billes rouges et les billes de couleur disponibles.
+        - Phase 2 : Vise la plus petite bille de couleur restante, avec option stratégique
+          de viser le Bull (Break) si le PNJ est en retard au score.
+        - Intègre la précision selon le niveau (1 à 5).
         """
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende du format par niveau [p_exact, p_neighbor, p_miss] :
+        #   * p_exact    : Probabilité de toucher la cible exacte (%)
+        #   * p_neighbor : Probabilité de toucher un secteur voisin géométrique (%)
+        #   * p_miss     : Probabilité d'un raté complet / faute (chiffre aléatoire) (%)
+        # - Paramètres stratégiques :
+        #   * is_behind  : Option en Phase 2 pour tenter un break par le Bull si menacé au score.
+        # - Ajustement : Pour renforcer l'IA, augmente p_exact et réduis le taux de raté.
+        # =========================================================================
+
+        player = players[actual_player]
+        dartboard_order = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
+
+        # Niveaux de précision [Chance réussite exacte, Chance voisin/alternatif, Chance raté/faute]
+        levels = [
+            [20, 40, 40],  # Niveau 1 : Noob (20% exact, 40% voisin, 40% raté)
+            [35, 45, 20],  # Niveau 2 : Débutant (35% exact, 45% voisin, 20% raté)
+            [55, 35, 10],  # Niveau 3 : Intermédiaire (55% exact, 35% voisin, 10% raté)
+            [75, 20,  5],  # Niveau 4 : Pro (75% exact, 20% voisin, 5% raté)
+            [90, 10,  0]   # Niveau 5 : Expert (90% exact, 10% voisin, 0% raté)
+        ]
+
+        try:
+            comp_lvl = int(computer_level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        p_exact = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        # Vérifier si le PNJ est en retard pour tenter le break par le Bull (Phase 2 uniquement)
+        is_behind = False
+        if getattr(player, 'phase', 1) == 2:
+            max_opponent_score = max([p.score for i, p in enumerate(players) if i != actual_player], default=0)
+            if player.score < max_opponent_score and comp_lvl >= 3:
+                is_behind = True
+
+        # Tentative stratégique de Bull en Phase 2 si en retard (Break)
+        if is_behind and random.randrange(100) < (15 + comp_lvl * 5):
+            return random.choice(['SB', 'DB'])
+
+        # Détermination de la cible selon la phase
+        target_hit = None
+
+        if player.phase == 1 and not player.couleur:
+            # Doit jouer une rouge
+            if player.targets_rouge:
+                chosen_target = random.choice(player.targets_rouge)
+                # Extrait le segment (ex: 'S15#red' -> 'S15' ou '15')
+                val_part = chosen_target.split('#')[0]
+                target_hit = val_part
+        elif player.phase == 1 and player.couleur:
+            # Doit jouer une couleur libre
+            if player.targets_couleur:
+                chosen_target = random.choice(player.targets_couleur)
+                val_part = chosen_target.split('#')[0]
+                target_hit = val_part
+        elif player.phase == 2:
+            # Phase 2 : Doit trouver la plus petite bille de couleur
+            nouvelle_liste = []
+            for val in player.targets:
+                indexdiese = val.find('#')
+                if indexdiese != -1:
+                    nouvelle_liste.append(val[1:indexdiese])
+            liste_doublon = list(set(nouvelle_liste))
+            liste_triee = sorted(liste_doublon, key=lambda x: int(x) if x.isdigit() else 99)
+            
+            if liste_triee:
+                smallest_color_val = liste_triee[0]
+                # Choisit un secteur pour cette valeur (Simple, Double ou Triple)
+                target_hit = random.choice([f'S{smallest_color_val}', f'D{smallest_color_val}', f'T{smallest_color_val}'])
+
+        if not target_hit:
+            # Fallback de secours si aucune cible claire
+            return f"S{random.randint(1, 20)}"
+
+        # Application de la précision du PNJ
+        rand_val = random.randrange(100)
+        multi = target_hit[0] # S, D ou T
+        try:
+            num = int(target_hit[1:])
+        except ValueError:
+            num = random.randint(1, 20)
+
+        if rand_val < p_exact:
+            # Touche exactement ce qu'il visait
+            return target_hit
+        elif rand_val < p_exact + p_neighbor:
+            # Raté partiel : touche un chiffre voisin sur la cible
+            if num in dartboard_order:
+                idx = dartboard_order.index(num)
+                neighbor_num = dartboard_order[(idx + random.choice([-1, 1])) % len(dartboard_order)]
+            else:
+                neighbor_num = random.randint(1, 20)
+            return f"{multi}{neighbor_num}"
+        else:
+            # Raté complet / Faute (touche n'importe quoi d'autre ou hors cible)
+            return f"S{random.randint(1, 20)}"
 
     def best_score(self, players):
         """

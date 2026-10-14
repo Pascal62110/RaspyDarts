@@ -4,10 +4,10 @@ game by diego aimabouer : Kapital
 '''
 #######
 import time
+import random
 from include import cplayer
 from include import cgame
-#
-#
+
 LOGO = 'Kapital.png' # Background image
 HEADERS = ['!', 'D1', 'D2', 'D3', '', '', ''] # Columns headers - Must be a string
 OPTIONS = {'theme': 'default'} # Dictionnay of options in string format
@@ -88,17 +88,136 @@ class Game(cgame.Game):
         self.max_round = 15
         self.kot_kot = None
 
+    def pnj_score(self, players, actual_player, computerLevel, player_launch):
+        '''
+        IA réaliste pour Kapital avec gestion intelligente du tour 57 et de la matrice.
+        '''
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [Taux de miss pur (%), Taux de glissement/déviation sur la matrice (%)]
+        # - Plus fort / précis : Diminuer le miss_rate et le slip_rate.
+        # - Plus humain / brouillon : Augmenter le miss_rate et le slip_rate.
+        # =========================================================================
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+        levels = [
+                 [45, 80],  # 1 : Noob 
+                 [30, 70],  # 2 : Débutant
+                 [18, 60],  # 3 : Intermédiaire 
+                 [6, 25],   # 4 : Pro 
+                 [2, 8]     # 5 : Expert 
+                ]
+
+        lvl_idx = max(0, min(computerLevel - 1, len(levels) - 1))
+        miss_rate = levels[lvl_idx][0]
+        slip_rate = levels[lvl_idx][1]
+
+        # 1. Test du MISS pur
+        if random.randrange(100) < miss_rate:
+            players[actual_player].columns[player_launch] = ('MISS', 'str')
+            self.display.play_sound('miss')
+            players[actual_player].darts_thrown += 1
+            return 'MISSDART'
+
+        actual_round = getattr(self, 'actual_round', 1)
+        target_num = 20
+        mult = 'S'
+
+        # 2. Détermination de l'intention selon le tour
+        if actual_round in [2, 4, 6, 8, 10, 12, 14]: # Chiffres simples
+            targets_map = {2: 20, 4: 19, 6: 18, 8: 17, 10: 16, 12: 15, 14: 14}
+            target_num = targets_map.get(actual_round, 20)
+            mult = random.choices(['S', 'D', 'T'], weights=[80, 15, 5], k=1)[0]
+            
+        elif actual_round == 1: # K de départ
+            target_num = random.choice([20, 19, 18, 15])
+            mult = random.choices(['T', 'D', 'S'], weights=[30, 30, 40], k=1)[0]
+            
+        elif actual_round == 3: # TRIPLES
+            target_num = random.choice([20, 19, 18, 17, 16])
+            mult = 'T'
+            
+        elif actual_round == 5: # DOUBLES
+            target_num = random.randint(1, 20)
+            mult = 'D'
+            
+        elif actual_round == 7: # KOLR
+            target_num = random.randint(1, 20)
+            mult = 'S'
+            
+        elif actual_round == 9: # 57 : Logique intelligente basée sur le score restant
+            if player_launch == 1:
+                mult = 'T'
+                target_num = 19
+            else:
+                rem = 57 - players[actual_player].score_contrat
+                possible_launch = self.search_possible_launch(rem, player_launch)
+                if possible_launch:
+                    chosen = random.choice(list(possible_launch))
+                    if isinstance(chosen, str) and chosen.startswith(('S', 'D', 'T')):
+                        mult = chosen[0]
+                        target_num = int(chosen[1:])
+                    else:
+                        mult = 'S'
+                        try:
+                            target_num = int(chosen)
+                        except ValueError:
+                            target_num = 6
+                else:
+                    mult = 'S'
+                    target_num = 6
+                    
+        elif actual_round == 11: # SUITE
+            target_num = random.randint(5, 16)
+            mult = 'S'
+            
+        elif actual_round == 13: # KKOT
+            if getattr(self, 'possibilities', None):
+                target_num = random.choice(list(self.possibilities))
+            else:
+                target_num = random.randint(1, 20)
+            mult = 'S'
+            
+        elif actual_round == 15: # Bull
+            return random.choices(['SB', 'DB', 'MISSDART'], weights=[50, 20, 30], k=1)[0]
+
+        # 3. Simulation de la déviation réaliste sur la matrice
+        if random.randrange(100) < slip_rate:
+            if mult in ['D', 'T']:
+                if random.randrange(100) < 60:
+                    mult = 'S'
+                else:
+                    mult = 'S'
+                    if target_num in geo_neighbors:
+                        target_num = random.choice(geo_neighbors[target_num])
+            else:
+                if target_num in geo_neighbors:
+                    target_num = random.choice(geo_neighbors[target_num])
+                mult = 'S'
+
+        return f'{mult}{target_num}'
+
+
     def pre_dart_check(self, players, actual_round, actual_player, player_launch):
         '''
         Actions done before each dart throw - for example, check if the player is allowed to play
         '''
+        self.actual_round = actual_round
         return_code = 0
         self.infos += ""
         self.rpi.set_target_leds('')
+        text = ''
+        
         # Init
         if player_launch == 1:
             self.possibilities = None
-            players[actual_player].contrat_done = False # First Dart, reset contract to NOT DONE.
+            players[actual_player].contrat_done = False
             self.jackpot = 0
             self.save_turn(players)
             players[actual_player].score_contrat = 0
@@ -109,9 +228,8 @@ class Game(cgame.Game):
             if actual_round == 1:
                 players[actual_player].reset_rounds(self.max_round)
 
-
         leds = ''
-        #display du contrat
+        # Display du contrat
         if actual_round == 1:
             text = 'K'
         elif actual_round == 2:
@@ -168,14 +286,21 @@ class Game(cgame.Game):
 
         elif actual_round == 11:
             text = 'Suite'
-            if player_launch == 2 or (player_launch == 3 and self.suite[1] == '25'):
+            # Sécurité : initialiser self.suite par défaut si elle est vide ou absente
+            if not hasattr(self, 'suite') or not self.suite:
+                self.suite = [1]
+
+            has_second_element = len(self.suite) > 1
+            is_25 = has_second_element and str(self.suite[1]) == '25'
+
+            if player_launch == 2 or (player_launch == 3 and is_25):
                 leds = '|'.join(\
                     [f'{mult}{self.suite[0] + add}#{self.colors[0]}' for mult in ['S', 'D', 'T'] \
                         for add in [-2, -1, 1, 2] if 1 <= self.suite[0] + add <= 20] \
                     + [f'SB#{self.colors[0]}'])
 
             elif player_launch == 3:
-                if self.suite[0] + 1 == self.suite[1]:
+                if has_second_element and self.suite[0] + 1 == self.suite[1]:
                     if self.suite[0] == 19:
                         # 19-20, only 18 and SB available
                         leds = '|'.join(\
@@ -195,7 +320,7 @@ class Game(cgame.Game):
                 else:
                     # 12 and 14 for example : only one possibility : 13 -and SB/DB)
                      leds = '|'.join([f'{mult}{self.suite[0] + 1}#{self.colors[0]}' for mult in ['S', 'D', 'T']] \
-                         + [f'SB#{self.colors[0]}'])
+                           + [f'SB#{self.colors[0]}'])
 
         elif actual_round == 12:
             leds = f'S15#{self.colors[0]}|D15#{self.colors[0]}|T15#{self.colors[0]}'
@@ -221,6 +346,7 @@ class Game(cgame.Game):
 
         self.rpi.set_target_leds(leds)
         return return_code
+
 
     def post_dart_check(self, hit, players, actual_round, actual_player, player_launch):
         '''
@@ -282,18 +408,14 @@ class Game(cgame.Game):
 
         # Round 7 : Color
         elif actual_round == 7:
-            # on modifie le score dans son contrat
             players[actual_player].score_contrat += self.score_map.get(hit)
             play_sound = False
             if player_launch == 1:
                 self.contract_colors = []
-            # creation de la liste du joueur:
             self.contract_colors.append(COLORS[hit])
-            # 2nd dart
             if len(self.contract_colors) == 2 and player_launch == 2:
                 if self.contract_colors[0] != self.contract_colors[1]:
                     handler['sound'] = 'kapitalpressure'
-            # 3rd dart
             elif len(self.contract_colors) == 3:
                 if self.contract_colors[0] not in \
                         (0, self.contract_colors[1], self.contract_colors[2]) \
@@ -314,7 +436,6 @@ class Game(cgame.Game):
             players[actual_player].score_contrat += self.score_map.get(hit)
             if players[actual_player].score_contrat == 57:
                 players[actual_player].contrat_done = True
-                # Contract done !
                 handler['return_code'] = 1
                 handler['sound'] = 'kapitalhardcontrat'
                 players[actual_player].add_score(players[actual_player].score_contrat)
@@ -327,27 +448,23 @@ class Game(cgame.Game):
         # Round 11 : Suite
         elif actual_round == 11:
             play_sound = False
-            # on modifie le score dans son contrat
             players[actual_player].score_contrat += self.score_map.get(hit)
             if player_launch == 1:
                 self.suite = []
 
-            # creation de la liste du joueur:
             if value == 'B':
                 self.suite.append(25)
             else:
                 self.suite.append(int(value))
             self.suite.sort()
-            # si le joueur a fait 2 camemberts de suite : pressure !
+            
             if len(self.suite) == 2:
                 if self.suite[1] - self.suite[0] in (1, 2) or 25 in self.suite:
                     handler['sound'] = 'kapitalpressure'
                 else:
                     handler['sound'] = 'chaussette'
-                    # Suite not available dur to two firsts darts
                     handler['return_code'] = 1
 
-            # 3 camemberts de suite
             elif len(self.suite) == 3:
                 if (self.suite[0] + 1 == self.suite[1] and self.suite[1] + 1 == self.suite[2]) \
                         or (self.suite[2] == 25 and self.suite[0] + 1 == self.suite[1]) \
@@ -367,8 +484,6 @@ class Game(cgame.Game):
         # Round 13 : Kot Kot
         elif actual_round == 13:
             play_sound = False
-
-            # on modifie le score dans son contrat
             players[actual_player].score_contrat += self.score_map.get(hit)
             self.infos += rf"Votre cote-cote en est ici : {self.kot_kot}\n"
             self.infos += rf"Il vous rapporte actuellement {players[actual_player].score_contrat} points\n"
@@ -377,12 +492,9 @@ class Game(cgame.Game):
             if player_launch == 3 and (self.possibilities is None or value in self.possibilities \
                     or value == 'B'):
                 players[actual_player].contrat_done = True
-
             elif value == 'B':
                 pass
-
             elif self.possibilities is None:
-                #1st dart or only Bulls before (Round 2 and bull at round 1 or round 1 and no bull)
                 temp = TARGETS.index(value)
                 self.possibilities = []
                 self.possibilities.append(TARGETS[(temp + len(TARGETS) + 1) % len(TARGETS)])
@@ -392,7 +504,6 @@ class Game(cgame.Game):
                     self.possibilities.append(TARGETS[(temp + len(TARGETS) + 2) % len(TARGETS)])
                     self.possibilities.append(TARGETS[(temp + len(TARGETS) - 2) % len(TARGETS)])
             else:
-                # 2nd round, no bull
                 if value in self.possibilities:
                     temp = TARGETS.index(value)
                     min_hit = min(temp, self.kot_kot)
@@ -410,6 +521,7 @@ class Game(cgame.Game):
                 players[actual_player].add_score(players[actual_player].score_contrat)
             elif actual_round == 3:
                 self.infos += "Looser.\n"
+
         # Round 14 : 14
         elif actual_round == 14 and value == '14':
             players[actual_player].contrat_done = True
@@ -422,29 +534,21 @@ class Game(cgame.Game):
             dart_valid = True
             handler['sound'] = 'kapitalhardcontrat'
 
-        # If contrat not Done : division
         if player_launch == 3 and not players[actual_player].contrat_done:
             handler['sound'] = 'kapitaldivision'
             players[actual_player].set_score(int(players[actual_player].score / 2))
 
-        # You may want to count how many touches
-        # (Simple = 1 touch, Double = 2 touches, Triple = 3 touches)
         players[actual_player].increment_hits(hit)
-
-        # You may want to count darts played
         players[actual_player].darts_thrown += 1
 
-        # It is recommanded to update stats every dart thrown
         self.refresh_stats(players, actual_round)
 
         if players[actual_player].contrat_done and dart_valid:
             self.jackpot += 1
-            self.infos += f"Bien joué Calhagan ! {self.jackpot} touches !{self.lf}"
+            self.infos += f"Bien joué Calhagan ! {self.jackpot} touches !\n"
             score = self.score_map.get(hit)
             players[actual_player].add_dart(actual_round, player_launch, hit, score=score, check=False)
-            # on modifie le score dans son contrat
             players[actual_player].score_contrat += score
-            #a chaque touche reussie on augmente son score
             players[actual_player].add_score(score)
 
             if play_sound:
@@ -456,23 +560,15 @@ class Game(cgame.Game):
             players[actual_player].add_dart(actual_round, player_launch, hit, score=0, check=False)
             handler['sound'] = hit
 
-        #Check actual winnner if last round reached
         if actual_round == 15 and player_launch == 3:
             self.winner = self.check_winner(players)
-            #if self.winner is not None:
-            #    self.infos += f"Current winner is Player {self.winner}{self.lf}"
-            #    handler['return_code'] = 1
-            # Last round
             if actual_player == self.nb_players - 1 and player_launch == int(self.nb_darts):
-                self.infos += f"Last round reached ({actual_round}){self.lf}"
+                self.infos += f"Last round reached ({actual_round})\n"
                 handler['return_code'] = 2
                 if self.winner is not None:
                     handler['return_code'] = 3
 
-        # Time for shot or video ?
         handler['take_shot'] = self.time_to_take_shot_or_video(hit)
-                    
-        # Display Recapitulation Text
         self.logs.debug(self.infos)
         return handler
 
@@ -480,24 +576,13 @@ class Game(cgame.Game):
         '''
         Function launched when the player put player button before having launched all his darts
         '''
-        # Jump to next player by default
         self.infos = "Pneu (or early player buttton) function\n"
-        '''
-        # If contract not done
-        if not players[actual_player].contrat_done:
-            # Play division sound
-            self.display.play_sound('kapitaldivision')
-            # Divide score
-            players[actual_player].score = int(players[actual_player].score / 2)
-        '''
-        # Check actual winnner if last round reached
         if actual_round == 15:
             self.winner = self.check_winner(players)
             if self.winner is not None:
-                self.infos += f"Current winner is Player {self.winner}{self.lf}"
-            # Last round
+                self.infos += f"Current winner is Player {self.winner}\n"
             if actual_player == self.nb_players - 1:
-                self.infos += f"Last round reached ({actual_round}){self.lf}"
+                self.infos += f"Last round reached ({actual_round})\n"
                 if self.winner is not None:
                     return 3
                 return 2
@@ -509,12 +594,10 @@ class Game(cgame.Game):
         '''
         Is there a combination to win ?
         '''
-        # 1 dart possibility
         for hit, key in self.score_map.items():
             if score == key:
                 return [hit.upper()]
 
-        # 2 darts possibilities - Player must have at least two darts left
         if player_launch == 2:
             for hit, key in self.score_map.items():
                 if score > key:
@@ -525,22 +608,14 @@ class Game(cgame.Game):
 
         return None
 
-#def miss_button(self, players, actual_player, actual_round, player_launch):
- #       pass
     def miss_button(self, players, actual_player, actual_round, player_launch):
         '''
         Miss button
         '''
         print('miss')
-        #players[actual_player].columns[6] = (self.moyenne, 'int')
         players[actual_player].columns[player_launch] = ('MISS', 'str')
         self.display.play_sound('miss')
         players[actual_player].darts_thrown += 1
-        # play penality sound
-        #self.display.play_sound('penality')
         if not players[actual_player].contrat_done and player_launch == 3:
-            # Play division sound
             self.display.play_sound('kapitaldivision')
-            # Divide score
             players[actual_player].score = int(players[actual_player].score / 2)
-        

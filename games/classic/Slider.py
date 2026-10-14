@@ -1,11 +1,3 @@
-########## reste a faire
-# ligne 260 - ajouter condition si on touche S ou D et cie pour les autres
-# verifier si victoire en 10 tours
-# verifier victoire si touche 20 ou bull
-# modifier/refaire early bouton 
-### mettre info NB fleche jouee et nombre fleche restante 
-### tester avec double et triple active et apres avec toutes les options
-
 # -*- coding: utf-8 -*-
 # Game by ... LaDite
 ########
@@ -137,7 +129,7 @@ class Game(cgame.Game):
         else :
                 players[actual_player].columns[6] = (players[actual_player].leds, 'int')
 
-### GESTION DES LEDS        
+### GESTION DES LEDS         
         if self.bull and int(players[actual_player].leds) == 21 :
                 self.rpi.set_target_leds ('')
                 leds = f'SB#green|DB#green'
@@ -165,21 +157,76 @@ class Game(cgame.Game):
 
         self.player_launch = player_launch
         
-    def pnj_score(self, players, actual_player, level, player_launch):
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
         """
-        pnj score
+        Compute PNJ Score for this game according to computer level, options and current target.
         """
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [miss_rate, accuracy_rate, double_rate, triple_rate, slip_rate]
+        #   * miss_rate     : Taux de raté pur (miss, 'MISSDART', %)
+        #   * accuracy_rate : Précision / probabilité de viser directement la cible actuelle (%)
+        #   * double_rate   : Taux ou poids lié aux doubles (%)
+        #   * triple_rate   : Taux ou poids lié aux triples (%)
+        #   * slip_rate     : Taux de glissement vers un voisin géographique sur la matrice (%)
+        # - Plus fort / précis : Diminuer le miss_rate et le slip_rate, augmenter l'accuracy_rate.
+        # - Plus humain / brouillon : Augmenter le miss_rate et le slip_rate.
+        # =========================================================================
+        levels = [
+            [35, 10, 10, 10, 30],  # 1 : Noob
+            [20, 25, 15, 15, 40],  # 2 : Débutant
+            [ 5, 50, 25, 30, 60],  # 3 : Intermédiaire
+            [ 1, 80, 40, 50, 80],  # 4 : Pro
+            [ 0, 95, 60, 70, 90]   # 5 : Expert
+        ]
 
+        lvl_idx = max(0, min(computer_level - 1, len(levels) - 1))
 
+        if random.randrange(100) < levels[lvl_idx][0]:
+            players[actual_player].darts_thrown += 1
+            self.rate += 1
+            if self.rate == 3:
+                a = int(players[actual_player].leds)
+                players[actual_player].leds = str(a - 1)
+            return 'MISSDART'
+
+        current_target = int(players[actual_player].leds) if str(players[actual_player].leds).isdigit() else 21
+
+        if current_target >= 21 and self.bull:
+            bull_rand = random.randrange(100)
+            if bull_rand < levels[lvl_idx][2]:
+                return 'DB'
+            elif bull_rand < levels[lvl_idx][2] + levels[lvl_idx][3]:
+                return 'SB'
+            else:
+                return f"S{random.randint(1, 20)}"
+
+        rand_val = random.randrange(100)
+        if rand_val < levels[lvl_idx][1]:
+            segment = current_target
+        elif current_target in geo_neighbors and rand_val < levels[lvl_idx][1] + levels[lvl_idx][4]:
+            segment = random.choice(geo_neighbors[current_target])
+        else:
+            segment = random.randint(1, 20)
+
+        if segment > 20:
+            segment = 20
+
+        # --- GESTION NATURELLE DU MULTIPLICATEUR ( COMME UN HUMAIN ) ---
+        mult_rand = random.randrange(100)
+        
+        chance_triple = levels[lvl_idx][3] // 2  
+        chance_double = levels[lvl_idx][2] // 2
+
+        if mult_rand < chance_triple:
+            mult = 'T'
+        elif mult_rand < chance_triple + chance_double:
+            mult = 'D'
+        else:
+            mult = 'S'
+
+        return f'{mult}{segment}'
+        
     def best_score(self, players):
         """
         Find the winner
@@ -215,10 +262,12 @@ class Game(cgame.Game):
 
         # Play DMD animation
         if super().play_show(players[actual_player].darts, hit, play_special=True):
-            #self.display.sound_for_touch(hit)
             handler['sound'] = hit
 
-### TOUCHE LE BON SEGMENT       
+        score = 0
+        saut = 0
+
+### TOUCHE LE BON SEGMENT        
         if hit[1:] == 'B' and self.bull and int(players[actual_player].leds) == 21 :
                 if hit == 'SB' :
                         score = 5
@@ -227,7 +276,7 @@ class Game(cgame.Game):
                         
                 self.gagne = True
                 
-        elif (hit[1:]) == players[actual_player].leds and players[actual_player].leds != '20' :
+        elif (hit[1:]) == players[actual_player].leds and int(players[actual_player].leds) < 20 :
                 if self.double and not self.triple :
                         if hit[:1] == 'D' :
                                 score = 4
@@ -271,16 +320,12 @@ class Game(cgame.Game):
                         score = 0
                         saut = 0
                         
-                if self.saut :
-                        a = int(players[actual_player].leds)
-                        b = a + saut 
-                        players[actual_player].leds = str(b) 
-                else :
-                        a = int(players[actual_player].leds)
-                        b = a + saut 
-                        players[actual_player].leds = str(b)        
+                increment = saut if self.saut else 1
+                a = int(players[actual_player].leds)
+                b = a + increment 
+                players[actual_player].leds = str(b) 
    
-        elif (hit[1:]) == '20' and players[actual_player].leds == '20' :
+        elif (hit[1:]) == '20' and int(players[actual_player].leds) >= 20 :
                 if self.double :
                         if hit[:1] == 'D' :
                                 score = 4
@@ -305,34 +350,22 @@ class Game(cgame.Game):
                         elif hit[:1] == 'T' :
                                 score = 3  
                                 saut = 3  
-                        #else :
-                        #        score = 0
-                        #        saut = 0
-                                    
                 else :
                         score = 0
                         saut = 0
                 
-                ### SI SELF.BULL EST ACTIVE ON NE GAGNE PAS AVEC LE 20        
                 if self.bull :
                         self.gagne = False
                 else :
                         self.gagne = True
                 
-                ### GESTION D SAUT QD ON TOUCHE
-                if self.saut :
-                        a = int(players[actual_player].leds)
-                        b = a + saut 
-                        players[actual_player].leds = str(b) 
-                else :
-                        a = int(players[actual_player].leds)
-                        b = a + saut 
-                        players[actual_player].leds = str(b)
+                increment = saut if self.saut else 1
+                a = int(players[actual_player].leds)
+                b = a + increment 
+                players[actual_player].leds = str(b)
 
         else :
-                
                 score = 0
-                ### GESTION DU SAUT QD ON RATE
                 if self.master :
                         if hit[:1] == 'S' :
                                 saut = 1
@@ -347,7 +380,6 @@ class Game(cgame.Game):
                 else :
                         self.rate += 1
                  
-                ### QD ON RATE 3x LE SEGMENT
                 if self.rate == 3 :
                         a = int(players[actual_player].leds)
                         b = a - 1 
@@ -356,10 +388,7 @@ class Game(cgame.Game):
         if self.bull :
                 if int(players[actual_player].leds) >= 21 :
                         players[actual_player].leds = 21
-                        
-                                      
-        ### pour determiner si on passe au joueur suivant selon ce qu on a touche
-        #return_code = self.next
+                            
         handler['return_code'] = self.next
               
         players[actual_player].add_dart(actual_round, player_launch, hit, score=score)
@@ -367,26 +396,20 @@ class Game(cgame.Game):
         players[actual_player].score += score
         players[actual_player].round_points += score
         players[actual_player].points += score
-####        
+        
         players[actual_player].columns[6] = (players[actual_player].leds, 'int')
 
-        # Store what he played in the table
         players[actual_player].columns[player_launch - 1] = (score, 'int')
-        # Store total for the round in column 6 (start from 0)
         players[actual_player].columns[4] = (players[actual_player].round_points, 'int')
-        # Calculate average and display in column 7
 
-        # Record total dart thrown, total hits (S=1, D=2, T=3) and refresh players stats
         players[actual_player].darts_thrown += 1
         players[actual_player].increment_hits(hit)
         self.refresh_stats(players, actual_round)
         
-        #### JOUEUR DEAD --- arrete de jouer
         if int(players[actual_player].leds) <= 0 :
                 players[actual_player].alive = False
                 players[actual_player].columns[5] = ('skull', 'image')
 
-            #Someone is dead, is ther a winner ?
                 self.winner = self.check_winner(players)
                 if self.winner > -1:
                         self.infos += "Here is a winner"
@@ -395,25 +418,26 @@ class Game(cgame.Game):
                         handler['return_code'] = 2
                 
         self.player_launch = player_launch
-### pour determiner si on passe au joueur suivant selon ce qu on a touche
-        #return_code = self.next
         handler['return_code'] = self.next
 
-
-        # Check for end of game (no more rounds to play)
-        if player_launch == self.nb_darts and actual_round >= self.max_round \
-                and actual_player == len(players) - 1 or self.gagne == True:
+        # MODIFICATION ICI : Fin immédiate de la partie dès que self.gagne est True
+        if self.gagne == True:
                 winner = self.best_score(players)
                 if winner >= 0:
                         self.winner = winner
-                        #return_code = 3
                         handler['return_code'] = 3
                 else:
-                        # No winner : last round reached
-                        #return_code = 2
+                        self.winner = actual_player
+                        handler['return_code'] = 3
+        elif player_launch == self.nb_darts and actual_round >= self.max_round \
+                and actual_player == len(players) - 1:
+                winner = self.best_score(players)
+                if winner >= 0:
+                        self.winner = winner
+                        handler['return_code'] = 3
+                else:
                         handler['return_code'] = 2
 
-        # Time for shot or video ?
         handler['take_shot'] = self.time_to_take_shot_or_video(hit)
 
         return handler
@@ -421,35 +445,26 @@ class Game(cgame.Game):
     def early_player_button(self, players, actual_player, actual_round):
         
         if self.master and self.repetition :
-                print('early - saut = true')
-                print('player_launch =')
-                print(self.player_launch)
                 if self.player_launch == 0 :
-                        print('player launch = 1 doit descendre de 3')
                         a = int(players[actual_player].leds)
                         b = a - 3
                         players[actual_player].leds = str(b)
                         players[actual_player].columns[6] = (players[actual_player].leds, 'int') 
                         self.repetition = False
                 elif self.player_launch == 1 :
-                        print('player launch = 2 doit descendre de 2')
                         a = int(players[actual_player].leds)
                         b = a - 2
                         players[actual_player].leds = str(b) 
                         players[actual_player].columns[6] = (players[actual_player].leds, 'int')
                         self.repetition = False
                 elif self.player_launch == 2 :
-                        print('player launch = 3 doit descendre de 1')
                         a = int(players[actual_player].leds)
                         b = a - 1 
                         players[actual_player].leds = str(b) 
                         players[actual_player].columns[6] = (players[actual_player].leds, 'int')
                         self.repetition = False
         if not self.master and self.repetition :
-                print('self.rate = ')
-                print(self.rate)
                 if self.rate == 2 or self.rate == 1 :
-                        print('rate est a 0 - descend de 1 car rien touche')
                         a = int(players[actual_player].leds)
                         b = a - 1 
                         players[actual_player].leds = str(b)
@@ -457,15 +472,13 @@ class Game(cgame.Game):
                         self.repetition = False
                 
         return 1
-             
-                                   
+                                
     def post_round_check(self, players, actual_round, actual_player):
         """
         Post round checks
         When PLAYER BUTTON is pressed on last round of last player
         """
         if actual_round >= int(self.max_round) and actual_player == len(players) - 1:
-            # Last round, last player
             return self.best_score(players)
         return -2
 
@@ -495,7 +508,7 @@ class Game(cgame.Game):
         for player in players:
             if player.score > best_score:
                 best_score = player.score
-                deuce = False #necessary to reset deuce if there is a deuce with a higher score !
+                deuce = False 
                 best_player = player.ident
             elif player.score == best_score:
                 deuce = True
@@ -503,22 +516,14 @@ class Game(cgame.Game):
 
         return best_player
 
-
-
-
     def miss_button(self, players, actual_player, actual_round, player_launch):
         '''
         Miss button
         '''
-        print('miss')
-        #players[actual_player].columns[6] = (self.moyenne, 'int')
         players[actual_player].columns[player_launch-1] = ('MISS', 'str')
-        #self.display.play_sound('miss')
-        handler['sound'] = 'treasure_crane_jaune'
         players[actual_player].darts_thrown += 1
         self.rate += 1
         if self.rate == 3 :
-                print('rate est a 0 - descend de 1 car rien touche')
                 a = int(players[actual_player].leds)
                 b = a - 1 
                 players[actual_player].leds = str(b)

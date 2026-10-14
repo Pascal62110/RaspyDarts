@@ -4,6 +4,8 @@ import sys
 import ast      # Convert string to dict
 import json     #for debug
 
+from include import cpaths
+
 # Import library depending of python version
 if sys.version[:1] == '2':
     import ConfigParser as configparser
@@ -42,7 +44,7 @@ DefaultConfig['SectionGlobals'] = {
     'waitevent_time': 30000,
     'resx': 1000,
     'resy': 700,
-    'fullscreen': False,
+    'fullscreen': True,
     'nbcol': 6,
     'onscreenbuttons': False,
     'startpercent': 0.4,
@@ -203,8 +205,8 @@ DefaultConfig['Raspberry'] = {
 #
 DefaultConfig['Camera'] = {
     'camera_id': '-1',
-    'picture_path': '/home/pi/Pictures',
-    'video_path': '/home/pi/Videos',
+    'picture_path': os.path.expanduser('~/Pictures'),
+    'video_path': os.path.expanduser('~/Videos'),
     'directory_order': '0',
     'choice_of_memories':'1',
     'video_res_width': '1280',
@@ -229,6 +231,9 @@ DefaultConfig['Camera'] = {
 #
 #   nomdujeu : [ min , max , en equipe ]
 DefaultConfig['NbOfPlayersPerGame'] = {
+    'Routine' : [1, 4, False],
+    'Duel' : [1, 2, False],
+    'Shoot-out' : [1, 12, False],
     '321_Zlip': [2, 12, False], 
     'Batard': [1, 12, False],
     'Bermuda_Triangle': [1, 12, False],
@@ -259,7 +264,9 @@ DefaultConfig['NbOfPlayersPerGame'] = {
     'Conquer': [2, 4, False],
     'Dragon': [1, 12, False],                   #### NOTE : nouveau jeu pas encore fait, supprime si il faut
     'GameOfGoose': [1, 4, False], 
+    'Dungeon': [2, 4, False],
     'Hangman': [1, 1, False], 
+    'Incendie': [2, 4, False],    
     'Morpion': [2, 4, False],
     'Othello': [2, 4, True],                   #### NOTE : ce jeu se joue a 2 ou a 4, on ne peux pas jouer a 3 joueurs    
     'Puissance4': [2, 4, True],                #### NOTE : ce jeu se joue a 2 ou a 4, on ne peux pas jouer a 3 joueurs
@@ -309,6 +316,7 @@ DefaultConfig['GamePerCategory'] = {
     'Mickey': 'classic',
     'Practice': 'classic',
     'Round_the_clock': 'classic',
+    'Routine' : 'classic',
     'Scram_Cricket': 'classic',         #### NOTE : ce jeu se joue a 2 ou a 4 , on ne peux pas jouer a 3 joueurs (d ailleurs pour moi, ce jeu ne se joue qu a 2, c est tres long commme jeu)
     'Shanghai': 'classic',
     'Slider': 'classic',
@@ -319,8 +327,10 @@ DefaultConfig['GamePerCategory'] = {
     'Challenge': 'fun',
     'Chaos': 'fun',                    #### NOTE : nouveau jeu pas encore sorti, supprime si il faut
     'Conquer': 'fun',
+    'Dungeon' : 'fun',
     'Dragon': 'fun',                   #### NOTE : nouveau jeu pas encore fait, supprime si il faut
     'GameOfGoose': 'fun', 
+    'Incendie' : 'fun',
     'Morpion': 'fun',
     'Othello': 'fun',                   #### NOTE : ce jeu se joue a 2 ou a 4 , on ne peux pas jouer a 3 joueurs    
     'Puissance4': 'fun',                #### NOTE : ce jeu se joue a 2 ou a 4 , on ne peux pas jouer a 3 joueurs
@@ -887,11 +897,11 @@ class Config:
         self.default_SectionKeys = DefaultConfig['SectionKeys']
 
         self.userpath = os.path.expanduser('~')
-        self.user_dir = f'{self.userpath}/.pydarts'
+        self.user_dir = cpaths.user_dir()
         self.other_dir = f'{self.user_dir}/other'
-        self.configFile = f'{self.user_dir}/pydarts.cfg'
+        self.configFile = cpaths.config_file()
         self.themes_dir = f'{self.user_dir}/themes'
-        self.root_dir = '/pydarts'
+        self.root_dir = cpaths.ROOT_DIR
         self.fontsDir = f'{self.root_dir}/fonts'
         self.gamesDir = f'{self.root_dir}/games'
         self.dirs = {'images': ['images', ['png', 'jpg', 'gif']],
@@ -942,7 +952,8 @@ class Config:
         # Supported games (games availables in compiled version)
         self.officialgames = ['321_Zlip', 'Cricket', 'Football', 'Ho_One', 'Kapital', 'Kinito', 'Practice', 'Sample_game', 'Shanghai']
         # List of compatibles versions of python
-        self.supported_python_versions = ('3.2', '3.3', '3.4', '3.5', '3.6', '3.7', '3.8')
+        # 3.7 : Raspbian Buster - 3.13 : Raspberry Pi OS Trixie
+        self.supported_python_versions = ('3.2', '3.3', '3.4', '3.5', '3.6', '3.7', '3.8', '3.13')
 
         # Order of your dart board parts
         self.keys = ['S20', 'S1', 'S18', 'S4', 'S13', 'S6', 'S10', 'S15', 'S2', 'S17', 'S3',

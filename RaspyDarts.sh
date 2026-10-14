@@ -1,6 +1,7 @@
 #!/bin/sh
 
-cd /pydarts
+# The game works from the folder where it is installed
+cd "$(dirname "$(readlink -f "$0")")"
 touch restart
 
 cat to_delete.lst \
@@ -11,6 +12,20 @@ do
 		sudo rm -rf "$f"
 	fi
 done
+
+# Leds, DMD and Hue are driven through the local MQTT broker : at boot, the session
+# can open before it is started. Wait for it, 30 seconds at most.
+# Already running : systemctl is slow while the Pi starts up (more than 2 seconds)
+if ! pgrep -x mosquitto > /dev/null 2>&1 && systemctl is-enabled --quiet mosquitto 2> /dev/null
+then
+	i=0
+	while [ $i -lt 30 ] && ! systemctl is-active --quiet mosquitto
+	do
+		sleep 1
+		i=$((i + 1))
+	done
+fi
+
 while [ -f restart ]
 do
 	rm -f restart

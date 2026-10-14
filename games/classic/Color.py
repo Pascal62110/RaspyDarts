@@ -151,17 +151,85 @@ class Game(cgame.Game):
 
     def pnj_score(self, players, actual_player, level, player_launch):
         """
-        pnj score
+        pnj score with full levels configuration for Color game
         """
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [Taux d'échec / MISS (%), Taux de réussite/précision de la cible (%), 
+        #              Taux Triple (%), Taux Double (%), Taux Bull (%), 
+        #              Taux Voisins 1 (%), Taux Voisins 2 (%)]
+        # - Plus fort / précis : Diminuer le MISS, augmenter la précision et les taux de réussite/triples.
+        # - Plus humain / brouillon : Augmenter le MISS, baisser la précision générale.
+        # =========================================================================
+        levels = [
+                 [70, 10, 1, 2, 10, 45, 60],  # 1 : Noob (70% échec)
+                 [45, 25, 5, 8, 25, 58, 72],  # 2 : Débutant (45% échec)
+                 [25, 45, 12, 12, 65, 70, 80], # 3 : Intermédiaire (25% échec)
+                 [10, 70, 25, 16, 80, 85, 95], # 4 : Pro (10% échec)
+                 [2, 85, 55, 32, 95, 96, 100]  # 5 : Expert (2% échec)
+                ]
+
+        # Sécuriser l'index du niveau (entre 1 et 5)
+        lvl_idx = max(0, min(len(levels) - 1, level - 1))
+        
+        tire_rate      = levels[lvl_idx][0]
+        level_rate     = levels[lvl_idx][1]
+        triple_rate    = levels[lvl_idx][2]
+        double_rate    = levels[lvl_idx][3]
+        bull_rate      = levels[lvl_idx][4]
+        neighbor1_rate = levels[lvl_idx][5]
+        neighbor2_rate = levels[lvl_idx][6]
+
+        # 1. Test du taux d'échec / raté pur (MISS)
+        if random.randint(1, 100) <= tire_rate:
+            return 'MISSDART'
+
+        # Extraire toutes les cibles vertes actuellement actives dans self.targets
+        green_targets = []
+        if self.targets:
+            for target in self.targets:
+                if '#green' in target:
+                    clean_target = target.split('#')[0]
+                    green_targets.append(clean_target)
+
+        # Si aucune cible verte n'est disponible, on génère un tir standard
+        if not green_targets:
+            letters = 'SDT'
+            value = random.randint(1, 20)
+            multi = ''.join(random.choice(letters) for _ in range(1))
+            return f'{multi}{value}'
+
+        # 2. Le PNJ choisit une cible verte de référence parmi les valides
+        chosen_target = random.choice(green_targets)
+
+        # Si le PNJ rate sa précision (basé sur level_rate), il dévie
+        if random.randint(1, 100) > level_rate:
+            # Simulation d'un tir dévié ou aléatoire parmi les types disponibles
+            letters = 'SDT'
+            value = random.randint(1, 20)
+            multi = ''.join(random.choice(letters) for _ in range(1))
+            return f'{multi}{value}'
+
+        # 3. Si sa précision touche la cible, on affine selon le multiplicateur (simple, double, triple, bull)
+        # On extrait la valeur numérique et le type initial de la cible choisie
+        if 'SB' in chosen_target or 'DB' in chosen_target:
+            return chosen_target
+
+        mult_type = chosen_target[0] # S, D ou T
+        try:
+            val_num = int(chosen_target[1:])
+        except ValueError:
+            return chosen_target
+
+        rand_mult = random.randint(1, 100)
+        if rand_mult <= triple_rate:
+            return f'T{val_num}'
+        elif rand_mult <= triple_rate + double_rate:
+            return f'D{val_num}'
+        else:
+            return f'S{val_num}'
+
+
 
     def best_score(self, players):
         """
@@ -198,6 +266,7 @@ class Game(cgame.Game):
         #self.display.sound_for_touch(hit)
         handler['sound'] = hit
         score = 0
+        return_code = 0
         
         multi = 1
         if hit[:1] == 'D':

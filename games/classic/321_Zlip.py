@@ -5,6 +5,10 @@ from include import cplayer
 from include import cgame
 import random
 
+### TROPHEES
+from include import ctrophies
+
+
 # VAR
 WinTotal = 321
 LOGO = '321_Zlip.png'
@@ -76,10 +80,19 @@ class Game(cgame.Game):
         # Whatever you played, we keep it in the display table
         players[actual_player].columns[player_launch - 1] = (f'{score}', 'str')
         self.infos = "Player has played {score}"
+        
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+        
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        #if player_launch == 3:
+        #    round_darts = players[actual_player].darts[-3:]
+        #    ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+        
 
         # Case : the player goes over 321
         if players[actual_player].score + score > WinTotal:
-            self.infos += "/!\ Going over {}, too much !\n".format(WinTotal)
+            self.infos += "/!\\ Going over {}, too much !\n".format(WinTotal)
             delete = players[actual_player].score + score - WinTotal
             players[actual_player].set_score(WinTotal - delete)
             player_launch = self.nb_darts
@@ -93,7 +106,7 @@ class Game(cgame.Game):
             # The player did not zlip anyone and "master" is enabled. master has got a priority on advanced
             if players[actual_player].get_zap() == 0 and self.master:
                 players[actual_player].set_score(0)
-                self.infos += "/!\ Game in master mode - You never zlipped, so back to Zero !\n"
+                self.infos += "/!\\ Game in master mode - You never zlipped, so back to Zero !\n"
                 player_launch = self.nb_darts
                 handler['return_code'] = 1
                 handler['sound'] = 'whatamess'
@@ -101,7 +114,7 @@ class Game(cgame.Game):
             # The player did not zlip anyone and "advanced" is enabled
             elif players[actual_player].get_zap() == 0 and self.advanced:
                 players[actual_player].set_score(0)
-                self.infos += "/!\ Game in advanced mode - You did not Zlip, so you won a Zlip !\n"
+                self.infos += "/!\\Game in advanced mode - You did not Zlip, so you won a Zlip !\n"
                 player_launch = self.nb_darts
                 players[actual_player].zap(True)
                 handler['return_code'] = 1
@@ -109,8 +122,17 @@ class Game(cgame.Game):
                 handler['message'] = 'Gosh ! You picked up a free Zlip !'
             # The player zapped at least once or none of the advanced nor master is true - Victoire
             elif players[actual_player].get_zap() > 0 or (self.master and not self.advanced):
-                self.infos += "/!\ Player {} wins !\n".format(players[actual_player].ident)
+                self.infos += "/!\\Player {} wins !\n".format(players[actual_player].ident)
                 self.winner = players[actual_player].ident
+                
+                ### TROPHEES DE VICTOIRE ---
+                winning_player = players[self.winner]
+                
+
+                # enregistres les donnees du jeu highscorepour stats
+                ctrophies.check_game_end_stats(players, winning_player, "321 Zlip")
+                
+                
                 players[actual_player].add_score(score)
                 players[actual_player].increment_hits(hit)
                 handler['sound'] = 'zapdamn'  # If its a valid hit, play sound
@@ -142,6 +164,12 @@ class Game(cgame.Game):
                 check = True
 
         players[actual_player].add_dart(actual_round, player_launch, hit, score=score, check=check)
+        
+        # TROPHEES
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
 
         # You may want to count darts played
         players[actual_player].darts_thrown += 1
@@ -165,7 +193,7 @@ class Game(cgame.Game):
 
         # If its the last launch of last round
         if actual_round >= self.max_round and actual_player == self.nb_players - 1 and player_launch == self.nb_darts:
-            self.infos += "/!\ Last round reached ({})\n".format(actual_round)
+            self.infos += "/!\\Last round reached ({})\n".format(actual_round)
             handler['return_code'] = 2
 
         # Time for shot or video ?
@@ -261,15 +289,72 @@ class Game(cgame.Game):
         return 0
 
     def pnj_score(self, players, actual_player, computerLevel, player_launch):
-        number = random.randint(1, 20)
-        mult = ''.join(random.choice('SDT') for _ in range(1))
-        bull = random.randint(0, 100)
-        if bull > 85 and bull <= 95:
-            return 'SB'
-        elif bull > 95:
-            return 'DB'
-        return f'{mult}{number}'
-    #
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [MISS, Taux tactique, Triples, Doubles, Bull, Voisins, Constance]
+        # - Plus forte (plus précise) : Diminuer le MISS (1ère val), augmenter Triples/Doubles/Bull (val 3, 4, 5).
+        # - Plus "humaine" / brouillonne : Augmenter le MISS (1ère val), diminuer les triples et le bull.
+        # - Plus agressive (stratège) : Augmenter le taux tactique (2e val).
+        # =========================================================================
+        levels = [
+                 [70, 15, 2,  5,  10, 45, 60],  # 1 : Noob 
+                 [55, 30, 4,  8,  20, 52, 68],  # 2 : Débutant
+                 [25, 55, 12, 14, 50, 65, 78],  # 3 : Intermédiaire 
+                 [15, 70, 20, 16, 70, 78, 88],  # 4 : Pro 
+                 [8,  90, 40, 25, 88, 92, 98]   # 5 : Expert 
+                ]
+
+        lvl_idx = max(0, min(computerLevel - 1, len(levels) - 1))
+        tire_rate = levels[lvl_idx][0]
+        tactik_rate = levels[lvl_idx][1]
+
+        # 1. Gestion du tir raté (MISS) selon le niveau
+        if random.randrange(100) < tire_rate:
+            players[actual_player].columns[player_launch - 1] = ('MISS', 'str')
+            self.display.play_sound('miss')
+            players[actual_player].darts_thrown += 1
+            return 'MISS'
+
+        zap_list = []
+        current_score = players[actual_player].score
+        has_already_zapped = players[actual_player].get_zap() > 0
+        distance_to_321 = WinTotal - current_score
+
+        # 2. Stratégie de l'IA
+        # Si elle n'a PAS ENCORE zlippé OU SI elle est proche de la fin (<= 60 points de 321) 
+        # et qu'elle veut tenter un coup de Trafalgar de dernière minute :
+        should_look_for_zlip = not has_already_zapped or (distance_to_321 <= 60 and random.randrange(100) < 60)
+
+        if should_look_for_zlip and random.randrange(100) < tactik_rate:
+            for player in players:
+                if player.ident != actual_player and player.score > current_score:
+                    diff_score = player.score - current_score
+                    zap_list = self.SearchZap(diff_score)
+                    if zap_list:
+                        break  # Trouvé une cible pour zlipper un adversaire en chemin !
+
+        # 3. Si pas de zlip visé (ou si elle est en mode route directe vers 321), on vise 321
+        if not zap_list:
+            zap_list = self.SearchZap(distance_to_321)
+
+        # 4. Sélection finale du coup
+        if not zap_list:
+            remaining = WinTotal - current_score
+            possible_hits = [hit for hit, val in self.score_map.items() if val <= remaining]
+            if possible_hits and remaining > 0:
+                hit_target = random.choice(possible_hits)
+            else:
+                number = random.randint(1, 20)
+                mult = random.choice(['S', 'S', 'S', 'D'])
+                hit_target = f'{mult}{number}'
+        else:
+            target_index = player_launch - 1
+            if target_index < len(zap_list):
+                hit_target = zap_list[target_index]
+            else:
+                hit_target = zap_list[0]
+
+        return hit_target
     # Search any possible ZAP (Normal and back zap)
     #
     def SearchZap(self, score_up, score_down=0):
@@ -315,6 +400,17 @@ class Game(cgame.Game):
         players[actual_player].columns[player_launch-1] = ('MISS', 'str')
         self.display.play_sound('miss')
         players[actual_player].darts_thrown += 1
+        
+        hit = 'MISS'
+        print('CONTENU DE HIT  DEF MISS')
+        print(hit)
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+        
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
 
     ###############
     # Method to frefresh player.stat - Adapt to the stats you want.

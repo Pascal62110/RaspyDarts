@@ -3,6 +3,8 @@
 import time
 import subprocess
 import pygame
+
+from include import cvideos
 # For GPIO Extender
 from RPi import GPIO as gpio
 from . import cgpio_extender
@@ -12,6 +14,11 @@ LAST_GPIO = None
 COUNT_GPIO = 0
 # pylint: disable=no-member
 USEREVENT = pygame.USEREVENT
+# Events telling that the content of the window must be sent again (names depend on the
+# version of pygame)
+WINDOW_REDRAW_EVENTS = tuple(getattr(pygame, name) for name in
+                             ('VIDEOEXPOSE', 'WINDOWEXPOSED', 'WINDOWSIZECHANGED', 'WINDOWSHOWN', 'WINDOWRESTORED')
+                             if hasattr(pygame, name))
 # pylint: enable=no-member
 
 gamecontext = {
@@ -106,9 +113,7 @@ def wake_up(video_process, sound_process):
     if video_process is not None:
         # Stop running video
         try:
-            video_process.stdin.write(b'q')
-            video_process.stdin.flush()
-            video_process.stdin.close()
+            cvideos.stop_player(cvideos.find_player(), video_process)
         except Exception as error:
             print(f"exception is {error}")
 
@@ -224,10 +229,21 @@ class Craspberry():
 
         self.set_io(self.buttons)
         self.play_sound = None
+        # Target read only once the intro video is finished (see cscreen.show)
+        self.target_enabled = True
+        self.intro_end_event = None
+        self.on_intro_end = None
         self.send_insult = None
         self.t_event = t_event
         self.sleep = False
         self.old_detection = bool(config.config['SectionAdvanced']['richard-mode'])
+
+    def set_intro_end(self, event_type, method):
+        """
+        Method called by the main loop when the intro video is finished
+        """
+        self.intro_end_event = event_type
+        self.on_intro_end = method
 
     def set_play_sound(self, method):
         """
@@ -595,7 +611,9 @@ class Craspberry():
                         return (inputs.replace('PIN_', 'BTN_') if not isinstance(inputs, list) else inputs[0].replace('PIN_', 'BTN_'))
 
             # Read target
-            if context == 'test':
+            if not self.target_enabled:
+                inputs = None
+            elif context == 'test':
                 inputs = self.test_target()
             else:
                 inputs = self.read_target()
@@ -689,6 +707,15 @@ class Craspberry():
                 if context in ('game', 'waitcomputer'):
                     return 'GAMEBUTTON'
                 return 'escape'
+            # The window has just been shown, uncovered or resized : what was drawn before
+            # is lost for the part concerned (a black strip stayed on screen), so the
+            # screen is sent again
+            if event.type in WINDOW_REDRAW_EVENTS and pygame.display.get_surface() is not None:
+                pygame.display.flip()
+            # The intro video is finished : the window of the game is shown
+            if self.intro_end_event is not None and event.type == self.intro_end_event and self.on_intro_end:
+                self.on_intro_end()
+
             # Case of Key UP
             if event.type == pygame.KEYUP:
                 if pygame.key.name(event.key) == 'left shift':

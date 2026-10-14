@@ -64,6 +64,126 @@ class Game(cgame.Game):
       # gestion de l'affichage du segment
       self.show_hit = True
 
+
+###############
+    # PNJ SCORE METHOD FOR TOWER (Sauvez votre princesse !) - Version Intégrale avec Voisins & Miss
+    ###############
+   def pnj_score(self, players, actual_player, level, player_launch):
+        """
+        Intelligence Artificielle (PNJ) pour le jeu Tower :
+        - Stratégie complète (diadème, fleurs, dragon, ascension, bull tactique, gestion de la hauteur).
+        - Gère les 5 niveaux de difficulté avec précision exacte, déviation sur un voisin physique et ratés (MISS).
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [p_exact, p_neighbor, p_miss]
+        #   * p_exact    : Probabilité de toucher exactement la cible visée (%)
+        #   * p_neighbor : Probabilité de dévier vers un secteur voisin physique (%)
+        #   * p_miss     : Probabilité de rater complètement (retourne 'MISS') (%)
+        # - Ajustement : Pour renforcer l'IA, augmente p_exact et réduis p_miss.
+        # =========================================================================
+
+        # Table de précision par niveau : [ % Exact, % Voisin, % Miss ]
+        levels = [
+            [15, 45, 40],  # Niveau 1 (Noob)
+            [30, 50, 20],  # Niveau 2 (Débutant)
+            [45, 35, 15],  # Niveau 3 (Intermédiaire)
+            [72, 23,  5],  # Niveau 4 (Pro)
+            [90, 10,  0]   # Niveau 5 (Expert)
+        ]
+
+        try:
+            comp_lvl = int(level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        p_exact = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        player = players[actual_player]
+
+        # 1. Gestion de la hauteur : trop haut pour le diadème -> forcer un raté (MISS) pour redescendre
+        if not player.questCrownDone and player.score > player.crownfloor:
+            intended_hit = 'MISS'
+        else:
+            # 2. Tactique Bull anti-adversaire (Niveaux 3 à 5)
+            threats = [p for p in players if p.ident != actual_player and (p.score >= 8 or p.questFlowersDone or p.questDragonDone)]
+            if threats and comp_lvl >= 3 and random.randint(1, 100) <= (comp_lvl * 10):
+                intended_hit = 'DB' if any(p.questFlowersDone or p.questDragonDone for p in threats) else 'SB'
+            else:
+                # 3. Progression logique des quêtes
+                if not player.questCrownDone:
+                    if player.score == player.crownfloor:
+                        intended_hit = f"D{player.home}"
+                    else:
+                        mult = 'S' if comp_lvl < 3 else random.choice(['S', 'D'])
+                        intended_hit = f"{mult}{player.home}"
+                elif not player.questFlowersDone:
+                    mult = 'S' if comp_lvl < 3 else random.choice(['S', 'D'])
+                    intended_hit = f"{mult}{player.flower_segment}"
+                elif not player.questDragonDone:
+                    target_val = player.dragonSegments[0] if player.dragonSegments else player.home
+                    intended_hit = f"S{target_val}"
+                else:  # Ascension finale vers le sommet (12)
+                    mult = 'S' if player.score < 10 else random.choice(['S', 'D', 'T'])
+                    intended_hit = f"{mult}{player.home}"
+
+        # Si l'objectif visé est un MISS pur (ex: descente forcée de hauteur)
+        if intended_hit == 'MISS':
+            return 'MISS'
+
+        # Extraction du multiplicateur et de la valeur de la cible intentionnelle
+        mult = intended_hit[0] if intended_hit[:1] in ['S', 'D', 'T'] else 'S'
+        try:
+            val_str = intended_hit[1:] if mult in ['S', 'D', 'T'] else intended_hit
+            if val_str in ['SB', 'DB', 'B']:
+                base_val = val_str
+            else:
+                base_val = int(val_str)
+        except ValueError:
+            base_val = 20
+            mult = 'S'
+
+        # Gestion si la cible visée est un Bull (SB / DB)
+        if base_val in ['SB', 'DB', 'B']:
+            roll = random.randint(1, 100)
+            if roll <= p_exact:
+                return 'DB' if comp_lvl >= 4 and base_val == 'DB' else 'SB'
+            elif roll <= p_exact + p_neighbor:
+                return 'SB' if base_val == 'DB' else 'MISS'
+            else:
+                return 'MISS'
+
+        # Matrice de voisinage physique de la cible de fléchettes (1-20)
+        dartboard_neighbors = {
+            20: [1, 5],   1: [20, 18], 18: [1, 4],   4: [18, 13], 13: [4, 6],
+            6: [13, 10], 10: [6, 15],  15: [10, 2],  2: [15, 17], 17: [2, 3],
+            3: [17, 19], 19: [3, 7],   7: [19, 16], 16: [7, 8],   8: [16, 11],
+            11: [8, 14], 14: [11, 9],  9: [14, 12], 12: [9, 5],   5: [12, 20]
+        }
+
+        # Évaluation physique du tir selon la précision du niveau (Exact, Voisin, Miss)
+        roll = random.randint(1, 100)
+
+        if roll <= p_exact:
+            # Succès exact de la cible voulue
+            return f"{mult}{base_val}"
+        elif roll <= p_exact + p_neighbor:
+            # Raté de précision : la fléchette dévie sur un segment voisin physique
+            neighbors = dartboard_neighbors.get(base_val, [1, 5])
+            hit_val = random.choice(neighbors)
+            
+            # Si le PNJ visait un Double ou Triple et rate sa précision, la fléchette glisse en Simple
+            if mult in ['D', 'T']:
+                mult = 'S'
+                
+            return f"{mult}{hit_val}"
+        else:
+            # Raté total (Miss)
+            return 'MISS'
+
+
    # Actions done before each dart throw - for example, check if the player is allowed to play
    def pre_dart_check(self,players,actual_round,actual_player,player_launch):
         return_code = 0

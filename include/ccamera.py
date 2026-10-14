@@ -16,6 +16,9 @@ from operator import itemgetter
 import random
 from time import sleep
 
+from include import cpaths
+from include import cvideos
+
 #resolution_width_ex = [ 320, 320, 640, 720, 854, 768, 800, 1024, 1280, 1280, 1280, 1400, 1680, 1600, 1920, 1920, 2048, 2048, 2560, 2560, 2560, 2560, 3440, 3840, 4096, 7680 ]
 #resolution_height_ex= [ 200, 240, 480, 480, 480, 576, 600, 768 , 720 ,  800, 1024, 1050, 1050, 1200, 1080, 1200, 1080, 1536, 1080, 1440, 1600, 2048, 1440, 2160, 2160, 4320 ]
 resolution_width_ex = [ 320, 640, 720, 768, 800, 1024, 1280, 1280, 1280, 1400, 1600, 1920, 2048, 2560, 3440, 3840, 7680 ]
@@ -62,8 +65,8 @@ class Camera:
         
     def init_var(self, config_camera, show_in_parametrage=False):
         self.camera_id = str(config_camera['camera_id'])
-        self.picture_path = str(config_camera['picture_path'])
-        self.video_path = str(config_camera['video_path'])
+        self.picture_path = cpaths.usable_dir(config_camera['picture_path'], os.path.join(cpaths.user_home(), 'Pictures'))
+        self.video_path = cpaths.usable_dir(config_camera['video_path'], os.path.join(cpaths.user_home(), 'Videos'))
         self.directory_order = int(config_camera['directory_order'])
         self.choice_of_memories = int(config_camera['choice_of_memories'])
         self.pict_res_width = int(config_camera['picture_res_width'])
@@ -579,9 +582,19 @@ class Camera:
             right_corner_x = int(screen_size_width.strip()) - self.vid_res_width
             right_corner_y = int(screen_size_height.strip()) - self.vid_res_height
             
-            subprocess.Popen(['omxplayer', '--win', f'{right_corner_x},-{right_corner_y},{int(screen_size_width.strip())},{int(screen_size_height.strip())}',
-                              '--aspect-mode','letterbox','-o', 'alsa', f'{video_path}'],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            player = cvideos.find_player()
+            if player == 'omxplayer':
+                command = ['omxplayer', '--win', f'{right_corner_x},-{right_corner_y},{int(screen_size_width.strip())},{int(screen_size_height.strip())}',
+                           '--aspect-mode','letterbox','-o', 'alsa', f'{video_path}']
+            elif player is not None:
+                # Top right corner of the screen, at the size of the recorded video
+                command = cvideos.player_command(player, video_path,
+                                                 window=(right_corner_x, 0, self.vid_res_width, self.vid_res_height))
+            else:
+                self.logs.warning("No video player found : recorded video is not shown")
+                return
+
+            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                         
         except Exception as ex:
             self.logs.error(f"Error in ccamera show_action_photo() : {ex}")
@@ -617,7 +630,7 @@ class Camera:
             possible_paths = [
                 os.path.join(os.path.dirname(__file__), 'cpopup_manager.py'),
                 os.path.join(os.path.dirname(os.path.dirname(__file__)), 'cpopup_manager.py'),
-                '/pydarts/include/cpopup_manager.py'
+                os.path.join(cpaths.ROOT_DIR, 'include', 'cpopup_manager.py')
             ]
             
             for path in possible_paths:
@@ -669,7 +682,7 @@ class Camera:
             possible_paths = [
                 os.path.join(os.path.dirname(__file__), 'cpopup_manager.py'),
                 os.path.join(os.path.dirname(os.path.dirname(__file__)), 'cpopup_manager.py'),
-                '/pydarts/include/cpopup_manager.py'
+                os.path.join(cpaths.ROOT_DIR, 'include', 'cpopup_manager.py')
             ]
             
             for path in possible_paths:

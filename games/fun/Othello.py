@@ -154,6 +154,100 @@ class Game(cgame.Game):
                line.pop(action)
            for line in self.pos:
                line.pop(action)
+ 
+ 
+   def pnj(self, players, actual_round, actual_player):
+      """
+      Intelligence Artificielle (PNJ) niveau intermédiaire pour Othello :
+      - Stratégie : Priorité aux coins, maximisation des pions retournés.
+      - Gestion des ratés (inprécision) : 20% de chance de dévier sur un voisin de la cible.
+      - Gestion des miss : Si le voisin touché n'est pas un coup valide, renvoie 'MISS'.
+      """
+      # =========================================================================
+      # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+      # - Légende des probabilités :
+      #   * Taux de choix du meilleur coup : 75% (hésitation : 25%)
+      #   * Taux de raté / déviation : 20%
+      #   * Répartition des multiplicateurs : 75% Simple (S), 25% Double (D)
+      # - Plus fort / précis : Augmenter le taux du meilleur coup, réduire la déviation.
+      # - Plus humain / brouillon : Augmenter la déviation et favoriser l'hésitation.
+      # =========================================================================
+      
+      if not self.grid:
+          return 'MISS'
+
+      max_idx = self.taille_grille - 1
+      corners = [(0, 0), (0, max_idx), (max_idx, 0), (max_idx, max_idx)]
+
+      scored_moves = []
+      valid_segments = []
+
+      # Évaluation de chaque coup disponible dans self.grid
+      for v in self.grid:
+          segment = v[0]
+          x, y = v[1], v[2]
+          valid_segments.append(segment)
+          
+          flips = 0
+          for direction in self.DIRECTIONS:
+              new_x, new_y = x + direction[0], y + direction[1]
+              temp_flips = 0
+              while self.is_inbound(new_x, new_y) and self.grille[new_x][new_y] == self.joueur_oppose:
+                  temp_flips += 1
+                  new_x += direction[0]
+                  new_y += direction[1]
+              if self.is_inbound(new_x, new_y) and self.grille[new_x][new_y] == self.current_player:
+                  flips += temp_flips
+
+          score = flips
+          if (x, y) in corners:
+              score += 50
+          
+          scored_moves.append((score, segment))
+
+      if not scored_moves:
+          return 'MISS'
+
+      scored_moves.sort(key=lambda x: x[0], reverse=True)
+
+      # Choix de la cible (75% le meilleur coup, 25% un autre coup valide pour simuler l'hésitation)
+      if random.random() < 0.75 and scored_moves:
+          target_segment = scored_moves[0][1]
+      else:
+          target_segment = random.choice(scored_moves)[1]
+
+      # -------------------------------------------------------------------------
+      # GESTION DES RATÉS (VOISINS SUR LA CIBLE) ET DES MISS
+      # -------------------------------------------------------------------------
+      # Ordre classique des secteurs sur une cible de fléchettes traditionnelle
+      dartboard_order = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
+      
+      # 20% de chance de faire un raté (imprécision humaine)
+      if random.random() < 0.20:
+          try:
+              idx = dartboard_order.index(int(target_segment))
+              # Récupère les deux voisins immédiats sur la cible
+              neighbor_left = dartboard_order[idx - 1]
+              neighbor_right = dartboard_order[(idx + 1) % len(dartboard_order)]
+              
+              # Le joueur touche l'un des deux voisins au hasard
+              potential_hit = random.choice([neighbor_left, neighbor_right])
+              
+              # Si le chiffre voisin touché par erreur fait partie des coups valides actuels
+              if potential_hit in valid_segments:
+                  target_segment = potential_hit
+              else:
+                  # Sinon, le tir tombe sur une case non jouable ou hors jeu -> MISS
+                  return 'MISS'
+          except (ValueError, TypeError):
+              return 'MISS'
+
+      # Choix du multiplicateur : majoritairement Simple (S) pour assurer le placement, parfois Double (D)
+      mult = random.choice(['S', 'S', 'S', 'D'])  # 75% Simple, 25% Double
+
+      return f"{mult}{target_segment}"
+ 
+ 
                
    # Actions done before each dart throw - for example, check if the player is allowed to play
    def pre_dart_check(self, players, actual_round, actual_player, player_launch):

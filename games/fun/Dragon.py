@@ -61,6 +61,83 @@ class Game(cgame.Game):
         self.time = int(options['Time'])
 
         self.first = True
+  
+  
+    def pnj_score(self, players, actual_player, level, player_launch):
+        """
+        Compute PNJ Score for Dragon game:
+        - Actively plays Singles (S), Doubles (D), and Triples (T) with weighted distribution based on level.
+        - Targets the dragon's head (tete) or body parts (corps).
+        - Manages precision, neighbor drifts, and complete misses/failures (ratés).
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [p_success, p_neighbor, p_miss]
+        #   * p_success  : Probabilité de toucher exactement la cible choisie (%)
+        #   * p_neighbor : Probabilité de dévier vers un secteur voisin via la matrice (%)
+        #   * p_miss     : Probabilité de rater complètement et d'atteindre un secteur aléatoire (%)
+        # - Plus fort / précis : Augmenter p_success, diminuer p_miss et p_neighbor.
+        # - Plus humain / brouillon : Augmenter p_miss et p_neighbor, diminuer p_success.
+        # =========================================================================
+        
+        dartboard_neighbors = {
+            1: (20, 18), 2: (15, 17), 3: (17, 19), 4: (18, 13), 5: (12, 20),
+            6: (13, 10), 7: (19, 16), 8: (16, 11), 9: (14, 12), 10: (6, 15),
+            11: (8, 14), 12: (9, 5), 13: (4, 6), 14: (11, 9), 15: (10, 2),
+            16: (7, 8), 17: (2, 3), 18: (1, 4), 19: (3, 7), 20: (5, 1)
+        }
+
+        levels = [
+            [15, 35, 50],  # Niveau 1
+            [30, 40, 30],  # Niveau 2
+            [50, 35, 15],  # Niveau 3
+            [70, 20, 10],  # Niveau 4
+            [85, 10, 5]    # Niveau 5
+        ]
+        
+        lvl_idx = max(0, min(level - 1, len(levels) - 1))
+        p_success = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        rand_val = random.randrange(100)
+
+        head_targets = getattr(self, 'tete', [])
+        body_targets = getattr(self, 'corps', [])
+
+        # Gestion des multiplicateurs : Simple (S), Double (D) et Triple (T)
+        if level >= 4:
+            target_type = random.choices(['S', 'D', 'T'], weights=[20, 40, 40])[0]
+        elif level >= 2:
+            target_type = random.choices(['S', 'D', 'T'], weights=[40, 35, 25])[0]
+        else:
+            target_type = random.choices(['S', 'D', 'T'], weights=[70, 20, 10])[0]
+
+        # Choix de la cible prioritaire (Tête du dragon ou corps)
+        if head_targets and random.random() < 0.45:
+            target_num = head_targets[0]
+        elif body_targets:
+            target_num = random.choice(body_targets)
+        else:
+            target_num = random.randint(1, 20)
+
+        try:
+            target_int = int(target_num)
+        except ValueError:
+            target_int = 20
+
+        # Application de la précision, de la déviation ou du raté
+        if rand_val < p_success:
+            # Tir réussi sur la cible voulue avec le multiplicateur (S, D ou T)
+            return f"{target_type}{target_int}"
+        elif rand_val < p_success + p_neighbor:
+            # Erreur de précision : déviation sur un voisin de la cible
+            neighbor = random.choice(dartboard_neighbors.get(target_int, (20, 18)))
+            return f"{target_type}{neighbor}"
+        else:
+            # Raté complet (miss) : touche une zone aléatoire du jeu qui ne fait pas partie de la cible active
+            miss_type = random.choice(['S', 'D', 'T'])
+            return f"{miss_type}{random.randint(1, 20)}"
+  
         
     def post_dart_check(self, hit, players, actual_round, actual_player, player_launch):
         """

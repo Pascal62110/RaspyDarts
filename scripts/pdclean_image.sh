@@ -70,8 +70,15 @@ if [ -z "$USER_HOME" ] || [ ! -d "$USER_HOME" ]; then
     exit 1
 fi
 
-PYDARTS_DIR="$USER_HOME/.pydarts"
-CONFIG_FILE="$PYDARTS_DIR/pydarts.cfg"
+# ~/.raspydarts et raspydarts.cfg, ou ~/.pydarts et pydarts.cfg avant le renommage
+PYDARTS_DIR="$USER_HOME/.raspydarts"
+if [ ! -d "$PYDARTS_DIR" ] && [ -d "$USER_HOME/.pydarts" ]; then
+    PYDARTS_DIR="$USER_HOME/.pydarts"
+fi
+CONFIG_FILE="$PYDARTS_DIR/raspydarts.cfg"
+if [ ! -f "$CONFIG_FILE" ] && [ -f "$PYDARTS_DIR/pydarts.cfg" ]; then
+    CONFIG_FILE="$PYDARTS_DIR/pydarts.cfg"
+fi
 
 # Le nettoyage systeme / Wi-Fi exige les droits root
 if { [ "$CLEAN_SYSTEM" -eq 1 ] || [ "$CLEAN_WIFI" -eq 1 ]; } && [ "$(id -u)" -ne 0 ]; then

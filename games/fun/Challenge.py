@@ -536,17 +536,149 @@ class Game(cgame.Game):
 
     def pnj_score(self, players, actual_player, level, player_launch):
         """
-        pnj score
+        Compute PNJ Score for Challenge game, handling best score games, 
+        score minimum/maximum bounds, 777, and all specific mini-games.
         """
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [p_success, p_neighbor, p_miss]
+        #   * p_success  : Probabilité de toucher exactement la cible choisie (%)
+        #   * p_neighbor : Probabilité de dévier vers un secteur voisin via la matrice (%)
+        #   * p_miss     : Probabilité de rater complètement et d'atteindre un secteur aléatoire (%)
+        # - Plus fort / précis : Augmenter p_success, diminuer p_miss et p_neighbor.
+        # - Plus humain / brouillon : Augmenter p_miss et p_neighbor, diminuer p_success.
+        # =========================================================================
+        
+        dartboard_neighbors = {
+            1: (20, 18), 2: (15, 17), 3: (17, 19), 4: (18, 13), 5: (12, 20),
+            6: (13, 10), 7: (19, 16), 8: (16, 11), 9: (14, 12), 10: (6, 15),
+            11: (8, 14), 12: (9, 5), 13: (4, 6), 14: (11, 9), 15: (10, 2),
+            16: (7, 8), 17: (2, 3), 18: (1, 4), 19: (3, 7), 20: (5, 1)
+        }
+
+        # Niveaux de précision [Chance réussite, Chance voisin, Chance raté]
+        levels = [
+            [15, 35, 50],  # Niveau 1
+            [30, 40, 30],  # Niveau 2
+            [40, 35, 25],  # Niveau 3
+            [70, 20, 10],  # Niveau 4
+            [85, 10, 5]    # Niveau 5
+        ]
+        
+        lvl_idx = max(0, min(level - 1, len(levels) - 1))
+        p_success = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        rand_val = random.randrange(100)
+        challenge = self.jeuchoisi[0] if isinstance(self.jeuchoisi, list) else self.jeuchoisi
+
+        # 1. Gestion des jeux à score minimum / maximum / limites (777, under, lower, etc.)
+        if challenge in ['777', 'score_determine', 'under', 'lower', 'superieur', 'inferieur']:
+            if challenge == '777':
+                reste = 777 - players[actual_player].seven77
+                possibilities = self.get_possibilitirs(reste)
+            else:
+                min_s = getattr(players[actual_player], 'min_score', 40)
+                possibilities = self.get_possibilitirs(min_s)
+            
+            if possibilities:
+                target_hit = random.choice(possibilities)
+                if rand_val < p_success:
+                    return target_hit
+                elif rand_val < p_success + p_neighbor:
+                    num_part = target_hit[1:]
+                    mult_part = target_hit[0]
+                    if num_part.isdigit() and int(num_part) in dartboard_neighbors:
+                        neigh = random.choice(dartboard_neighbors[int(num_part)])
+                        return f"{mult_part}{neigh}"
+            
+            return f"S{random.randint(1, 20)}"
+
+        # 2. Gestion des jeux de "Meilleur score" (onedart / threedarts) : Visée agressive sur gros scores
+        elif challenge in ['onedart', 'threedarts']:
+            high_targets = [('T', 20), ('T', 19), ('T', 18), ('D', 20)]
+            target_type, target_num = random.choice(high_targets)
+
+        # 3. Autres défis spécifiques
+        elif 'bulls' in challenge:
+            if rand_val < p_success:
+                return 'SB' if random.randrange(100) < 80 else 'DB'
+            elif rand_val < p_success + p_neighbor:
+                return f"S{random.choice([20, 19, 6])}"
+            else:
+                return f"S{random.randint(1, 20)}"
+
+        elif 'double' in challenge:
+            target_type = 'D'
+            target_num = random.choice([16, 20, 10, 8, 12])
+            
+        elif 'triple' in challenge:
+            target_type = 'T'
+            target_num = random.choice([20, 19, 18])
+            
+        elif 'simple' in challenge:
+            target_type = 'S'
+            target_num = self.chiffre if challenge == 'onesimple' else self.chiffre2
+            
+        elif challenge == 'suite':
+            target_num = random.choice(self.target_suite) if self.target_suite else random.randint(1, 20)
+            target_type = 'S'
+                
+        elif challenge == 'voisin':
+            target_num = random.choice(self.target_voisin) if self.target_voisin else random.randint(1, 20)
+            target_type = 'S'
+                
+        elif challenge == 'oneanimal':
+            target_num = self.animal
+            target_type = 'S'
+            
+        elif challenge == 'color_blue':
+            valid_blues = [1, 4, 6, 15, 17, 19, 16, 11, 9, 5, 20, 18, 13, 10, 2, 3, 7, 8, 14, 12]
+            target_num = random.choice(valid_blues)
+            target_type = random.choice(['S', 'D', 'T'])
+            
+        elif challenge == 'color_white':
+            valid_whites = [20, 18, 13, 10, 2, 3, 7, 8, 14, 12, 1, 4, 6, 15, 17, 19, 16, 11, 9, 5]
+            target_num = random.choice(valid_whites)
+            target_type = random.choice(['S', 'D', 'T'])
+            
+        elif challenge == 'pair':
+            target_num = random.choice([2, 4, 6, 8, 10, 12, 14, 16, 18, 20])
+            target_type = random.choice(['S', 'D', 'T'])
+            
+        elif challenge == 'impair':
+            target_num = random.choice([1, 3, 5, 7, 9, 11, 13, 15, 17, 19])
+            target_type = random.choice(['S', 'D', 'T'])
+            
+        elif challenge == 'multiple':
+            if self.multiple == 3:
+                target_num = random.choice([3, 6, 9, 12, 15, 18])
+            elif self.multiple == 4:
+                target_num = random.choice([4, 8, 12, 16, 20])
+            elif self.multiple == 5:
+                target_num = random.choice([5, 10, 15, 20])
+            elif self.multiple == 6:
+                target_num = random.choice([6, 12, 18])
+            target_type = 'S'
+                
+        elif challenge == 'onebombe':
+            bombe_list = self.target_bombeall.get(f"self.target_bombe{self.bombe}", [])
+            safe_nums = [n for n in range(1, 21) if n not in bombe_list]
+            target_num = random.choice(safe_nums) if safe_nums else random.randint(1, 20)
+            target_type = 'S'
+            
+        else:
+            target_num = random.choice([20, 19, 18, 12, 5])
+            target_type = random.choice(['S', 'T'])
+
+        # Application finale de la précision avec gestion des voisins et ratés
+        if rand_val < p_success:
+            return f"{target_type}{target_num}"
+        elif rand_val < p_success + p_neighbor:
+            neighbor = random.choice(dartboard_neighbors.get(target_num, (20, 18)))
+            return f"{target_type}{neighbor}"
+        else:
+            return f"S{random.randint(1, 20)}"
 
     def best_score(self, players):
         """

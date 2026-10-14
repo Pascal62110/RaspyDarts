@@ -5,6 +5,8 @@ Stats class
 import os
 import sys
 import csv
+
+from include import cpaths
 # Patch for ConfigParser
 if sys.version[:1]=='2':
     import ConfigParser as configparser
@@ -18,7 +20,7 @@ class Stats:
         """
         self.logs = logs
         self.userpath = os.path.expanduser('~')
-        self.pathdir = f'{self.userpath}/.pydarts'
+        self.pathdir = cpaths.user_dir()
         self.pathfile = f'{self.pathdir}/playerstats.csv'
         self.player_stats = {}
         #

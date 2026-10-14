@@ -474,19 +474,102 @@ class Game(cgame.Game):
 
         return players[(actual_player + 1) % len(players)].name
 
-    def pnj_score(self, players, actual_player, level, player_launch):
-        '''
-        pnj score
-        '''
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
+        """
+        Intelligence Artificielle (PNJ) pour le jeu Tennis :
+        - Sélectionne un chiffre cible dans le camp/côté du terrain du joueur.
+        - Applique un taux de râté selon le niveau et gère les fautes (voisin, filet, out).
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende du format par niveau [miss_chance, p_single, p_double] :
+        #   * miss_chance : Probabilité globale de commettre une erreur/raté (%)
+        #   * p_single    : Probabilité d'obtenir un Simple (S) en cas de tir réussi (%)
+        #   * p_double    : Probabilité d'obtenir un Double (D) (%)
+        #   * Triple résiduel : Le reste (100 - p_single - p_double) est attribué au Triple (T)
+        # - Ajustement : Pour renforcer l'IA, réduis la miss_chance et augmente les multiplicateurs.
+        # =========================================================================
+
+        # Détermination des zones et des fautes (net/out) selon le paramètre 'cote'
+        if self.cote:
+            hits_j1 = [8, 16, 7, 19, 17, 2, 15, 10]
+            hits_j2 = [14, 9, 12, 5, 1, 18, 4, 13]
+            net = [11, 6]
+            out = [20, 3]
+        else:
+            hits_j1 = [5, 12, 9, 14, 8, 16, 7, 19]
+            hits_j2 = [1, 18, 4, 13, 10, 15, 2, 17]
+            net = [20, 3]
+            out = [11, 6]
+
+        # Attribution du terrain selon le joueur et le swap en cours
+        if actual_player in [0, 2]:
+            allowed_hits = hits_j1 if self.swap in [0, 3] else hits_j2
+        else:
+            allowed_hits = hits_j2 if self.swap in [0, 3] else hits_j1
+
+        # Niveaux de difficulté : [miss_chance, p_single, p_double]
+        levels = [
+            [60, 70, 10],  # 1 : Noob (60% de raté)
+            [45, 60, 15],  # 2 : Débutant (45% de raté)
+            [30, 50, 25],  # 3 : Intermédiaire (30% de raté)
+            [15, 40, 30],  # 4 : Pro (15% de raté)
+            [ 5, 30, 35]   # 5 : Expert (5% de raté)
+        ]
+        
+        try:
+            comp_lvl = int(computer_level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        miss_chance = levels[lvl_idx][0]
+        p_single = levels[lvl_idx][1]
+        p_double = levels[lvl_idx][2]
+
+        # Choix d'un chiffre cible dans le terrain du joueur
+        target_number = random.choice(allowed_hits)
+
+        # ----------------------------------------------------
+        # GESTION DU RATÉ (MISS) : Voisin, Net ou Out
+        # ----------------------------------------------------
+        if random.randrange(100) < miss_chance:
+            miss_type = random.choice(['neighbor', 'net', 'out'])
+            multi = random.choice(['S', 'S', 'S', 'D'])  # Majoritairement des simples sur les fautes
+            
+            if miss_type == 'net':
+                miss_target = random.choice(net)
+                return f"{multi}{miss_target}"
+            elif miss_type == 'out':
+                miss_target = random.choice(out)
+                return f"{multi}{miss_target}"
+            else:
+                # Voisin géographique sur la cible standard
+                geo_neighbors = {
+                    1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+                    5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+                    9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+                    13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+                    17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+                }
+                if target_number in geo_neighbors:
+                    miss_target = random.choice(geo_neighbors[target_number])
+                else:
+                    miss_target = random.choice(allowed_hits)
+                return f"{multi}{miss_target}"
+
+        # ----------------------------------------------------
+        # TIR NORMAL RÉUSSI SUR LE TERRAIN
+        # ----------------------------------------------------
+        rand_val = random.randrange(100)
+        if rand_val < p_single:
+            multi = 'S'
+        elif rand_val < p_single + p_double:
+            multi = 'D'
+        else:
+            multi = 'T'
+
+        return f"{multi}{target_number}"
 
     def best_score(self, players):
         '''

@@ -149,6 +149,104 @@ class Game(cgame.Game):
         #return return_code
 
 
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
+        """
+        Intelligence Artificielle (PNJ) pour le jeu Baseball :
+        - Gère le HomeRun tactique sur le Bull lorsque le PNJ a 3 bases pleines.
+        - Gère la stratégie d'attaque ciblée sur les adversaires selon le niveau.
+        - Utilise une table de probabilités complète (ratés, précision, voisins, doubles, triples).
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende du format par niveau : [miss_chance, exact_target_chance, neighbor_chance, double_chance, triple_chance]
+        #   * miss_chance         : Probabilité de rater complètement (retourne 'MISSDART') (%)
+        #   * exact_target_chance : Probabilité de viser la cible exacte (%)
+        #   * neighbor_chance     : Probabilité de viser un secteur voisin géométrique/physique (%)
+        #   * double_chance       : Probabilité d'obtenir un Double (D) (%)
+        #   * triple_chance       : Probabilité d'obtenir un Triple (T) (%)
+        # - Ajustement : Pour renforcer l'IA, réduis miss_chance et augmente exact_target_chance.
+        # =========================================================================
+
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+        # Table de précision par niveau : [miss_chance, exact_target_chance, neighbor_chance, double_chance, triple_chance]
+        levels = [
+            [40, 10, 20,  4,  2],  # Niveau 1 (Noob) : 40% miss, 6% total D+T
+            [25, 25, 30,  8,  5],  # Niveau 2 (Débutant) : 25% miss, 13% total D+T
+            [10, 50, 40, 18, 15],  # Niveau 3 (Intermédiaire) : 10% miss, 33% total D+T (18% D + 15% T)
+            [ 2, 75, 50, 24, 20],  # Niveau 4 (Pro) : 2% miss, 44% total D+T
+            [ 0, 90, 60, 30, 25]   # Niveau 5 (Expert) : 0% miss, 55% total D+T
+        ]
+
+        try:
+            comp_lvl = int(computer_level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+
+        # Gestion du raté global (Miss)
+        if random.randrange(100) < levels[lvl_idx][0]:
+            players[actual_player].darts_thrown += 1
+            return 'MISSDART'
+
+        current_player = players[actual_player]
+        bases = getattr(current_player, 'base_occupee', 0)
+        home_target = getattr(current_player, 'home', random.randint(1, 20))
+
+        # 1. Si le PNJ a 3 bases pleines, sa priorité absolue est de tenter le Bull (HomeRun)
+        if bases == 3 and comp_lvl >= 3 and random.randrange(100) < (comp_lvl * 20):
+            if random.randrange(100) < 40 and comp_lvl >= 4:
+                return 'DB'
+            else:
+                return 'SB'
+
+        # 2. Logique d'attaque tactique basée sur le score des adversaires (Niveau 3 et plus)
+        opponents_with_runners = [
+            p for p in players 
+            if p.ident != current_player.ident and getattr(p, 'base_occupee', 0) > 0
+        ]
+
+        attack_chance = comp_lvl * 6 if comp_lvl >= 3 else 0
+
+        target_segment = None
+        if comp_lvl >= 3 and opponents_with_runners and random.randrange(100) < attack_chance:
+            opponents_with_runners.sort(key=lambda p: p.score, reverse=True)
+            target_opp = opponents_with_runners[0]
+            target_segment = target_opp.home
+        
+        # 3. Si pas d'attaque, le PNJ vise sa propre cible (home)
+        if target_segment is None:
+            rand_val = random.randrange(100)
+            if rand_val < levels[lvl_idx][1]:
+                target_segment = home_target
+            elif home_target in geo_neighbors and rand_val < levels[lvl_idx][1] + levels[lvl_idx][2]:
+                target_segment = random.choice(geo_neighbors[home_target])
+            else:
+                target_segment = random.randint(1, 20)
+
+        if target_segment > 20:
+            target_segment = 20
+
+        # Choix du multiplicateur ('S', 'D', 'T')
+        mult_rand = random.randrange(100)
+        if mult_rand < levels[lvl_idx][3]:
+            mult = 'D'
+        elif mult_rand < levels[lvl_idx][3] + levels[lvl_idx][4]:
+            mult = 'T'
+        else:
+            mult = 'S'
+
+        return f'{mult}{target_segment}'
+
+
+
     def early_player_button(self, players, actual_player, actual_round):
 
         if self.noequal and player_launch == self.nb_darts and actual_round >= self.max_round \

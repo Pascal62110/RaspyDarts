@@ -7,6 +7,9 @@ from include import cgame
 import random
 import subprocess
 import pygame
+#### TROPHEES
+from include import ctrophies
+
 
 # Dictionnay of options - Text format only
 OPTIONS = {'theme': 'default', 'win_points': 2, 'master': False, 'variante': False}
@@ -92,6 +95,115 @@ class Game(cgame.Game):
 
       # gestion de l'affichage du segment
       self.show_hit = True
+
+
+
+   def pnj_score(self, players, actual_player, level, player_launch):
+        """
+        IA (PNJ) niveau intermédiaire pour le Morpion de fléchettes :
+        - Joue comme un humain de niveau moyen : a une petite stratégie (centre, contre), 
+          mais rate parfois et distribue ses multiplicateurs de façon naturelle.
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des probabilités :
+        #   * Taux de raté/déviation : ~20% (ajustable via la condition de random)
+        #   * Répartition des multiplicateurs : ~50% Simple, ~30% Double, ~20% Triple
+        # - Plus fort / précis : Réduire le taux de raté et augmenter la probabilité de Triple/Double.
+        # - Plus humain / brouillon : Augmenter le taux de raté et privilégier les simples.
+        # =========================================================================
+        
+        player_idx = actual_player
+        num_players = len(players)
+        
+        # Récupération des segments de la grille (ex: 1 à 20)
+        dispo_hits = [v for v in self.grid if v[0] < 90]
+        if not dispo_hits:
+            return 'MISS'
+
+        winning_combos = getattr(self, 'winning_combinations', [])
+        
+        # -------------------------------------------------------------------------
+        # 1. STRATÉGIE HUMAINE (NIVEAU INTERMÉDIAIRE)
+        # -------------------------------------------------------------------------
+        defensive_target = None
+        offensive_target = None
+
+        for combo in winning_combos:
+            for seg in combo:
+                matching_v = next((v for v in dispo_hits if str(v[0]) == str(seg)), None)
+                if not matching_v:
+                    continue
+                
+                if self.variante:
+                    my_touches = matching_v[3 + player_idx]
+                    
+                    # Un joueur intermédiaire remarque quand un adversaire est à 3 touches et essaie de le bloquer
+                    for p in range(num_players):
+                        if p == player_idx:
+                            continue
+                        if matching_v[3 + p] >= 3 and my_touches < 4:
+                            defensive_target = matching_v[0]
+                    
+                    # Il essaie de progresser sur ses propres cases commencées
+                    if 0 < my_touches < 4:
+                        offensive_target = matching_v[0]
+                else:
+                    # Mode normal (structure: segment, joueur, etat)
+                    owner = matching_v[1]
+                    state = matching_v[2]
+                    if owner != -1 and owner != player_idx and state < 3:
+                        defensive_target = matching_v[0]
+                    if owner == player_idx and state < 3:
+                        offensive_target = matching_v[0]
+                    elif owner == -1:
+                        offensive_target = matching_v[0]
+
+        # Le milieu de partie cherche souvent à prendre le centre si c'est libre
+        center_case = dispo_hits[len(dispo_hits) // 2][0] if dispo_hits else None
+
+        # Choix de la cible avec un peu de logique humaine (parfois il rate sa vision ou tente autre chose)
+        if defensive_target and random.random() < 0.8:
+            target = defensive_target
+        elif offensive_target and random.random() < 0.7:
+            target = offensive_target
+        elif center_case and random.random() < 0.5:
+            target = center_case
+        else:
+            # Sinon, il choisit une case au hasard parmi celles qu'il peut encore jouer
+            if self.variante:
+                valid_cases = [v[0] for v in dispo_hits if v[3 + player_idx] < 4]
+            else:
+                valid_cases = [v[0] for v in dispo_hits if v[2] < 3]
+            target = random.choice(valid_cases) if valid_cases else random.choice(dispo_hits)[0]
+
+        # -------------------------------------------------------------------------
+        # 2. GESTION DES RATÉS (IMPRÉCISION HUMAINE)
+        # -------------------------------------------------------------------------
+        # Un joueur intermédiaire rate sa cible environ 1 sur 5 (20% du temps) 
+        # et touche un secteur voisin sur la grille.
+        if random.random() < 0.20:
+            neighbors_map = getattr(self, 'dartboard_neighbors', {})
+            neighbors = neighbors_map.get(str(target), [])
+            if neighbors:
+                target = random.choice(neighbors)
+
+        # -------------------------------------------------------------------------
+        # 3. MULTIPLICATEURS NATURELS (S, D, T)
+        # -------------------------------------------------------------------------
+        # Un humain intermédiaire ne vise pas que des triples : 
+        # Il fait majoritairement des simples et des doubles, et tente quelques triples par envie.
+        # Répartition : ~50% Simple, ~30% Double, ~20% Triple
+        rand_mult = random.random()
+        if rand_mult < 0.20:
+            mult = 'T'
+        elif rand_mult < 0.50:
+            mult = 'D'
+        else:
+            mult = 'S'
+
+        return f"{mult}{target}"
+
 
    # Actions done before each dart throw - for example, check if the player is allowed to play
    def pre_dart_check(self, players, actual_round, actual_player, player_launch):
@@ -424,6 +536,16 @@ class Game(cgame.Game):
         # Record total dart thrown, total hits (S=1, D=2, T=3) and refresh players stats
         players[actual_player].darts_thrown += 1
         players[actual_player].segments[player_launch-1] = hit
+
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+        
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+
+
 
         # test multiplicateur
         multi = 1
@@ -844,6 +966,10 @@ class Game(cgame.Game):
         # test for a winner
         if players[actual_player].score >= self.winpoints:
             self.winner =  players[actual_player].ident
+            ### trophee
+            winning_player = players[actual_player].name
+            ctrophies.check_game_end_stats(players, winning_player, "MORPION")
+                    
             print('dans test winner')
             handler['return_code'] = 3
 
@@ -877,6 +1003,18 @@ class Game(cgame.Game):
       players[actual_player].segments[player_launch-1] = 'MISS'
       self.display.play_sound('miss')    
       players[actual_player].darts_thrown += 1
+
+        
+      hit = 'MISS'
+      print('CONTENU DE HIT  DEF MISS')
+      print(hit)
+      ### TROPHEES
+      ctrophies.process_single_dart(players[actual_player], hit)
+        
+      # On vérifie les trophées de volée uniquement à la 3ème fléchette
+      if player_launch == 3:
+          round_darts = players[actual_player].darts[-3:]
+          ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
 
 
    ###############

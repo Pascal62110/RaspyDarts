@@ -9,17 +9,38 @@ awesome electronic darts' game
 ################
 
 import sys
+
+# Startup time (several seconds on a Raspberry Pi 3 while it starts up) : modules loaded by
+# libraries only for features the game does not use. Each library expects them to be
+# missing and does without : pygame finds its data files without pkg_resources and has no
+# surfarray without numpy, paho-mqtt has no connect_srv() without dns
+for _unused in ('pkg_resources', 'numpy', 'dns', 'dns.resolver'):
+    sys.modules.setdefault(_unused, None)
+
 import datetime
 from time import sleep
 import os, os.path
+
+# A fullscreen window minimizes itself as soon as it loses the focus : the game would
+# disappear each time a video (played in its own window) takes it
+os.environ.setdefault('SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS', '0')
+
+# The screen is sent as it is to the window. By default, recent versions of SDL send it
+# through the graphic card : after a change of screen, a strip at the top kept the
+# previous picture until the next drawing
+os.environ.setdefault('SDL_FRAMEBUFFER_ACCELERATION', '0')
 from copy import deepcopy
 import random
 from subprocess import Popen
+
+### ajout trophee
+from include import ctrophies
 
 from threading import Event
 
 try:
     from include import cconfig
+    from include import cpaths
     from include import clogs
     from include import cevent
     from include import cfiles
@@ -143,7 +164,7 @@ if Config.file_exists and config_leds['PIN_TARGETLED'] in ('10' , '12', '18', '2
     logs.debug("Starting Target Leds Server")
     logs.debug(f"Using this configuration : {config_target_leds}")
     target_log = open('logs/TargetLeds.log', "w", 1)
-    cmd = ['sudo', 'python3', '/pydarts/addons/TargetLeds_Server.py'
+    cmd = ['sudo', 'python3', f'{cpaths.ROOT_DIR}/addons/TargetLeds_Server.py'
             , f'-host={mqtt_broker}'
             , f'-bgcolors={bg_colors_sending}'
             , f"-bgbrightness={Config.get_value('SectionAdvanced', 'target-bgbrightness')}"
@@ -163,7 +184,7 @@ else:
 if Config.file_exists and Config.get_value('SectionAdvanced', 'use-hue'):
     logs.debug("Starting Hue Server")
     hue_log = open('logs/Hue.log', "w", 1)
-    cmd = ['python3', '/pydarts/addons/Hue_Server.py'
+    cmd = ['python3', f'{cpaths.ROOT_DIR}/addons/Hue_Server.py'
             , f'-host={mqtt_broker}'
             , f'{dispatcher.other_topic}']
     p_hue = Popen(cmd, stdout=hue_log)
@@ -269,6 +290,7 @@ rpi.set_play_sound(display.play_sound)
 rpi.set_send_insult(dmd.send_insult)
 
 if rpi_error is not None:
+    display.show()
     display.mcp_error(rpi_error)
 
 # Manage Webcam USB
@@ -284,7 +306,7 @@ scores = cscores.Scores(Config, logs)
 #    Delete script if succeed   #
 #################################
 
-update_lib = "/pydarts/scripts/update_lib.sh"
+update_lib = f"{cpaths.ROOT_DIR}/scripts/update_lib.sh"
 if os.path.isfile(update_lib):
     logs.info("================================================================")
     logs.info("Install additional librairies\n")
@@ -305,7 +327,7 @@ if not Config.file_exists and False:
     logs.info("================================================================")
     logs.info("Updating librairies\n")
     display.message(['Updating_librairies'], 0, None, 'middle')
-    cmd = '/pydarts/scripts/update_tool.sh'
+    cmd = f'{cpaths.ROOT_DIR}/scripts/update_tool.sh'
     os.system(cmd)
     logs.info("================================================================")
 
@@ -372,8 +394,9 @@ if volume:
     display.sound_volume = volume
 
 # Sys requirements check
-if sys.version[:3] not in Config.supported_python_versions:
-    logs.warning(f"Your version of python {sys.version[:3]} is not known as raspydarts compatible.")
+python_version = f"{sys.version_info[0]}.{sys.version_info[1]}"
+if python_version not in Config.supported_python_versions:
+    logs.warning(f"Your version of python {python_version} is not known as raspydarts compatible.")
     logs.warning(f"Please execute raspydarts with one of this version of python : {Config.supported_python_versions}.")
 
 # Verbosity
@@ -390,6 +413,7 @@ if not Config.file_exists:
 
     config_done = False
     cancel = 0
+    display.show()
     while not config_done:
         if cancel > 2:
             logs.debug("Configuration canceled by user")
@@ -468,13 +492,13 @@ logs.debug(f"pref_category option is set to : {pref_category}")
 if game_type not in ('restart', 'quit', 'shutdown'):
     wait_finish = not File.is_dir('next_player', 'sounds')
 
-    # Load game's logo
-    display.message(['Loading logos...'], 0, None, 'middle')
-
-    for category in ('classic', 'fun', 'sport'):
+    # Load game's logo : only the progress is displayed
+    loading_steps = [(category, page) for category in ('classic', 'fun', 'sport') for page in (1, 2)]
+    for step, (category, page) in enumerate(loading_steps):
+        display.loading(int(step * 100 / len(loading_steps)))
         games = display.get_games_list(category)
-        display.game_menu(category, games, config_favorites['games'], 1, load=True)
-        display.game_menu(category, games, config_favorites['games'], 2, load=True)
+        display.game_menu(category, games, config_favorites['games'], page, load=True)
+    display.loading(100)
     del games
 
     if pref_category is None:
@@ -487,6 +511,9 @@ if game_type not in ('restart', 'quit', 'shutdown'):
 ######################
 
 versionGame = ''
+
+# The game is loaded : show its window, hidden if the intro video was playing
+display.show()
 
 try:
     while game_type not in ('restart', 'quit', 'shutdown'):
@@ -593,6 +620,25 @@ try:
                 if game_type in ('restart', 'quit', 'shutdown'):
                     rpi.light_toys(['LIGHT_VALIDATE'], False)
                     break
+                    
+                    
+                #### TROPHEES
+                elif game_type == 'trophees':
+                    try:
+                        import sys
+                        # On ajoute le dossier des trophées au chemin de recherche Python si besoin
+                        #if "/home/pi/trophees" not in sys.path:
+                        #    sys.path.append("/home/pi/trophees")
+                            
+                        import trophees
+                        
+                        # On lance la fonction principale du module
+                        trophees.main(rpi)
+                        
+                    except Exception as e:
+                        print(f"Erreur lors du lancement des trophées : {e}")            
+               #### FIN TROPHEES
+                            
                 elif game_type == 'infos':
                     display.infos_menu(Config)
                 elif game_type != 'miscellaneous':
@@ -1561,7 +1607,7 @@ try:
                                 # S18, D20... BTN_*
                                 break
 
-                        if dart_stroke == 'DEBUG':
+                        if dart_stroke == 'DEBUG': # enterring game debug mode
                             logs.debug(f"Using 'd' key for sending game debug property")
                             # mode debug game uniquement si develloper et game ready
                             if not hasattr(game, 'debug_info'):
@@ -1824,6 +1870,29 @@ try:
                             if post_dart in [0, 1, 2] and light_segment:
                                 threads += dispatcher.publish('stroke', dartStroke, limit=['TARGET', 'STRIP', 'OTHER', 'STROBE', 'LIGHT'])
 
+                        ### AJOUT TROPHEES
+                        if handler.get('trophee') is not None:
+                            logs.log("DEBUG", f"Trophée détecté dans le handler : {handler['trophee']}")
+                            
+                            # Extraction des données et vérification via ctrophies
+                            darts, hit, play_special = handler['trophee']
+                            round_darts = darts[-3:]
+                            
+                            # Traitement unitaire immédiat de la fléchette pour les stats et compteurs
+                            if hit is not None:
+                                ctrophies.process_single_dart(players[actual_player], hit)
+                                
+                            # Vérification des trophées de volée
+                            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+
+                            # Son optionnel associé au trophée
+                            if handler['sound'] is not None:
+                                logs.log("DEBUG", f"display.play_sound({handler['sound']})")
+                                played_sound = display.play_sound(handler['sound']) 
+                        ### FIN TROPHEES
+                        
+                        
+                        
                         if handler['video'] is not None:    # and not competition_mode:
                             logs.debug(f"video_player.play_video({handler['video']}")
                             if not image_player.show_image(handler['video'], handler['sound']):     

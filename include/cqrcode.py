@@ -34,7 +34,7 @@ except:
         try:
             import qrcode
         except Exception as error:
-            print("Error try to reboot or see logs\Qr.log")
+            print("Error try to reboot or see logs\\Qr.log")
             #cmd = ['sudo', 'reboot']
             #print("Rebooting...")
             #subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -120,7 +120,7 @@ class Qrcoder:
     def scale_logo(self,taille = 60):
         width_pcent = taille/ float(self.logo.size[0])
         heigth = int( float(self.logo.size[1]) * float(width_pcent) )
-        self.logo = self.logo.resize((taille, heigth), Image.ANTIALIAS)
+        self.logo = self.logo.resize((taille, heigth), Image.LANCZOS)
             
     def set_url(self,game = None):
         if game is None :

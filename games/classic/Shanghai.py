@@ -6,6 +6,8 @@ Game by LB : Shangau
 from copy import deepcopy# For backupTurn
 from include import cplayer
 from include import cgame
+from include import ctrophies
+import random
 
 #
 LOGO = 'Shanghai.png'
@@ -77,14 +79,21 @@ class Game(cgame.Game):
         sachant que lorsque l'on touche le segment allumé, le segment change à la flechette suivante
         On ne peut donc faire qu'une suite ex S1 T2 D3 mais S1 D1 T1 est impossible
         '''
-        
+        # Sécurité : vérifier qu'on a bien 3 lancements valides et non-nuls
+        if not darts or len(darts) < 3:
+            return False
+            
+        for d in darts:
+            if d is None or not isinstance(d, str) or len(d) < 2:
+                return False
+
         if self.master:
             return [darts[0][0], darts[1][0], darts[2][0]] == ['S', 'D', 'T'] \
                 and darts[0][1:] < darts[1][1:] \
                 and darts[1][1:] < darts[2][1:]
         else:
             return sorted([darts[0][0], darts[1][0], darts[2][0]]) == ['D', 'S', 'T'] \
-                and darts[0][1:] < darts[1][1] \
+                and darts[0][1:] < darts[1][1:] \
                 and darts[1][1:] < darts[2][1:]
 
     def post_dart_check(self, hit, players, actual_round, actual_player, player_launch):
@@ -120,6 +129,17 @@ class Game(cgame.Game):
         
         
         players[actual_player].add_dart(actual_round, player_launch, hit, check=check, score=score)
+
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+        
+        
+        # TROPHEES
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+
         if players[actual_player].actual_hit == 21:
             players[actual_player].actual_hit = 'B'
         self.infos += f"now {players[actual_player].actual_hit}"
@@ -173,6 +193,12 @@ class Game(cgame.Game):
                 self.infos += "No winner"
                 handler['return_code'] = 2
 
+        # --- VÉRIFICATION DES TROPHÉES DE FIN DE PARTIE ---
+        if handler.get('return_code') == 3 and self.winner is not None and self.winner != -1:
+            winning_player = players[self.winner]
+            ctrophies.check_game_end_stats(players, winning_player, "SHANGHAI")
+        # --------------------------------------------------
+
         # You may want to count darts played
         players[actual_player].darts_thrown += 1
 
@@ -194,6 +220,99 @@ class Game(cgame.Game):
 
         return handler
 
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
+        '''
+        Compute PNJ Score for Shanghai with active Shanghai attempt strategy.
+        '''
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [miss_rate, accuracy_rate, double_rate, triple_rate, slip_rate]
+        #   * miss_rate     : Taux de raté pur (miss, 'MISSDART', %)
+        #   * accuracy_rate : Précision à viser la cible actuelle (%)
+        #   * double_rate   : Probabilité ou seuil de réussite pour les doubles (%)
+        #   * triple_rate   : Probabilité ou seuil de réussite pour les triples (%)
+        #   * slip_rate     : Taux de glissement vers un voisin géographique sur la matrice (%)
+        # - Plus fort / précis : Diminuer le miss_rate et le slip_rate, augmenter l'accuracy_rate.
+        # - Plus humain / brouillon : Augmenter le miss_rate et le slip_rate.
+        # =========================================================================
+        levels = [
+            [25, 15, 12, 16, 50],  # 1 : Noob
+            [15, 25, 12, 16, 50],  # 2 : Débutant
+            [ 1, 55, 30, 40, 80],  # 3 : Intermédiaire
+            [ 0, 99, 30, 98, 99],  # 4 : Pro
+            [ 0, 99, 30, 98, 99]   # 5 : Expert
+        ]
+
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+
+        lvl_idx = max(0, min(computer_level - 1, len(levels) - 1))
+
+        # 1. Test du MISS pur
+        if random.randrange(100) < levels[lvl_idx][0]:
+            players[actual_player].columns[player_launch + 2] = ('MISS', 'str')
+            self.display.play_sound('miss')
+            players[actual_player].darts_thrown += 1
+            return 'MISS'
+
+        current_target = players[actual_player].actual_hit
+
+        # 2. Détermination du segment visé
+        if random.randrange(100) < levels[lvl_idx][1]:
+            segment = current_target
+        elif current_target != 'B' and current_target in geo_neighbors and random.randrange(100) < levels[lvl_idx][4]:
+            segment = random.choice(geo_neighbors[current_target])
+        else:
+            segment = random.randint(1, 20) if current_target != 'B' else 25
+
+        # 3. Stratégie active pour tenter le Shanghai selon le numéro de la fléchette (player_launch)
+        allowed_mults = self.m_list if self.m_list else ['S', 'D', 'T']
+        mult_rand = random.randrange(100)
+
+        # Si on vise le Bull, pas de triple/double complexe
+        if segment == 25 or current_target == 'B':
+            score_str = 'DB' if mult_rand < levels[lvl_idx][3] else 'SB'
+        else:
+            target_mult = None
+            
+            if computer_level >= 3:
+                # Sécurisation : on filtre les éléments pour éviter le NoneType is not subscriptable
+                previous_darts = players[actual_player].darts[:player_launch - 1]
+                hit_types = [d[0] for d in previous_darts if d is not None]
+                
+                # S'il manque un Triple et qu'il est autorisé
+                if 'T' not in hit_types and 'T' in allowed_mults and mult_rand < levels[lvl_idx][3]:
+                    target_mult = 'T'
+                # S'il manque un Double et qu'il est autorisé
+                elif 'D' not in hit_types and 'D' in allowed_mults and mult_rand < levels[lvl_idx][2]:
+                    target_mult = 'D'
+                # Sinon un Simple si autorisé
+                elif 'S' in allowed_mults:
+                    target_mult = 'S'
+
+            # Fallback sur la sélection classique si pas de ciblage spécifique de Shanghai
+            if not target_mult:
+                if 'T' in allowed_mults and mult_rand < levels[lvl_idx][3]:
+                    target_mult = 'T'
+                elif 'D' in allowed_mults and mult_rand < levels[lvl_idx][2]:
+                    target_mult = 'D'
+                elif 'S' in allowed_mults:
+                    target_mult = 'S'
+                else:
+                    target_mult = allowed_mults[0]
+
+            score_str = f'{target_mult}{segment}'
+
+        return score_str
+
+
+
     def pre_dart_check(self, players, actual_round, actual_player, player_launch):
         '''
         Before each throw - update screen, display score, etc...
@@ -202,6 +321,9 @@ class Game(cgame.Game):
 
         if player_launch == 1:
             players[actual_player].reset_darts()
+            
+            for dart_col in range(3, 6):
+                players[actual_player].columns[dart_col] = ('', 'str') 
             # Update Score
             if players[actual_player].actual_hit == 'B':
                 players[actual_player].columns[0] = (players[actual_player].actual_hit, 'str')
@@ -271,6 +393,8 @@ class Game(cgame.Game):
             self.winner = self.check_winner(players)
             if self.winner != -1:
                 self.infos += f"Current winner is Player {self.winner}"
+                winning_player = players[self.winner]
+                ctrophies.check_game_end_stats(players, winning_player, "SHANGHAI")
                 return 3
             return 2
         return 1
@@ -284,6 +408,17 @@ class Game(cgame.Game):
         players[actual_player].columns[player_launch+2] = ('MISS', 'str')
         self.display.play_sound('miss')
         players[actual_player].darts_thrown += 1
+        
+        hit = 'MISS'
+
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+        
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+                    
         # play penality sound
         self.display.play_sound('penality')
 

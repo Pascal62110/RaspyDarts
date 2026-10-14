@@ -1,6 +1,8 @@
 
 import sqlite3
 import os
+
+from include import cpaths
 #
 
 class Scores:
@@ -11,7 +13,7 @@ class Scores:
         self.config = config
         self.logs = logs
         self.userpath = os.path.expanduser('~')
-        self.pathdir = f'{self.userpath}/.pydarts'
+        self.pathdir = cpaths.user_dir()
         self.db = f'{self.pathdir}/scores.db'
         self.DBChecks()
         self.game_name = ''

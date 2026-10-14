@@ -62,8 +62,13 @@ class CStrip(object):
             self.InitTarget(configuration, bgcolors, bgbrightness)
 
         self.colors = CL.CColors()
-        self.userpath = os.path.expanduser('~pi')
-        self.customDir = '{}/.pydarts/addons'.format(self.userpath)
+        # Launched with sudo : customs are in the home of the user who runs the game
+        self.userpath = os.path.expanduser('~' + os.environ.get('SUDO_USER', ''))
+        # ~/.raspydarts, or ~/.pydarts on installations made before the renaming
+        self.userDir = '{}/.raspydarts'.format(self.userpath)
+        if not os.path.isdir(self.userDir) and os.path.isdir('{}/.pydarts'.format(self.userpath)):
+            self.userDir = '{}/.pydarts'.format(self.userpath)
+        self.customDir = '{}/addons'.format(self.userDir)
         self.LoadCustoms()
 
         self.background = False

@@ -56,6 +56,105 @@ class Game(cgame.Game):
       # gestion de l'affichage du segment
       self.show_hit = True
 
+
+   def pnj_score(self, players, actual_player, computer_level, player_launch):
+        """
+        Compute PNJ Score for Castle game with neighbor matrix and strategic choices.
+        - Uses a strict dartboard neighbor matrix for realistic near-misses.
+        - Balances castle building, opponent sabotage, and Bull usage based on threat levels.
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [p_exact, p_neighbor, p_miss]
+        #   * p_exact    : Probabilité de toucher exactement la cible choisie (%)
+        #   * p_neighbor : Probabilité de dévier vers un secteur voisin via la matrice (%)
+        #   * p_miss     : Probabilité de rater complètement et d'atteindre un secteur aléatoire (%)
+        # - Plus fort / précis : Augmenter p_exact, diminuer p_miss et p_neighbor.
+        # - Plus humain / brouillon : Augmenter p_miss et p_neighbor, diminuer p_exact.
+        # =========================================================================
+        player = players[actual_player]
+        my_home = player.home
+        my_score = player.score
+        
+        # Matrice des voisins sur la cible (ordre standard du jeu de fléchettes)
+        dartboard_neighbors = {
+            1: (20, 18), 2: (15, 17), 3: (17, 19), 4: (18, 13), 5: (12, 20),
+            6: (13, 10), 7: (19, 16), 8: (16, 11), 9: (14, 12), 10: (6, 15),
+            11: (8, 14), 12: (9, 5), 13: (4, 6), 14: (11, 9), 15: (10, 2),
+            16: (7, 8), 17: (2, 3), 18: (1, 4), 19: (3, 7), 20: (5, 1)
+        }
+
+        # Niveaux de précision [Chance réussite exacte, Chance voisin, Chance raté]
+        levels = [
+            [20, 40, 40],  # Niveau 1
+            [35, 45, 20],  # Niveau 2
+            [55, 35, 10],  # Niveau 3
+            [75, 20,  5],  # Niveau 4
+            [90, 10,  0]   # Niveau 5
+        ]
+        lvl_idx = max(0, min(computer_level - 1, len(levels) - 1))
+        p_exact = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        # Analyse des scores adverses pour détecter les menaces
+        threats = []
+        for i, p in enumerate(players):
+            if i != actual_player:
+                threats.append((p.score, p.home))
+        threats.sort(key=lambda x: x[0], reverse=True)
+        max_opponent_score = threats[0][0] if threats else 0
+
+        # Choix de la cible stratégique
+        target_num = my_home
+        mult_choice = 'S'
+        rand_strat = random.randrange(100)
+
+        # Si un adversaire est menaçant et niveau suffisant -> Tenter le Bull
+        if computer_level >= 3 and max_opponent_score >= (self.lives - 5) and rand_strat < 45:
+            target_num = 'SB' if computer_level < 4 else random.choice(['SB', 'DB'])
+            mult_choice = ''
+        
+        # Sinon, si un adversaire est proche de gagner -> Saboter son home
+        elif computer_level >= 2 and max_opponent_score >= (self.lives - 4) and rand_strat < 60 and threats:
+            target_num = threats[0][1]
+            mult_choice = random.choice(['D', 'T'])
+        
+        # Stratégie par défaut : Construire son propre château
+        else:
+            target_num = my_home
+            if computer_level >= 4 and my_score < self.lives - 3:
+                mult_choice = random.choice(['T', 'D'])
+            elif computer_level >= 2:
+                mult_choice = random.choice(['S', 'D'])
+            else:
+                mult_choice = 'S'
+
+        # Application de la précision du PNJ avec la matrice des voisins
+        rand_val = random.randrange(100)
+
+        # Cas spécifique si un Bull est visé
+        if target_num in ('SB', 'DB'):
+            if rand_val < p_exact:
+                return target_num
+            else:
+                # En cas de raté sur le Bull, le PNJ dévie sur un chiffre aléatoire en simple
+                return f"S{random.randint(1, 20)}"
+
+        # Cas standard pour les chiffres de 1 à 20
+        if rand_val < p_exact:
+            return f"{mult_choice}{target_num}"
+        elif rand_val < p_exact + p_neighbor:
+            # Utilisation de la matrice des voisins de la cible
+            if target_num in dartboard_neighbors:
+                neighbor_num = random.choice(dartboard_neighbors[target_num])
+                return f"{mult_choice}{neighbor_num}"
+            else:
+                return f"S{random.randint(1, 20)}"
+        else:
+            # Raté complet : la fléchette touche un autre secteur aléatoire sans risque de crash
+            return f"S{random.randint(1, 20)}"
+
+
    # Actions done before each dart throw - for example, check if the player is allowed to play
    def pre_dart_check(self, players, actual_round, actual_player, player_launch):
         return_code = 0

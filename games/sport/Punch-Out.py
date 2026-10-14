@@ -1,10 +1,3 @@
-################  RESTE A FAIRE
-
-#### afficher une nouvelle image pour le vainqueur
-
-################
-
-
 # -*- coding: utf-8 -*-
 # Game by David ! - modification par Ladite
 ######
@@ -12,7 +5,11 @@ from include import cplayer
 from include import cgame
 import random
 import time
-#
+#### TROPHEES
+from include import ctrophies
+
+
+
 VERSION = '1.00'
 DEBUG = {'debug-extra_info': False}
 # Dictionnay of options - Text format only
@@ -66,6 +63,7 @@ class Game(cgame.Game):
       self.max_round = int(self.options['max_round'])
       # GameRecords is the dictionnary of stats (see above)
       self.game_records = GAME_RECORDS
+      self.game_ended = False  # Verrou pour empêcher le double comptage des stats/victoires
       
       # DEBUG dictionnary special for developer
       self.debuglevel = int(config.get_value('SectionGlobals', 'debuglevel', 0))
@@ -88,7 +86,146 @@ class Game(cgame.Game):
       self.index_joueur_actif = 0    
 
 
-      
+   def pnj_score(self, players, actual_player, computer_level, player_launch):
+        """
+        Intelligence Artificielle (PNJ) pour le jeu Fighters :
+        - Hiérarchise les choix stratégiques (K.O., Soin, Bull, Attaque des segments).
+        - Gère les 5 niveaux de difficulté avec taux de raté, déviation géographique et multiplicateurs.
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende du format par niveau [miss_chance, simple_chance, double_chance] :
+        #   * miss_chance   : Probabilité de rater la cible visée et de dévier vers un voisin (%)
+        #   * simple_chance : Probabilité d'obtenir un Simple (S) si la cible est touchée (%)
+        #   * double_chance : Probabilité d'obtenir un Double (D) (%)
+        #   * Triple résiduel : Le reste est attribué au Triple (T)
+        # - Statistiques additionnelles par niveau :
+        #   * ko_chance     : Probabilité de tenter un K.O. ciblé [25%, 40%, 55%, 75%, 90%]
+        #   * bull_chance   : Probabilité de viser le Bull [1%, 3%, 10%, 15%, 20%]
+        # =========================================================================
+
+        current_player = players[actual_player]
+
+        # Matrice géographique des voisins sur une cible de fléchettes standard
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+        # Niveaux de difficulté : [miss_chance, simple_chance, double_chance]
+        # Le reste (100 - simple - double) va aux triples de manière contrôlée
+        levels = [
+            [50, 75,  5],  # 1 : Noob (50% de raté)
+            [40, 72,  8],  # 2 : Débutant (40% de raté)
+            [30, 75, 15],  # 3 : Intermédiaire (30% de raté - plus d'erreurs)
+            [10, 65, 22],  # 4 : Pro (10% de raté)
+            [ 0, 55, 25]   # 5 : Expert (0% de raté)
+        ]
+        
+        try:
+            comp_lvl = int(computer_level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        miss_chance = levels[lvl_idx][0]
+        p_simple = levels[lvl_idx][1]
+        p_double = levels[lvl_idx][2]
+
+        # Probabilités de KO selon les 5 niveaux
+        ko_probabilities = [25, 40, 55, 75, 90]
+        ko_chance = ko_probabilities[lvl_idx]
+
+        # Probabilités de tenter le Bull selon les 5 niveaux
+        bull_probabilities = [1, 3, 10, 15, 20]
+        bull_chance = bull_probabilities[lvl_idx]
+
+        max_lives_ref = 300 if self.points else int(self.options['number_of_lives'])
+        is_in_danger = current_player.lives < (max_lives_ref * 0.5)
+
+        medic_target = current_player.targets[0] if current_player.targets else 20
+        alive_opponents = [p for p in players if p.ident != actual_player and p.alive]
+
+        target_chosen = None
+        is_bull = False
+
+        # ----------------------------------------------------
+        # PRIORITÉ 1 : Tuer un adversaire (KO) pour récupérer les 30 points de vie (Si self.points est True)
+        # ----------------------------------------------------
+        ko_target = None
+        if self.points:
+            for opp in alive_opponents:
+                if opp.lives <= 3: 
+                    for t in opp.targets:
+                        ko_target = t
+                        break
+                if ko_target:
+                    break
+
+            if ko_target and random.randrange(100) < ko_chance:
+                target_chosen = ko_target
+
+        # ----------------------------------------------------
+        # PRIORITÉ 2 : Soin (Conditionnel selon l'option points)
+        # ----------------------------------------------------
+        if not target_chosen and is_in_danger and medic_target:
+            if self.points:
+                if medic_target >= 10:  # 12 avant
+                    target_chosen = medic_target
+            else:
+                target_chosen = medic_target
+
+        # ----------------------------------------------------
+        # PRIORITÉ 3 : Le Bull
+        # ----------------------------------------------------
+        elif not target_chosen and len(alive_opponents) >= 2 and random.randrange(100) < bull_chance:
+            is_bull = True
+            db_chance = 0 if comp_lvl < 4 else (20 if comp_lvl == 4 else 40)
+            return 'DB' if random.randrange(100) < db_chance else 'SB'
+
+        # ----------------------------------------------------
+        # PRIORITÉ 4 : Attaque optimisée sur les segments normaux
+        # ----------------------------------------------------
+        elif not target_chosen:
+            target_scores = {}
+            for opp in alive_opponents:
+                for t in opp.targets:
+                    if t not in target_scores:
+                        target_scores[t] = 0
+                    target_scores[t] += t * (10 + opp.score)
+
+            if target_scores:
+                target_chosen = max(target_scores, key=target_scores.get)
+            elif medic_target:
+                target_chosen = medic_target
+            else:
+                target_chosen = 20
+
+        # Si on ne vise pas le Bull, on traite le segment normal choisi
+        if not is_bull:
+            # Gestion du raté (Miss) ou de la dispersion avec la matrice voisine
+            if random.randrange(100) < miss_chance:
+                current_player.darts_thrown += 1
+                if target_chosen in geo_neighbors:
+                    target_chosen = random.choice(geo_neighbors[target_chosen])
+                else:
+                    target_chosen = random.randint(1, 20)
+                return f'S{target_chosen}'
+
+            # Choix du multiplicateur (Simple, Double, Triple)
+            rand_val = random.randrange(100)
+            if rand_val < p_simple:
+                multi = 'S'
+            elif rand_val < p_simple + p_double:
+                multi = 'D'
+            else:
+                multi = 'T'
+
+            return f'{multi}{target_chosen}'
+   
    def pre_dart_check(self, players, actual_round, actual_player, player_launch):
         """
         Actions done before each dart throw - for example, check if the player is allowed to play
@@ -218,12 +355,27 @@ class Game(cgame.Game):
             
         return_code = 0 #même joueur
 
+
+        
+        
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+
+
+
         # Record total dart thrown, total hits (S=1, D=2, T=3) and refresh players stats
         players[actual_player].darts_thrown += self.score_map[hit] ###1
 
         # stock the segment hitted
         players[actual_player].columns[player_launch - 1] = (hit[1:], 'int')
         players[actual_player].segments[player_launch - 1] = hit
+
+        #TROPHEES
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+        
 
         multi = self.get_hit_unit(hit)
 
@@ -389,10 +541,19 @@ class Game(cgame.Game):
 ### CONDITIONS si au moins un joueur est touche            
         if playerHitted :
             self.animation(multi, liste, len(players))
+        
+
+        
             
         winner = self.check_winner(players, actual_round, player_launch, actual_player)
         if winner > -1:
             self.winner = winner
+            ### TROPHEES DE VICTOIRE ---
+            if not self.game_ended:
+                self.game_ended = True
+                winning_player = players[self.winner] if isinstance(self.winner, int) and 0 <= self.winner < len(players) else players[0]
+                ctrophies.check_game_end_stats(players, winning_player, "PUNCH-OUT")
+
             return 3
         
         # Time for shot or video ?
@@ -410,11 +571,20 @@ class Game(cgame.Game):
             
         check_winner = self.check_winner(players, actual_round, 3, actual_player)
         if check_winner >= 0:
+            if not self.game_ended:
+                self.game_ended = True
+                winning_player = players[check_winner] if isinstance(check_winner, int) and 0 <= check_winner < len(players) else players[0]
+                ctrophies.check_game_end_stats(players, winning_player, "PUNCH-OUT")
             return check_winner
         if actual_round < self.max_round:
             return -2
         else:
-            return -1
+            best_id = self.check_winner(players, actual_round, 3, actual_player)
+            if best_id >= 0 and not self.game_ended:
+                self.game_ended = True
+                winning_player = players[best_id] if isinstance(best_id, int) and 0 <= best_id < len(players) else players[0]
+                ctrophies.check_game_end_stats(players, winning_player, "PUNCH-OUT")
+            return best_id
 
    def check_winner(self, players, actual_round, player_launch, actual_player):
         # test for a winner
@@ -505,6 +675,10 @@ class Game(cgame.Game):
        win = self.check_winner(players, actual_round, self.nb_darts, actual_player)
        if win != -1:
            self.winner = win
+           if not self.game_ended:
+               self.game_ended = True
+               winning_player = players[self.winner] if isinstance(self.winner, int) and 0 <= self.winner < len(players) else players[0]
+               ctrophies.check_game_end_stats(players, winning_player, "PUNCH-OUT")
            return_code = 3
        else :
            last_player = False
@@ -774,6 +948,3 @@ class Game(cgame.Game):
            info1 = info
        print(info1)
        print(info2)
-       
-       
-        

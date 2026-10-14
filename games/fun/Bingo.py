@@ -6,6 +6,8 @@ from include import cgame
 import random
 import subprocess
 import pygame
+#### TROPHEES
+from include import ctrophies
 
 # Dictionnay of options - Text format only
 OPTIONS = {'win_points':'2', 'master':'0', 'block':False}
@@ -102,6 +104,155 @@ class Game(cgame.Game):
       self.leds = []
       self.leds_blink = []
       
+   def pnj_score(self, players, actual_player, computer_level, player_launch):
+        """
+        Compute PNJ Score for Bingo game with human-like strategy:
+        - 1. Defense: If an opponent has 4 tokens in a line, try to shuffle using Bulls (SB/DB).
+        - 2. Sabotage: Scan opponent lines. If an opponent is building a line (2+ tokens), target their boxes to break them.
+        - 3. Construction: If PNJ has 2+ tokens in a line, target missing boxes to complete its own line.
+        - 4. Precision levels (1 to 5) determine the accuracy of the throw.
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des niveaux : [p_exact, p_neighbor, p_miss]
+        #   * p_exact    : Probabilité de toucher exactement la cible choisie (%)
+        #   * p_neighbor : Probabilité de glisser vers un secteur voisin sur le cadran (%)
+        #   * p_miss     : Probabilité de rater complètement et de faire un tir aléatoire (%)
+        # - Plus fort / précis : Augmenter p_exact, diminuer p_miss et p_neighbor.
+        # - Plus humain / brouillon : Augmenter p_miss et p_neighbor, diminuer p_exact.
+        # =========================================================================
+        player = players[actual_player]
+        
+        # Définition des 12 lignes gagnantes (5 horizontales, 5 verticales, 2 diagonales)
+        lines = [
+            [0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19], [20, 21, 22, 23, 24], # Horizontales
+            [0, 5, 10, 15, 20], [1, 6, 11, 16, 21], [2, 7, 12, 17, 22], [3, 8, 13, 18, 23], [4, 9, 14, 19, 24], # Verticales
+            [0, 6, 12, 18, 24], [4, 8, 12, 16, 20] # Diagonales
+        ]
+
+        # Niveaux de précision [Chance réussite exacte, Chance voisin, Chance raté]
+        levels = [
+            [20, 40, 40],  # Niveau 1
+            [35, 45, 20],  # Niveau 2
+            [55, 35, 10],  # Niveau 3
+            [75, 20,  5],  # Niveau 4
+            [90, 10,  0]   # Niveau 5
+        ]
+        lvl_idx = max(0, min(computer_level - 1, len(levels) - 1))
+        p_exact = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        # 1. STRATÉGIE DÉFENSIVE : Si un adversaire a 4 pions alignés, tenter le Bull pour tout mélanger
+        danger_detected = False
+        if computer_level >= 2:
+            for line in lines:
+                owner_counts = {}
+                for idx in line:
+                    owner = self.grid[idx][1]
+                    state = self.grid[idx][2]
+                    if owner != -1 and state == 2:
+                        owner_counts[owner] = owner_counts.get(owner, 0) + 1
+                for owner, count in owner_counts.items():
+                    if count >= 4 and owner != actual_player:
+                        danger_detected = True
+                        break
+                if danger_detected:
+                    break
+
+        if danger_detected and computer_level >= 3:
+            return random.choice(['SB', 'DB'])
+
+        target_candidates = [] # Liste des cibles potentielles (segment, multiplicateur, priorité)
+
+        # 2. STRATÉGIE OFFENSIVE / SABOTAGE : Viser les pions et lignes des adversaires
+        if computer_level >= 2:
+            for line in lines:
+                adv_tokens = {}
+                line_details = []
+                for idx in line:
+                    owner = self.grid[idx][1]
+                    state = self.grid[idx][2]
+                    segment_val = self.grid[idx][0]
+                    line_details.append((idx, segment_val, owner, state))
+                    if owner != -1 and owner != actual_player and state == 2:
+                        adv_tokens[owner] = adv_tokens.get(owner, 0) + 1
+
+                # Si un adversaire a 2 pions ou plus sur une ligne, on cible ses cases pour l'embêter
+                for adv, count in adv_tokens.items():
+                    if count >= 2:
+                        for box in line_details:
+                            idx, seg_val, owner, state = box
+                            if owner == adv and seg_val <= 20:
+                                # Viser un Triple (si complet) ou Double (si demi-jeton) pour casser le pion adverse
+                                mult = 'T' if state == 2 else 'D'
+                                target_candidates.append((seg_val, mult, count * 15))
+
+        # 3. STRATÉGIE CONSTRUCTIVE : Analyser si le PNJ a des lignes en cours (2+ pions)
+        for line in lines:
+            pnj_tokens = 0
+            empty_or_other_boxes = []
+            for idx in line:
+                owner = self.grid[idx][1]
+                state = self.grid[idx][2]
+                segment_val = self.grid[idx][0]
+                
+                if owner == actual_player and state == 2:
+                    pnj_tokens += 1
+                else:
+                    empty_or_other_boxes.append((idx, segment_val, owner, state))
+            
+            if pnj_tokens >= 2:
+                for box in empty_or_other_boxes:
+                    idx, seg_val, owner, state = box
+                    if seg_val <= 20:
+                        if owner == -1:
+                            mult = 'S'
+                        elif owner != actual_player:
+                            mult = 'T'
+                        else:
+                            mult = 'D'
+                        target_candidates.append((seg_val, mult, pnj_tokens * 20)) # Priorité haute pour finir sa ligne
+
+        # 4. Fallback : cibles tactiques générales si aucune ligne n'est prioritaire
+        if not target_candidates:
+            for v in self.grid:
+                seg_val = v[0]
+                owner = v[1]
+                state = v[2]
+                if seg_val <= 20:
+                    if owner == -1:
+                        target_candidates.append((seg_val, 'S', 1))
+                    elif owner == actual_player and state < 2:
+                        target_candidates.append((seg_val, 'D', 2))
+                    elif owner != -1 and owner != actual_player:
+                        target_candidates.append((seg_val, 'T', 3)) # Tenter d'attaquer un pion adverse isolé
+
+        # Sélection de la meilleure cible selon la priorité
+        if not target_candidates:
+            target_num = random.randint(1, 20)
+            mult_choice = 'S'
+        else:
+            target_candidates.sort(key=lambda x: x[2], reverse=True)
+            chosen = target_candidates[0]
+            target_num = chosen[0]
+            mult_choice = chosen[1]
+
+        # 5. Application de la précision du PNJ
+        dartboard_order = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
+        rand_val = random.randrange(100)
+
+        if rand_val < p_exact:
+            return f"{mult_choice}{target_num}"
+        elif rand_val < p_exact + p_neighbor:
+            if target_num in dartboard_order:
+                idx = dartboard_order.index(target_num)
+                neighbor_num = dartboard_order[(idx + random.choice([-1, 1])) % len(dartboard_order)]
+            else:
+                neighbor_num = random.randint(1, 20)
+            return f"{mult_choice}{neighbor_num}"
+        else:
+            return f"S{random.randint(1, 20)}"
+
       
    # Actions done before each dart throw - for example, check if the player is allowed to play
    def pre_dart_check(self, players, actual_round, actual_player, player_launch):
@@ -183,6 +334,10 @@ class Game(cgame.Game):
         # Record total dart thrown, total hits (S=1, D=2, T=3) and refresh players stats
         players[actual_player].darts_thrown += 1
         players[actual_player].segments[player_launch-1] = hit
+        
+        
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
 
         # test multiplicateur
         multi = 1
@@ -303,10 +458,22 @@ class Game(cgame.Game):
         else:
             print('')  
             #self.display.sound_for_touch(hit) # Touched !
+            
+            
+        # TROPHEES
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+        
 
         # test for a winner
         if players[actual_player].score >= self.winpoints:
             self.winner =  players[actual_player].ident
+            winning_player = players[actual_player].name
+            
+            ### trophee
+            ctrophies.check_game_end_stats(players, winning_player, "BINGO")
             #return_code = 3
             handler['return_code'] = 3
 
@@ -354,6 +521,17 @@ class Game(cgame.Game):
       handler['sound'] = 'miss'
           
       players[actual_player].darts_thrown += 1
+              
+      hit = 'MISS'
+      print('CONTENU DE HIT  DEF MISS')
+      print(hit)
+      ### TROPHEES
+      ctrophies.process_single_dart(players[actual_player], hit)
+        
+      # On vérifie les trophées de volée uniquement à la 3ème fléchette
+      if player_launch == 3:
+          round_darts = players[actual_player].darts[-3:]
+          ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
       
       return handler
    

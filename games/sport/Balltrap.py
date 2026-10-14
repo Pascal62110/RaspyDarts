@@ -3,18 +3,13 @@
 Game by LaDite
 """
 
-# -*- coding: utf-8 -*-
-"""
-Game by LaDite
-"""
-
 import random
 import threading  # <-- ajout pour thread
 from include import cplayer
 from include import cgame
 
 #
-VERSION = '1.00'
+VERSION = '1.01'
 LOGO = 'Balltrap.png' # Background image - relative to images folder
 HEADERS = ['PL1', 'PL2', '-', '-', '-', 'BULL', '-'] # Columns headers - Must be a string
 #OPTIONS = {'Time':'500', 'Repetition': 10} # Dictionnay of options
@@ -111,11 +106,12 @@ class Game(cgame.Game):
             players[actual_player].increment_hits(hit)
 
             if actual_round in (3, 6, 9, 12):
-                if self.left == 2 and \
-                        hit == self.targets_list[0] and hit == self.targets_list[1] \
-                        or hit == self.targets_list[1] and hit == self.targets_list[3] \
-                        or hit == self.targets_list[4] and hit == self.targets_list[5] \
-                        or hit == self.targets_list[6] and hit == self.targets_list[7]:
+                if self.left == 2 and len(self.targets_list) >= 8 and (
+                        (hit == self.targets_list[0] and hit == self.targets_list[1]) or 
+                        (hit == self.targets_list[1] and hit == self.targets_list[3]) or 
+                        (hit == self.targets_list[4] and hit == self.targets_list[5]) or 
+                        (hit == self.targets_list[6] and hit == self.targets_list[7])
+                ):
                     players[actual_player].score += (3 - player_launch) * 4
                     self.bull = True
                     self.left = 0
@@ -125,12 +121,12 @@ class Game(cgame.Game):
                     self.left -= 1
                     if self.left == 1:
                         # On enleve le bon plateau
-                        if hit == self.targets_list[0]:
-                            self.targets_list.pop(0)
+                        if hit in self.targets_list[:4]:
+                            self.targets_list = self.targets_list[4:]
                             self.drop = 'master'
                         else:
                             self.drop = 'opposite'
-                            self.targets_list.pop(1)
+                            self.targets_list = self.targets_list[:4]
 
                     elif self.left == 0:
                         self.bull = True
@@ -196,6 +192,54 @@ class Game(cgame.Game):
         handler['take_shot'] = self.time_to_take_shot_or_video(hit)
         return handler
 
+
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
+        """
+        Intelligence Artificielle (PNJ) pour le jeu Balltrap :
+        - S'appuie strictement sur les cibles actives disponibles (targets_list).
+        - Gère la phase finale sur le Bull (SB / DB) selon le niveau de difficulté.
+        - Applique un taux d'erreur mesuré (retourne 'MISSDART').
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende des taux d'erreur (miss rate) par niveau [40%, 25%, 10%, 2%, 0%] :
+        #   * Niveau 1 (Noob)         : 40% de rater (MISSDART)
+        #   * Niveau 2 (Débutant)     : 25% de rater
+        #   * Niveau 3 (Intermédiaire): 10% de rater
+        #   * Niveau 4 (Pro)          : 2% de rater
+        #   * Niveau 5 (Expert)       : 0% de rater
+        # - Ajustement : Pour renforcer l'IA, réduis les valeurs dans levels_miss.
+        # =========================================================================
+
+        try:
+            comp_lvl = int(computer_level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        # Si le PNJ est en phase Bull
+        if self.bull:
+            if random.randrange(100) < (comp_lvl * 15):
+                return 'DB'
+            return 'SB'
+
+        # Si aucune cible n'est disponible
+        if not self.targets_list:
+            return f"S{random.randint(1, 20)}"
+
+        # L'IA choisit directement parmi les cibles valides actuelles (targets_list)
+        chosen_target_str = random.choice(self.targets_list)
+        
+        # Application du taux d'erreur selon le niveau
+        levels_miss = [40, 25, 10, 2, 0]
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels_miss) - 1))
+        
+        if random.randrange(100) < levels_miss[lvl_idx]:
+            players[actual_player].darts_thrown += 1
+            return 'MISSDART'
+
+        return chosen_target_str
+
+
     def post_round_check(self, players, actual_round, actual_player):
 
         if actual_round >= self.max_round and actual_player == self.nb_players - 1:
@@ -246,9 +290,6 @@ class Game(cgame.Game):
             if players[actual_player].next >= len(self.target_order):
                 players[actual_player].next = 0
             self.iteration += 1
-            #if self.iteration > self.repetition:
-            #    self.first = 1
-            #    return 0
 
         if player_launch == 1:
             self.tirsrestant = 3
@@ -269,18 +310,16 @@ class Game(cgame.Game):
 
                 players[actual_player].columns[0] = (f'{next_target}', 'str')
                 players[actual_player].columns[1] = (f'{opposite}', 'str')
-            elif self.drop == 'opposite':
+            elif getattr(self, 'drop', '') == 'opposite':
                 self.targets_list = [f'{mult}{next_target}' for mult in ['S', 's', 'D', 'T']]
-
                 players[actual_player].columns[0] = (f'{next_target}', 'str')
                 players[actual_player].columns[1] = ('', 'str')
             else:
                 self.targets_list = [f'{mult}{opposite}' for mult in ['S', 's', 'D', 'T']]
-
                 players[actual_player].columns[0] = ('', 'str')
                 players[actual_player].columns[1] = (f'{opposite}', 'str')
         else:
-            # Classic round, asled target not touched yet
+            # Classic round, asked target not touched yet
             players[actual_player].columns[1] = ('', 'str')
             players[actual_player].columns[0] = (f'{players[actual_player].goals[players[actual_player].next]}', 'str')
             players[actual_player].actual_hit = players[actual_player].goals[players[actual_player].next]
@@ -297,13 +336,6 @@ class Game(cgame.Game):
         if self.first:
             self.first = False
 
-        return return_code
-           
-        print('predarts- target_list')
-        print(self.targets_list)
-        
-
-        
         return return_code
 
     def check_winner(self, players):

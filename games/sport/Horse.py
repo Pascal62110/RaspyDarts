@@ -285,9 +285,6 @@ class Game(cgame.Game):
         handler['return_code'] = return_code
         return handler
         
-        # Return code to main
-        #return return_code
-        
     def refresh_game_screen(self, Players, actual_round, max_round, RemDarts, nb_darts, logo, headers, actual_player,TxtOnLogo=False, Wait=False, OnScreenButtons=None, showScores=True, end_of_game=False, endOfSet=None, Set=None, MaxSet=None):
        
         ClickZones={}
@@ -302,13 +299,6 @@ class Game(cgame.Game):
         else :
             self.display.display_background('horse/background_master')  
 
-        '''  
-        a = 0
-        ### placement chiffres a jouer dans les cases blanches
-        x = self.display.res['x'] * 225 / 1920    
-        #for i in range (0,10) :
-        #    self.display.blit_text(str(self.grid[i][0]), (self.grid[i][1] + x) * self.ratioX, 280* self.ratioY , self.scale, self.scale, color=(0,0,0), dafont='Impact', align='center', valign='center', margin=False)
-        '''
         self.display.blit_text(str(self.grid[0][0]), int((self.display.res['x']*(160) /1920)), int((self.display.res['y']* self.chiffreY /1920)) , self.scale, self.scale, color=(0,0,0), dafont='Impact', align='center', valign='center', margin=False)
         self.display.blit_text(str(self.grid[1][0]), int((self.display.res['x']*(318) /1920)), int((self.display.res['y']* self.chiffreY /1920)) , self.scale, self.scale, color=(0,0,0), dafont='Impact', align='center', valign='center', margin=False)
         self.display.blit_text(str(self.grid[2][0]), int((self.display.res['x']*(482) /1920)), int((self.display.res['y']* self.chiffreY /1920)) , self.scale, self.scale, color=(0,0,0), dafont='Impact', align='center', valign='center', margin=False)
@@ -336,7 +326,6 @@ class Game(cgame.Game):
         ### positionne le chiffre a jouer selon la couleur du joueur        
         if self.positions[Players[actual_player].name] <= 9 :
             if self.positions[Players[actual_player].name] == self.grid[self.positions[Players[actual_player].name]][2] :
-                #self.display.blit_text(str(self.grid[self.positions[Players[actual_player].name]][0]), (self.grid[self.positions[Players[actual_player].name]][1] + x) * self.ratioX, 280* self.ratioY , self.scale, self.scale, color=couleur, dafont='Impact', align='center', valign='center', margin=False)
                 self.display.blit_text(str(self.grid[self.positions[Players[actual_player].name]][0]), int((self.display.res['x']*(self.coords[self.positions[Players[actual_player].name]+1][0]) /1920)), int((self.display.res['y']* self.chiffreY /1920)) , self.scale, self.scale, color=(couleur), dafont='Impact', align='center', valign='center', margin=False)
       
         ### deplacement joueurs
@@ -360,8 +349,6 @@ class Game(cgame.Game):
                      self.display.display_image(self.display.file_class.get_full_filename('horse/horse_j3', 'images'), 1 * self.ratioX , 805 * self.ratioY, self.scale, self.scale, True)
                  else :
                      self.display.display_image(self.display.file_class.get_full_filename('horse/horse_j4', 'images'), 1 * self.ratioX , 950 * self.ratioY, self.scale, self.scale, True)
-            ##a += 2
-            
 
         # Show players names
         self.display_player_name(self.display,30, 0, actual_player, Players[0])
@@ -391,41 +378,27 @@ class Game(cgame.Game):
 
     def refresh_stats(self, players, actual_round):
         """
-        Method to frefresh player.stat - Adapt to the stats you want.
+        Method to refresh player.stat - Adapt to the stats you want.
         They represent mathematical formulas used to calculate stats. Refreshed after every launch
         """
         for player in players:
             player.stats['Score Per Round'] = player.score_per_round(actual_round)
             
-   # Display name of the player if given, Player X otherwise
     def display_player_name(self, display, pos_x, pos_y, actual_player, player):
         playername = player.name
         if playername is None:
             playername = f'horse {player.ident}'
             
-        #playername += ' (' + str(self.positions[player.name]) +')'
-
-        #if player.color == 'green':
-        #    txtcolor = (0, 255, 0)  # green
-        #elif player.color == 'blue':
-        #    txtcolor = (0, 0, 255)  # blue
-        #elif player.color == 'red':
-        #    txtcolor = (255, 0, 0) # red
-        #else:
-        #    txtcolor = (255, 255, 0) # gold
         txtcolor = player.color
         
-        #  Player name size depends of player name number of char (dynamic size)
         scaled = self.display.scale_text(playername, self.display.pn_size - 2 * self.display.margin, self.display.line_height)
         font = self.display.get_font(scaled[0])
 
-        # display rect
         background_color = (150,150,150,100)
         if player.ident == actual_player :
             background_color = (245, 245, 245)
         self.display.blit_rect(pos_x, pos_y, self.display.pn_size - self.display.margin, self.display.line_height - self.display.margin, background_color)
 
-        # Render the text. "True" means anti-aliased text.
         playername_x = pos_x + self.display.margin * 2 + scaled[1]
         playername_y = pos_y + scaled[2]
         text = font.render(playername, True, txtcolor)
@@ -447,17 +420,12 @@ class Game(cgame.Game):
         """
         return_code = 1
 
-        
-        # Victory for current player
         if self.positions[players[actual_player].name] == 11 :
             self.video_player.play_video(self.display.file_class.get_full_filename('horse/victoire', 'videos'))
             self.winner = players[actual_player].ident
             return_code = 3
         
         if actual_round == int(self.max_round) and actual_player == self.nb_players - 1:
-            self.logs.debug("At last round, default action is to return game over.")
-            self.logs.debug("If it's not what you expect, raise a bug please.")
-            # If its a early_player_button just at the last round - return GameOver
             return_code = 2
         return return_code
         
@@ -469,4 +437,97 @@ class Game(cgame.Game):
         self.display.play_sound('miss')
         players[actual_player].darts_thrown += 1    
         pass
-         
+
+    def pnj_score(self, players, actual_player, computer_level, player_launch):
+        """
+        Intelligence Artificielle (PNJ) pour le jeu Horse :
+        - Vise la cible de la position actuelle sur la piste (Single, Double, Triple ou Bull pour l'arrivée).
+        - Gère les probabilités de réussite exacte, de déviation sur les voisins physiques et de raté complet.
+        """
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende du format par niveau [p_exact, p_neighbor, p_miss] :
+        #   * p_exact    : Probabilité de toucher la cible exacte (%)
+        #   * p_neighbor : Probabilité de toucher un segment voisin géométrique (%)
+        #   * p_miss     : Probabilité de rater complètement (chiffre aléatoire) (%)
+        # - Cas particulier : Position 10 (Arrivée / Bull) avec gestion spécifique du Double Bull (DB) et Single Bull (SB).
+        # - Ajustement : Pour renforcer l'IA, augmente p_exact et réduis p_miss.
+        # =========================================================================
+
+        current_player = players[actual_player]
+        pos = getattr(self, 'positions', {}).get(current_player.name, 0)
+
+        if pos >= 11:
+            return 'S1'
+
+        # Niveaux de difficulté : [Chance cible exacte, Chance voisin, Chance raté/miss]
+        levels = [
+            [20, 50, 30],  # Niveau 1 : Noob (20% exact, 50% voisin, 30% miss)
+            [35, 45, 20],  # Niveau 2 : Débutant (35% exact, 45% voisin, 20% miss)
+            [45, 35, 10],  # Niveau 3 : Intermédiaire (45% exact, 35% voisin, 10% miss)
+            [75, 20,  5],  # Niveau 4 : Pro (75% exact, 20% voisin, 5% miss)
+            [90, 10,  0]   # Niveau 5 : Expert (90% exact, 10% voisin, 0% miss)
+        ]
+
+        try:
+            comp_lvl = int(computer_level)
+        except (ValueError, TypeError):
+            comp_lvl = 3
+
+        lvl_idx = max(0, min(comp_lvl - 1, len(levels) - 1))
+        p_exact = levels[lvl_idx][0]
+        p_neighbor = levels[lvl_idx][1]
+
+        dartboard_order = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
+
+        # Cas particulier : Position 10 (Ligne d'arrivée / Bull)
+        if pos == 10:
+            rand_val = random.randrange(100)
+            if rand_val < p_exact:
+                return 'DB' if comp_lvl >= 3 and random.randrange(100) < 50 else 'SB'
+            elif rand_val < p_exact + p_neighbor:
+                return 'SB'
+            else:
+                return f"S{random.choice([1, 20])}"
+
+        # Position normale (0 à 9)
+        grid_data = getattr(self, 'grid', {})
+        target_str = str(grid_data[pos][0]) if pos in grid_data and grid_data[pos] else '20'
+        
+        if target_str.startswith('S') or target_str.startswith('D') or target_str.startswith('T'):
+            multi = target_str[0]
+            try:
+                num = int(target_str[1:])
+            except ValueError:
+                num = 20
+        else:
+            try:
+                num = int(target_str)
+                multi = 'S'
+            except ValueError:
+                num = 20
+                multi = 'S'
+
+        rand_val = random.randrange(100)
+
+        # 1. Touche la cible exacte
+        if rand_val < p_exact:
+            return f"{multi}{num}"
+
+        # 2. Touche un voisin (raté partiel)
+        elif rand_val < p_exact + p_neighbor:
+            if num in dartboard_order:
+                idx = dartboard_order.index(num)
+                left_neighbor = dartboard_order[(idx - 1) % len(dartboard_order)]
+                right_neighbor = dartboard_order[(idx + 1) % len(dartboard_order)]
+                neighbor_num = random.choice([left_neighbor, right_neighbor])
+            else:
+                neighbor_num = random.randint(1, 20)
+            
+            neighbor_multi = multi if random.randrange(100) < 30 else 'S'
+            return f"{neighbor_multi}{neighbor_num}"
+
+        # 3. Raté complet (Miss / Chiffre aléatoire)
+        else:
+            miss_num = random.randint(1, 20)
+            return f"S{miss_num}"

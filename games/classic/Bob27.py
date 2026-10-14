@@ -14,7 +14,7 @@ HEADERS = ['HIT', '-', '-', '-', '-', '-', '-'] # Columns headers - Must be a st
 OPTIONS = {'theme': 'default', 'max_round': 21, 'Bull': True, 'Numbers': True} # Dictionnay of options
 NB_DARTS = 3
 GAME_RECORDS = {'Score': 'DESC', 'Reached Score': 'DESC', 'Hits': 'DESC'}
-VERSION = '1.00'
+VERSION = '1.03'
 
 def check_players_allowed(nb_players):
     """
@@ -61,6 +61,7 @@ class Game(cgame.Game):
         self.nb_touche = 0
         ### compteur nb touche (touche)
         self.nb_touche_ok = 0
+        self.current_round_hits = ['', '', '']
 
     def post_dart_check(self, hit, players, actual_round, actual_player, player_launch):
         '''
@@ -74,8 +75,13 @@ class Game(cgame.Game):
         final_check = True
         check = True
 
+        self.current_round_hits[player_launch - 1] = hit
+
+        # Détermination de la cible attendue (Double du chiffre ou DB pour le Bull)
+        target_hit = 'DB' if str(goal) == '50' else f'D{goal}'
+
         self.nb_touche += 1
-        if hit == f'D{goal}':
+        if hit == target_hit:
             self.infos += f"Player {actual_player}, your score was {players[actual_player].score}{self.lf}"
             players[actual_player].increment_hits(hit)
             players[actual_player].score += score
@@ -87,7 +93,11 @@ class Game(cgame.Game):
             if self.nb_touche == 3:
                 if self.nb_touche_ok == 0:
                     self.infos += f'le bon chiffre n a pas ete touche{self.lf}'
-                    score = -2 * int(goal)
+                    # Pénalité : valeur du double raté
+                    if str(goal) == '50':
+                        score = -50
+                    else:
+                        score = -2 * int(goal)
                     final_check = False
 
                     # Delete from goals
@@ -172,59 +182,66 @@ class Game(cgame.Game):
             players[actual_player].reset_darts()
             self.nb_touche = 0
             self.nb_touche_ok = 0
+            self.current_round_hits = ['', '', '']
 
-        # Update Score
-        players[actual_player].columns[0] = (f'{players[actual_player].goals[actual_round - 1]}', 'str')
-        players[actual_player].actual_hit = players[actual_player].goals[0]
+        # Update Score & Actual Hit for AI and screen
+        current_goal = players[actual_player].goals[actual_round - 1]
+        players[actual_player].columns[0] = (f'{current_goal}', 'str')
+        players[actual_player].actual_hit = current_goal
 
-        # Return D1#green
-        self.rpi.set_target_leds(f'D{players[actual_player].goals[actual_round - 1]}#{self.colors[0]}')
+        # Return LED target (DB for bull, D{goal} for others)
+        led_target = 'DB' if str(current_goal) == '50' else f'D{current_goal}'
+        self.rpi.set_target_leds(f'{led_target}#{self.colors[0]}')
 
         # For further code cleaning
         return None
 
     def pnj_score(self, players, actual_player, computer_level, player_launch):
         '''
-        Compute PNJ Score according to compuer level
-
-                       |           Rates           |
-           Level       | Pneu  | Touch | Dbl | Tpl | Ngh |
-          -------------+-------+-------+-----+-----+-----+
-           2 : Noob    |   15  |  25%  | 12% | 16% | 50% |
-           3 : Inter   |    1  |  55%  | 30% | 40% | 80% |
-           4 : Pro     |    0  |  99%  | 30% | 98% | 99% |
+        Compute PNJ Score according to computer level
         '''
-
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [Taux de miss (%), Taux de réussite/précision de la cible (%), Taux Double (%), Taux Triple (%), Taux Voisins/Déviation (%)]
+        # - Plus fort / précis : Diminuer le MISS et la déviation, augmenter la précision et les triples/doubles.
+        # - Plus humain / brouillon : Augmenter le MISS et la déviation, baisser les taux de triples et doubles.
+        # =========================================================================
         levels = [
-            [25, 15, 12, 16, 50],
-            [15, 25, 12, 16, 50],
-            [ 1, 55, 30, 40, 80],
-            [ 0, 99, 30, 98, 99],
-            [ 0, 99, 30, 98, 99]
+            [25, 15, 12, 16, 50],  # 1 : Noob
+            [15, 25, 12, 16, 50],  # 2 : Débutant
+            [ 1, 55, 30, 40, 80],  # 3 : Intermédiaire
+            [ 0, 99, 30, 98, 99],  # 4 : Pro
+            [ 0, 99, 30, 98, 99]   # 5 : Expert
         ]
 
         if random.randint(0, 100) < levels[computer_level - 1][0]:
             return 'MISSDART'
 
+        target = players[actual_player].actual_hit
+        
         if random.randint(0, 100) < levels[computer_level - 1][1]:
-            segment = players[actual_player].actual_hit
-        elif random.randint(0, 100) < levels[computer_level - 1][4]:
-            segment = self.neighbors[str(players[actual_player].actual_hit)][random.randint(0, 1)]
+            segment = target
+        elif target != '50' and str(target) in self.neighbors and random.randint(0, 100) < levels[computer_level - 1][4]:
+            segment = self.neighbors[str(target)][random.randint(0, 1)]
         else:
-            segment = random.randint(1, 21)
+            segment = random.randint(1, 20) if target != '50' else '50'
 
         mult = random.randrange(100)
-        if segment != 'B':
-            if mult < levels[computer_level - 1][3]:
-                score = f'T{segment}'
-            elif mult < levels[computer_level - 1][2]:
+        if segment != '50' and segment != 'B':
+            dbl_rate = levels[computer_level - 1][2]
+            tpl_rate = levels[computer_level - 1][3]
+            
+            if mult < dbl_rate:
                 score = f'D{segment}'
+            elif mult < dbl_rate + tpl_rate:
+                score = f'T{segment}'
             else:
                 score = f'S{segment}'
-        elif mult < levels[computer_level - 1][3]:
-            score = 'DB'
         else:
-            score = 'SB'
+            if mult < levels[computer_level - 1][3]:
+                score = 'DB'
+            else:
+                score = 'SB'
 
         return score
 
@@ -270,14 +287,20 @@ class Game(cgame.Game):
         players[actual_player].darts_thrown += 1
         self.display.play_sound('miss')
 
+        self.current_round_hits[player_launch - 1] = 'MISSDART'
+
         # Refresh stats
         if self.nb_touche_ok > 0:
             final_check = True
         else:
             final_check = False
 
+        goal = players[actual_player].goals[actual_round - 1]
         if player_launch == 3 and not final_check:
-            score = -2 * int(players[actual_player].goals[actual_round - 1])
+            if str(goal) == '50':
+                score = -50
+            else:
+                score = -2 * int(goal)
         else:
             score = 0
 
@@ -288,8 +311,12 @@ class Game(cgame.Game):
         Pushed Player Early
         '''
 
+        goal = players[actual_player].goals[actual_round - 1]
         if self.nb_touche_ok == 0:
-            score = -2 * int(players[actual_player].goals[actual_round - 1])
+            if str(goal) == '50':
+                score = -50
+            else:
+                score = -2 * int(goal)
         else:
             score = 0
 
@@ -333,7 +360,6 @@ class Game(cgame.Game):
 
         # Score
         if score is not None:
-            #self.display.blit_text(f"{score}", score_x, score_y, score_w, score_h, color=self.display.colorset['bob27-text'], align='Center', valign='Top', margin=False, dafont=font, Alpha=alpha)
             self.display.blit_text(f"{score}", score_x, score_y, score_w, score_h, color=self.display.colorset['bob27-text'], align='Center', valign='Top', margin=False)
         self.display.blit_text("bob27-yourscore", score_x, score_y + score_h, score_w, int(score_h / 3), color=self.display.colorset['bob27-text'], valign='Top')
 
@@ -372,7 +398,7 @@ class Game(cgame.Game):
 
         return [state1, state2, state3, stateM]
 
-    def draw_hit(self, hit, state, rectangle):
+    def draw_hit(self, hit, state, rectangle, dart_hit=''):
         '''
         Draw one rectangle
         State could be :
@@ -407,31 +433,40 @@ class Game(cgame.Game):
             color = self.display.colorset['bob27-bg']
             self.display.blit_rect(rectangle[0], rectangle[1], rectangle[2], rectangle[3], color)
 
-    def display_hits(self, states, rectangle, marge):
+        # Affichage du segment touché en blanc en dessous du carré
+        if dart_hit:
+            display_hit_text = 'Miss' if dart_hit == 'MISSDART' else dart_hit
+            sub_y = rectangle[1] + rectangle[3] + 4
+            sub_h = int(rectangle[3] * 0.6)
+            white_color = (255, 255, 255)
+            self.display.blit_text(display_hit_text, rectangle[0], sub_y, rectangle[2], sub_h, color=white_color, align='Center', valign='Top')
+
+    def display_hits(self, states, rectangle, marge, round_hits=None):
         '''
         Display actual round hits
         '''
 
-        self.display.blit_rect(0, rectangle[1], self.display.res_x, rectangle[3], self.display.colorset['bob27-bg'], Alpha=255)
+        # Effacer une zone un peu plus haute pour inclure le texte en dessous des carrés
+        self.display.blit_rect(0, rectangle[1], self.display.res_x, int(rectangle[3] * 1.7), self.display.colorset['bob27-bg'], Alpha=255)
         rect_x = rectangle[0]
 
-        # Draw hits
+        # Draw hits (Inversion de l'indexation pour afficher le 1er tir sous hit 3 et le dernier sous hit 1)
         dart = 1
-        for state in states:
-            self.draw_hit(dart, state, (rect_x, rectangle[1], rectangle[2], rectangle[3]))
+        for i, state in enumerate(states):
+            rev_index = 2 - i
+            hit_val = round_hits[rev_index] if round_hits and 0 <= rev_index < len(round_hits) else ''
+            self.draw_hit(dart, state, (rect_x, rectangle[1], rectangle[2], rectangle[3]), hit_val)
             rect_x += rectangle[2] + marge
             dart += 1
 
-        return (0, rectangle[1], self.display.res_x, rectangle[3])
+        return (0, rectangle[1], self.display.res_x, int(rectangle[3] * 1.7))
 
     def onscreen_buttons(self):
         '''
         On screen buttons
         '''
-        # Init
         click_zones = {}
 
-        # GAME BUTTON
         right_x = int(self.display.res['x'] * 12 / 16)
         right_y = self.display.margin
         right_width = int(self.display.res['x'] * 4 / 16)
@@ -447,14 +482,10 @@ class Game(cgame.Game):
         buttons.append([right_x, right_y, right_width, right_height, self.display.colorset['menu-ok'], 'PLAYERBUTTON', 'Next Player'])
 
         for button in buttons:
-            # Blit Background rect
             self.display.blit_rect(button[0], button[1], button[2], button[3], button[4], 2, self.display.colorset['menu-buttons'], self.display.alpha)
             click_zones[button[5]] = (button[0], button[1], button[2], button[3], button[4])
-
-            # Blit button
             self.display.blit_text(button[6], button[0], button[1], button[2], button[3], self.display.colorset['menu-text-white'])
 
-        # Return Dict of tuples representing clickage values
         return click_zones
 
 
@@ -468,7 +499,6 @@ class Game(cgame.Game):
         nb_hits = 0
         nb_miss = 0
         for index in range(0, 3):
-            # checks[actual_round - 1][index] could be None
             if checks[actual_round - 1][index] is True:
                 nb_hits += 1
             elif checks[actual_round - 1][index] is False:
@@ -488,7 +518,6 @@ class Game(cgame.Game):
 
         self.display.blit_rect(0, 0, self.display.res['x'], self.display.res['y'], self.display.colorset['bob27-bg'], Alpha=255)
 
-        # Score round
         round_r = int(self.display.res_x / 12)
         round_m = self.display.margin * 3
         round_x = int(self.display.res_x - round_r - round_m)
@@ -496,12 +525,10 @@ class Game(cgame.Game):
 
         cercle = pygame.draw.circle(self.display.screen, self.display.colorset['bob27-blue'], (round_x, round_y), round_r)
 
-        # Title
         title_x = self.display.margin * 2
         title_y = self.display.margin * 2
         title_w = int(self.display.res_x / 8)
         title_h = int(self.display.res_y / 12)
-        # Title
         self.display.blit_text("Bobs 27", title_x, title_y, title_w, title_h, color=self.display.colorset['bob27-text'])
 
         text_x = int(self.display.res_x / 16)
@@ -510,12 +537,14 @@ class Game(cgame.Game):
         text_h = int(self.display.res_y / 36)
 
         font = self.display.file_class.get_full_filename('comic-sans-ms', 'fonts')
-        # Round's informations
+        
+        current_goal = players[actual_player].goals[actual_round - 1]
+        display_goal = 'Bull' if str(current_goal) == '50' else f'Double {current_goal}'
+
         self.display.blit_text('bob27-nextnumber', text_x, text_y, text_w, text_h, color=self.display.colorset['bob27-text'], align='Left', valign='Bottom', dafont=font)
-        self.display.blit_text(f'Double {players[actual_player].goals[actual_round - 1]}', text_x, text_y + text_h, text_w, text_h * 4, color=self.display.colorset['bob27-text'], align='Left', dafont=font)
+        self.display.blit_text(display_goal, text_x, text_y + text_h, text_w, text_h * 4, color=self.display.colorset['bob27-text'], align='Left', dafont=font)
         self.display.blit_text('bob27-touchit', text_x, text_y + text_h * 5, text_w, text_h, color=self.display.colorset['bob27-text'], align='Right', valign='Top')
 
-        #
         score_w = int(2 * round_r * 8 / 10)
         score_h = round_r
         score_x = int(round_x - (score_w / 2))
@@ -533,13 +562,12 @@ class Game(cgame.Game):
         rect_m = self.display.margin * 4
         
         rect_hit = (rect_x, rect_y, rect_w, rect_h)
-        rect_hits = (0, rect_y, self.display.res_x, rect_h)
+        rect_hits = (0, rect_y, self.display.res_x, int(rect_h * 1.7))
         sub = self.display.screen.subsurface(rect_hits)
 
         self.display_score(score, score_x, score_y, score_w, score_h)
-        self.display_hits(self.states, (rect_x, rect_y, rect_w, rect_h), rect_m)
+        self.display_hits(self.states, (rect_x, rect_y, rect_w, rect_h), rect_m, self.current_round_hits)
 
-        # Display player's name and score
         self.display.new_display_players(players, actual_player, end_of_game=end_of_game)
 
         if OnScreenButtons is True or self.display.is_true(self.config.get_value('SectionGlobals', 'onscreenbuttons')):
@@ -558,7 +586,6 @@ class Game(cgame.Game):
             return [[], [screen_score, rect_score], rect_hits, rect_hit]
 
     def draw_rect(self, rect, color):
-
         col = self.display.colorset[color]
         pygame.draw.line(self.display.screen, col, (rect[0], rect[1]), (rect[0] + rect[2], rect[1]), 2)
         pygame.draw.line(self.display.screen, col, (rect[0], rect[1]), (rect[0], rect[1] + rect[3]), 2)
@@ -579,7 +606,6 @@ class Game(cgame.Game):
         nb_hits = 0
         nb_miss = 0
         for index in range(0, 3):
-            # checks[actual_round - 1][index] could be None
             if checks[self.actual_round - 1][index] is True:
                 nb_hits += 1
             elif checks[self.actual_round - 1][index] is False:
@@ -602,13 +628,13 @@ class Game(cgame.Game):
 
         if score != self.score:
             self.display.screen.blit(screen_score, (rect_score[0], rect_score[1]))
-        self.display_hits(self.states, (rect_hit[0], rect_hit[1], rect_hit[2], rect_hit[3]), rect_m)
+        self.display_hits(self.states, (rect_hit[0], rect_hit[1], rect_hit[2], rect_hit[3]), rect_m, self.current_round_hits)
         for alpha in [0, 63, 127, 191, 255]:
             self.display.screen.set_alpha(alpha)
             self.display.update_screen(rect_array=[rect_score, rect_hits])
 
         self.display_score(score, rect_score[0], rect_score[1], rect_score[2], rect_score[3])
-        self.display_hits(states, (rect_hit[0], rect_hit[1], rect_hit[2], rect_hit[3]), rect_m)
+        self.display_hits(states, (rect_hit[0], rect_hit[1], rect_hit[2], rect_hit[3]), rect_m, self.current_round_hits)
         for alpha in [0, 63, 127, 191, 255]:
             self.display.screen.set_alpha(alpha)
             self.display.update_screen(rect_array=[rect_score, rect_hits])

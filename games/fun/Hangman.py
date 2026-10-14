@@ -135,8 +135,7 @@ class Game(cgame.Game):
                 hint.append("-")
             self.hintWord = "".join(hint)
             
-        #self.dmd.send_text(self.hintWord, sens=None, iteration=None)   
-        handler['dmd'] = (self.hintWord, sens=None, iteration=None)
+        self.dmd.send_text(self.hintWord, sens=None, iteration=None)
          
         
         """
@@ -214,7 +213,7 @@ class Game(cgame.Game):
             
             self.hintWord = self.updateHint(self.listAlphabet[hit - 1], list(self.hintWord)) # letter found, update hint on screen
             #self.dmd.send_text(self.hintWord, sens=None, iteration=None)
-            handler['dmd'] = (self.hintWord, sens=None, iteration=None)
+            handler['dmd'] = self.hintWord
             
             if (self.hintWord == self.currentWord) :
                 # video successWord to add ?

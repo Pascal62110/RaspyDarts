@@ -20,6 +20,7 @@ from include import cplayer
 from include import cgame
 from include import cstats
 from include import chandicap
+from include import ctrophies  # <-- AJOUT TROPHEES
 try: 
     from include import cdebug
     DEBUG = {'debug-record': False, 'debug-replay': False, 'debug-extra_info': True} 
@@ -305,8 +306,8 @@ class Game(cgame.Game):
         #  -------------+-------+-------+------+------+------+---------+---------+
         #   1 : noob    |   30  |  10   |  1   |   2  |  10  |   45    |   60    |
         #   2           |   15  |  25   |  5   |   8  |  25  |   58    |   72    |
-        #   3           |    3  |  45   |  32  |  12  |  65  |   70    |   80    |
-        #   4           |    1  |  70   |  55  |  20  |  80  |   85    |   95    |
+        #   3           |    3  |  45   |  12  |  12  |  65  |   70    |   80    |
+        #   4           |    1  |  70   |  25  |  16  |  80  |   85    |   95    |
         #   5 : Expert  |    0  |  85   |  75  |  32  |  95  |   96    |  100    |
 
         levels = [
@@ -333,7 +334,7 @@ class Game(cgame.Game):
 
         if tire_rate > 0 and tire_range < tire_rate :
             players[actual_player].columns[player_launch - 1] = ('-', 'str')
-            return 'MISSDART'
+            return 'MISS'
 
         possibilities = [f'{number}' for number in range (1, 21)]
         if random.randrange(100) < bull_rate :
@@ -409,6 +410,16 @@ class Game(cgame.Game):
         '''
 
         players[actual_player].add_dart(actual_round, player_launch, hit)
+        
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+        
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+        
+        
         #debug Mode
         if self.debug_info:
             if self.debug_record:
@@ -466,14 +477,28 @@ class Game(cgame.Game):
                         hit[:1] == 'D' \
                         or (self.master_out and (hit[:1] == 'T' or hit[1:] == 'B')) \
                     ):
-                handler['return_code'] = 3
-                self.winner = players[actual_player].ident
-                players[actual_player].score = 0
+                winning_player = players[actual_player]
+                winning_player.score = 0
                 self.update_stats(players, actual_player, hit)
+
+                # ==========================================
+                # TROPHEES : Fin de partie en X fléchettes (Atteinte de 0)
+                # ==========================================
+                total_darts = getattr(winning_player, 'darts_thrown', (actual_round - 1) * 3 + player_launch)
+                ctrophies.check_ho_one_finish_trophies(winning_player, self.starting_at, total_darts, winning_dart=hit)
+                
                 if self.equal and actual_player < len(players)-1:
                     # Next player can equal
                     handler['return_code'] = 1 # pas le dernier joueur
-                    players[actual_player].points -= players[actual_player].round_points
+                    winning_player.points -= winning_player.round_points
+                else:
+                    handler['return_code'] = 3
+                    self.winner = winning_player.ident
+                    # ==========================================
+                    # STATS : Enregistrement des stats de fin de partie
+                    # ==========================================
+                    ctrophies.check_game_end_stats(players, winning_player, "HO-ONE")
+
             # else it is a fail
             else:
                 # Next player
@@ -509,6 +534,11 @@ class Game(cgame.Game):
             players[actual_player].score = players[actual_player].pre_play_score
             players[actual_player].points -= players[actual_player].round_points #for ppd, ppr
 
+        # Verifications des trophées de volée (tous les 3 lancers)
+        if player_launch == int(self.nb_darts):
+            current_darts = players[actual_player].rounds[actual_round - 1]
+            ctrophies.check_and_unlock_trophies(players[actual_player], current_darts)
+
         #check equal mode dans le cas du dernier joueur avec 3 darts lancé ou subscore <= 0 (dépassement ou égaliser)
         if self.equal and actual_player == len(players)-1 and ((player_launch == int(self.nb_darts)) or (subscore <= 0)) and actual_round < self.max_round:
             self.winner = -1
@@ -529,6 +559,16 @@ class Game(cgame.Game):
             self.winner = self.check_winner(players)
             if self.winner is not None:
                 handler['return_code'] = 3
+                # ==========================================
+                # TROPHEES : Fin de partie sur dernier round
+                # ==========================================
+                winning_player = players[self.winner]
+                total_darts = getattr(winning_player, 'darts_thrown', self.max_round * 3)
+                winning_dart = hit if winning_player == players[actual_player] else None
+                ctrophies.check_ho_one_finish_trophies(winning_player, self.starting_at, total_darts)
+
+                ctrophies.check_game_end_stats(players, winning_player, "HOONE")
+                
         # Store what he played in the table
         players[actual_player].columns[player_launch - 1] = (self.score_map[hit], 'int')
 
@@ -571,13 +611,26 @@ class Game(cgame.Game):
         self.display.play_sound('miss')
         self.logs.debug(f"MissButtonPressed : {player_launch}")
         players[actual_player].columns[player_launch - 1] = ('tyre', 'image')
+        players[actual_player].darts_thrown += 1
+        hit = 'MISS'
+        print('CONTENU DE HIT  DEF MISS')
+        print(hit)
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+        
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
+        
+        
         if player_launch == int(self.nb_darts):
             if self.debug_info and self.debug_record:
                 self.debug.record(f"{actual_player}EPB\n") #Early player button
             return_code = self.early_player_button(players, actual_player, actual_round)
         # Or just increment dart thrown
         else:
-            players[actual_player].darts_thrown += 1
+            #players[actual_player].darts_thrown += 1
             if self.debug_info and self.debug_record:
                 self.debug.record(f"{actual_player}MB\n") #miss button
         # Refresh stats
@@ -910,8 +963,6 @@ class Game(cgame.Game):
         player_width *= 2
         dart_icon_size = player_height - heading_height - self.margin_2
 
-        #self.actual_player_score(actual_x, player_y, player_width, player_height, heading_height, dart_icon_size, actual_color, actual_name, actual_score)
-
         ppdr_width = int(self.display.res['x'] / 24)
         # Previous rounds scores
         for index in range(3):
@@ -923,7 +974,6 @@ class Game(cgame.Game):
                 for dartx in scores[actual_round -  1 - index]:
                     if dartx is not None:
                         score += self.score_map[dartx]
-                #text2 = f'{sum(scores[actual_round - index - 1] if scores[actual_round - index - 1] is not None else 0)}'
                 text2 = score
                 self.display.blit_text(text1, right_x, right_y, ppdr_width, right_height, color=self.display.colorset['game-score'], dafont='Impact', align='Left')
                 self.display.blit_text(text2, right_x + ppdr_width, right_y, ppdr_width, right_height, color=actual_color, dafont='Impact', align='Right', margin=False)
@@ -1002,7 +1052,6 @@ class Game(cgame.Game):
         old_score = -100
         for player in t_players:
             score = player.score
-            #color = t_players[player.ident].color
             color = player.color
 
             round_pos_y = min_pos_y + int((max_pos_y - min_pos_y) * score / self.starting_at)
@@ -1212,4 +1261,3 @@ class Game(cgame.Game):
 
         self.display.update_screen(rect_array=[rect, rect2])
         self.display.save_background()
-

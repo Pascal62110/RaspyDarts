@@ -1,9 +1,16 @@
 #!/bin/sh
 
-exec 2> /pydarts/logs/backup.log
+# The game works from the folder where it is installed
+RASPYDARTS_HOME="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+
+exec 2> $RASPYDARTS_HOME/logs/backup.log
 set -uevx
 
-RASPYDARTS_HOME=/pydarts
+# ~/.raspydarts, or ~/.pydarts on installations made before the renaming
+USER_DIR=~/.raspydarts
+if [ ! -d "$USER_DIR" -a -d ~/.pydarts ]; then
+	USER_DIR=~/.pydarts
+fi
 BACKUP_DIR=backup
 LOGS_DIR=logs
 NB_BACKUP=3
@@ -18,7 +25,7 @@ Usage(){
 	echo "	r : Restore data"
 	echo "	l : List backup files"
 	echo "		-0 : bash mode - 1 file per line"
-	echo "		-p : No backup of ~/.pydarts directory"
+	echo "		-p : No backup of ~/.raspydarts directory"
 	echo "	c : Clean old backups (keep 3 last versions)"
 	echo ""
 	echo "	[filename]	Archive name to create or restore."
@@ -177,7 +184,7 @@ case "$MODE" in
 		then
 			Date=`date +%Y%m%d_%H%M`
 			Version=
-			test -s /pydarts/VERSION && Version=`cat /pydarts/VERSION | cut -d'_' -f1`
+			test -s $RASPYDARTS_HOME/VERSION && Version=`cat $RASPYDARTS_HOME/VERSION | cut -d'_' -f1`
 
 			Backup=$RASPYDARTS_HOME/$BACKUP_DIR/raspydarts_${Version}_${Date}.tgz
 		fi
@@ -186,9 +193,9 @@ case "$MODE" in
 		then
 			if $BACKUP_HOME
 			then
-				tar -zcvf $Backup --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME ~/.pydarts >> /pydarts/logs/backup.log
+				tar -zcvf $Backup --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME $USER_DIR >> $RASPYDARTS_HOME/logs/backup.log
 			else
-				tar -zcvf $Backup --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME >> /pydarts/logs/backup.log
+				tar -zcvf $Backup --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME >> $RASPYDARTS_HOME/logs/backup.log
 			fi
 		else
 			echo ""
@@ -196,11 +203,11 @@ case "$MODE" in
 			echo ""
 			if $BACKUP_HOME
 			then
-				echo "tar -zcvf $Backup --exclude='__init__.py' --exclude='__pycache__' --exclude='*.tgz' --exclude='*.log' --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME ~/.pydarts >> /pydarts/logs/backup.log"
-				tar -zcvf $Backup --exclude='__init__.py' --exclude='__pycache__' --exclude='*.tgz' --exclude='*.log' --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME ~/.pydarts >> /pydarts/logs/backup.log
+				echo "tar -zcvf $Backup --exclude='__init__.py' --exclude='__pycache__' --exclude='*.tgz' --exclude='*.log' --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME $USER_DIR >> $RASPYDARTS_HOME/logs/backup.log"
+				tar -zcvf $Backup --exclude='__init__.py' --exclude='__pycache__' --exclude='*.tgz' --exclude='*.log' --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME $USER_DIR >> $RASPYDARTS_HOME/logs/backup.log
 			else
-				echo "tar -zcvf $Backup --exclude='__init__.py' --exclude='__pycache__' --exclude='*.tgz' --exclude='*.log' --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME >> /pydarts/logs/backup.log"
-				tar -zcvf $Backup --exclude='__init__.py' --exclude='__pycache__' --exclude='*.tgz' --exclude='*.log' --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME >> /pydarts/logs/backup.log
+				echo "tar -zcvf $Backup --exclude='__init__.py' --exclude='__pycache__' --exclude='*.tgz' --exclude='*.log' --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME >> $RASPYDARTS_HOME/logs/backup.log"
+				tar -zcvf $Backup --exclude='__init__.py' --exclude='__pycache__' --exclude='*.tgz' --exclude='*.log' --exclude $BACKUP_DIR --exclude $LOGS_DIR $RASPYDARTS_HOME >> $RASPYDARTS_HOME/logs/backup.log
 			fi
 			echo ""
 			echo "	\e[92mCorrect end\e[39m"
@@ -228,8 +235,8 @@ case "$MODE" in
 			echo ""
 			echo "Restore \e[92m$FileName\e[39m ..."
 			echo ""
-			echo "tar xvf $RASPYDARTS_HOME/$BACKUP_DIR/$FileName -C/ --overwrite >> /pydarts/logs/backup.log"
-			tar xvf "$RASPYDARTS_HOME/$BACKUP_DIR/$FileName" -C/ --overwrite >> /pydarts/logs/backup.log
+			echo "tar xvf $RASPYDARTS_HOME/$BACKUP_DIR/$FileName -C/ --overwrite >> $RASPYDARTS_HOME/logs/backup.log"
+			tar xvf "$RASPYDARTS_HOME/$BACKUP_DIR/$FileName" -C/ --overwrite >> $RASPYDARTS_HOME/logs/backup.log
 			echo ""
 			echo "\e[92mDone\e[39m"
 			echo

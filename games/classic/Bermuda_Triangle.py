@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Game by Cory Baumgart!
 '''
-Bermuda triange game
+Bermuda triangle game
 '''
 
 ######
@@ -12,7 +12,7 @@ from include import cgame
 
 LOGO = 'Bermuda_Triangle.png'
 HEADERS = ['12', '-', '-', '-', '-', '-', '-']
-OPTIONS = {'theme': 'default', 'Double_bull': False}
+OPTIONS = {'theme': 'default'}
 NB_DARTS = 3
 GAME_RECORDS = {'Points Per Round':'DESC', 'Points Per Dart':'DESC'}
 VERSION = '1.00'
@@ -49,15 +49,9 @@ class Game(cgame.Game):
         self.nb_darts = NB_DARTS # Total darts the player has to play
         self.options = options
 
-        # Number of round is ruled
-        self.max_round = 13
-        if not options['Double_bull']:
-            self.doublebull = False
-            self.score_map.update({'DB': 25})
-            # One more round if double bull enabled
-            self.max_round = 12
-        else:
-            self.doublebull = True
+        # Number of round is ruled (fixé à 12 tours max)
+        self.max_round = 12
+        self.doublebull = True
 
         self.infos = ''
         self.winner = None
@@ -86,7 +80,7 @@ class Game(cgame.Game):
                 for player in players:
                     player.reset_rounds(self.max_round)
 
-        # Display headers depending of round
+        # Display headers depending of round (12 tours au total)
         if actual_round == 1:
             self.headers[0] = '12'
         elif actual_round == 2:
@@ -110,9 +104,7 @@ class Game(cgame.Game):
         elif actual_round == 11:
             self.headers[0] = '20'
         elif actual_round == 12:
-            self.headers[0] = 'SB'
-        elif actual_round == 13:
-            self.headers[0] = 'DB'
+            self.headers[0] = 'BULL'
 
         self.headers[1] = self.headers[0]
         self.headers[2] = self.headers[0]
@@ -121,10 +113,8 @@ class Game(cgame.Game):
             targ = [f'D{num}' for num in range(1, 21)]
         elif self.headers[0] == 'TPL':
             targ = [f'T{num}' for num in range(1, 21)]
-        elif self.headers[0] == 'SB':
+        elif self.headers[0] == 'BULL':
             targ = ['SB', 'DB']
-        elif self.headers[0] == 'DB':
-            targ = ['DB']
         else:
             targ = [f'{mult}{self.headers[0]}' for mult in ['S', 'D', 'T']]
 
@@ -134,19 +124,79 @@ class Game(cgame.Game):
         self.logs.debug(self.infos)
         return return_code
 
-    def pnj_score(self, players, actual_player, level, player_launch):
+    def pnj_score(self, players, actual_player, computerLevel, player_launch):
         '''
-        pnj_socre
+        IA équilibrée et réaliste pour le Bermuda Triangle : scores modérés, vrais ratés possibles.
         '''
-        letters = 'SDT'
-        value = random.randint(1, 20)
-        multi = ''.join(random.choice(letters) for _ in range(1))
-        bull = random.randint(0, 100)
-        if 85 < bull <= 95:
-            return 'SB'
-        if bull > 95:
-            return 'DB'
-        return f'{multi}{value}'
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [Taux de miss pur (%), Taux de glissement / déviation (%)]
+        # - Plus fort / précis : Diminuer le MISS et le taux de glissement.
+        # - Plus humain / brouillon : Augmenter le MISS et le taux de glissement.
+        # =========================================================================
+        geo_neighbors = {
+            1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1], 
+            5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7], 
+            9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20], 
+            13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11], 
+            17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+        }
+
+        # Niveaux : [Taux de miss pur, Taux de glissement]
+        levels = [
+                 [45, 80],  # 1 : Noob 
+                 [30, 70],  # 2 : Débutant
+                 [18, 60],  # 3 : Intermédiaire
+                 [6, 25],   # 4 : Pro 
+                 [2, 8]     # 5 : Expert 
+                ]
+
+        lvl_idx = max(0, min(computerLevel - 1, len(levels) - 1))
+        miss_rate = levels[lvl_idx][0]
+        slip_rate = levels[lvl_idx][1]
+
+        if random.randrange(100) < miss_rate:
+            players[actual_player].columns[player_launch - 1] = ('MISS', 'str')
+            self.display.play_sound('miss')
+            players[actual_player].darts_thrown += 1
+            return 'MISSDART'
+
+        current_target_type = self.headers[0]
+        target_num = None
+        mult = 'S'
+
+        if current_target_type in ['12', '13', '14', '15', '16', '17', '18', '19', '20']:
+            target_num = int(current_target_type)
+            mult = random.choices(['S', 'D', 'T'], weights=[97, 2, 1], k=1)[0]
+        elif current_target_type == 'DBL':
+            target_num = random.randint(1, 20)
+            mult = 'D'
+        elif current_target_type == 'TPL':
+            target_num = random.choice([15, 16, 17, 18, 19, 20])
+            mult = 'T'
+        elif current_target_type == 'BULL':
+            return random.choices(['SB', 'DB', 'MISS'], weights=[30, 5, 65], k=1)[0]
+
+        hit_target = f'{mult}{target_num}'
+
+        if random.randrange(100) < slip_rate:
+            if current_target_type in ['DBL', 'TPL']:
+                if target_num in geo_neighbors:
+                    target_num = random.choice(geo_neighbors[target_num])
+                mult = 'S'
+            else:
+                if random.randrange(100) < 50 and target_num in geo_neighbors:
+                    target_num = random.choice(geo_neighbors[target_num])
+                    mult = 'S'
+                else:
+                    players[actual_player].columns[player_launch - 1] = ('MISS', 'str')
+                    self.display.play_sound('miss')
+                    players[actual_player].darts_thrown += 1
+                    return 'MISSDART'
+
+            hit_target = f'{mult}{target_num}'
+
+        return hit_target
 
     def post_dart_check(self, hit, players, actual_round, actual_player, player_launch):
         '''
@@ -156,20 +206,22 @@ class Game(cgame.Game):
         self.infos = ""
         handler = self.init_handler()
         score = 0
-        # Define a var for adding score
-        if actual_round == 1 and hit[1:] == '12' \
-                or actual_round == 2 and hit[1:] == '13' \
-                or actual_round == 3 and hit[1:] == '14' \
-                or actual_round == 4 and hit[:1] == 'D' \
-                or actual_round == 5 and hit[1:] == '15' \
-                or actual_round == 6 and hit[1:] == '16' \
-                or actual_round == 7 and hit[1:] == '17' \
-                or actual_round == 8 and hit[:1] == 'T' \
-                or actual_round == 9 and hit[1:] == '18' \
-                or actual_round == 10 and hit[1:] == '19' \
-                or actual_round == 11 and hit[1:] == '20' \
-                or actual_round == 12 and hit in ('SB', 'DB') \
-                or actual_round == 13 and hit == 'DB':
+        is_valid = False
+        
+        if actual_round == 1 and hit[1:] == '12': is_valid = True
+        elif actual_round == 2 and hit[1:] == '13': is_valid = True
+        elif actual_round == 3 and hit[1:] == '14': is_valid = True
+        elif actual_round == 4 and hit[:1] == 'D': is_valid = True
+        elif actual_round == 5 and hit[1:] == '15': is_valid = True
+        elif actual_round == 6 and hit[1:] == '16': is_valid = True
+        elif actual_round == 7 and hit[1:] == '17': is_valid = True
+        elif actual_round == 8 and hit[:1] == 'T': is_valid = True
+        elif actual_round == 9 and hit[1:] == '18': is_valid = True
+        elif actual_round == 10 and hit[1:] == '19': is_valid = True
+        elif actual_round == 11 and hit[1:] == '20': is_valid = True
+        elif actual_round == 12 and hit in ('SB', 'DB'): is_valid = True  # Le 12ème tour valide à la fois SB et DB
+
+        if is_valid:
             score = self.score_map[hit]
             check = True
             players[actual_player].columns[player_launch - 1] = ('check-mark', 'image')
@@ -178,55 +230,37 @@ class Game(cgame.Game):
             return_code = -1
             players[actual_player].columns[player_launch - 1] = ('cross-mark', 'image')
 
-        # Classic case (between start and end)
         if score > 0:
             handler['show'] = (players[actual_player].darts, hit, False)
-            handler['sound'] = hit # Touched !
-            players[actual_player].score += score # add score
-            players[actual_player].round_points += score # Keep total for this round
-            # You may want to keep the "Total Points" (Global amount of grabbed points,
-            # follow the player all game long)
-            players[actual_player].points += score   #self.score_map.get(hit)
-        # No dart marked
+            handler['sound'] = hit 
+            players[actual_player].score += score 
+            players[actual_player].round_points += score 
+            players[actual_player].points += score   
         elif players[actual_player].round_points == 0 and player_launch == 3:
             self.infos += "Dividing score by half!\n"
-            # Divide score by half
-            handler['return_code'] = 1 # Next player
+            handler['return_code'] = 1 
             players[actual_player].score = int(players[actual_player].score / 2)
             handler['sound'] = 'whatamess'
 
-        # Check last round
+        # Check last round (fixé à 12 tours)
         if actual_round >= self.max_round and actual_player == self.nb_players - 1 \
                 and player_launch == int(self.nb_darts):
-            self.infos += f"Last round reached ({actual_round}){self.lf}"
+            self.infos += f"Last round reached ({actual_round})\n"
             self.winner = self.check_winner(players)
             if self.winner is not None:
-                self.infos += f"Player {self.winner} wins !{self.lf}"
+                self.infos += f"Player {self.winner} wins !\n"
                 handler['return_code'] = 3
             else:
                 handler['return_code'] = 2
 
         players[actual_player].add_dart(actual_round, player_launch, hit, score=score, check=check)
-
-        # You may want to count how many touches (Simple = 1 touch, Double = 2 touches, Triple = 3 touches)
         players[actual_player].increment_hits(hit)
-
-        # You may want to count darts played
         players[actual_player].darts_thrown += 1
 
-        # It is recommanded to update stats every dart thrown
         self.refresh_stats(players, actual_round)
-
-        # Store what he played in the table
-        #players[actual_player].columns[0] = (score, 'int')
-
-        # Print debug
         self.logs.debug(self.infos)
 
-        # Time for shot or video ?
         handler['take_shot'] = self.time_to_take_shot_or_video(hit)
-
-        # Next please !
         return handler
 
     def early_player_button(self, players, actual_player, actual_round):
@@ -234,35 +268,22 @@ class Game(cgame.Game):
         Function launched if the player hit the player button before having
         thrown all his darts (Pneu)
         '''
-        self.infos += f"EarlyPlayer function. Actual player marked \
-                {players[actual_player].round_points}{self.lf}"
+        self.infos += f"EarlyPlayer function. Actual player marked {players[actual_player].round_points}\n"
         self.display.play_sound('whatamess')
-        # Jump to next player by default
         return_code = 1
 
-        # Eventually divide by 2
-        '''
-        if players[actual_player].round_points == 0:
-            self.infos += 'Dividing score by half! And early !{self.lf}'
-            # Divide score by half
-            players[actual_player].score = int(players[actual_player].score / 2)
-        '''
-        # Last round - check winner or return Game over
         if actual_round == self.max_round and actual_player == self.nb_players - 1:
-            # Game over
             return_code = 2
             self.winner = self.check_winner(players)
             if self.winner is not None:
-                self.infos += f'Player {self.winner} wins !{self.lf}'
-                # Victory
+                self.infos += f'Player {self.winner} wins !\n'
                 return_code = 3
 
         return return_code
 
     def refresh_stats(self, players, actual_round):
         '''
-        Method to frefresh player.stat - Adapt to the stats you want. They represent mathematical
-        formulas used to calculate stats. Refreshed after every launch
+        Method to frefresh player.stat
         '''
         for player in players:
             player.stats['Points Per Round'] = player.show_ppr()
@@ -272,7 +293,6 @@ class Game(cgame.Game):
         '''
         To avoid Ouin ouin
         '''
-        #pass
         players[actual_player].columns[player_launch-1] = ('MISS', 'str')
         self.display.play_sound('miss')
         players[actual_player].darts_thrown += 1
@@ -281,21 +301,41 @@ class Game(cgame.Game):
         players[actual_player].round_points += 0 
         
         if player_launch == 3 and players[actual_player].round_points == 0:
-            self.infos += 'Dividing score by half! And early !{self.lf}'
-            # Divide score by half
+            self.infos += 'Dividing score by half! And early !\n'
             players[actual_player].score = int(players[actual_player].score / 2)
             self.display.play_sound('whatamess')
+
+
+    def post_round_check(self, players, actual_round, actual_player):
+        """
+        Vérifie si la partie est terminée à la fin du dernier tour.
+        """
+        if actual_round >= self.max_round and actual_player == self.nb_players - 1:
+            self.infos += f"Last round reached ({actual_round})\n"
+            self.winner = self.check_winner(players)
+            return self.winner
+        else:
+            return -2
+
+    def check_winner(self, players):
+        """
+        Détermine le joueur ayant le score le plus élevé.
+        """
+        best_score = -1
+        best_player = -1
+        for player in players:
+            if player.score > best_score:
+                best_score = player.score
+                best_player = player.ident
+        return best_player
         
     def next_game_order(self, players):
         '''
         Define the next game players order, depending of previous games' score
         '''
         scores = {}
-        # Create a dict with player and his score
         for player in players:
             scores[player.name] = player.score
-        # Order this dict depending of the score
         new_order = collections.OrderedDict(sorted(scores.items(), key=lambda t: t[1],
             reverse=True))
-        # Return
         return list(new_order.keys())

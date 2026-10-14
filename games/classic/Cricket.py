@@ -12,6 +12,8 @@ from include import cplayer
 from include import chandicap
 from math import sqrt
 
+from include import ctrophies
+
 LOGO = 'Cricket'
 HEADERS = ['20', '19', '18', '17', '16', '15', 'B']
 OPTIONS = {'theme': 'default', 'max_round': 20, 'optioncrazy': False, 'optioncutthroat': False, 'drinkscore': 200,
@@ -104,6 +106,14 @@ class Game(cgame.Game):
         play_open = False  # Should we play the open sound ?
         play_hit = True  # Should we play the Double & triple sound ?
         play_scored = False  # Should we play the Scored sound ?
+        
+        ### TROPHEE
+        ctrophies.process_single_dart(players[actual_player], hit)
+        
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
 
         touchcount4total = False
         self.infos = f"Player {players[actual_player].ident} -\
@@ -111,6 +121,19 @@ class Game(cgame.Game):
 
         to_add, value = self.split_key(hit, multiplier=True)
         hit_value = 0
+        
+        ####TROPHEE pas utiliser handler car envoie diffrent
+        if player_launch == self.nb_darts:
+            ctrophies.check_cricket_mickey_mark(players[actual_player], players[actual_player].darts, self)
+        
+
+
+        ### TROPHEE pas utiliser handler car envoie diffrent
+        if player_launch == self.nb_darts:
+            ctrophies.check_cricket_mickey_mark(players[actual_player], players[actual_player].darts, self)
+        
+        
+
 
         #If this column is currently displayed - Valid key
         if value in self.headers and self.get_column_state(actual_player, players, self.headers.index(value)) < 4:
@@ -242,6 +265,18 @@ class Game(cgame.Game):
         if winner is not None:
             self.infos += f"Player {winner} wins !{self.lf}"
             self.winner = winner
+            
+            ### TROPHEES DE VICTOIRE ---
+            if not self.teaming:
+                if self.winner < len(players):
+                    winning_player = players[self.winner]
+                    ctrophies.check_game_end_stats(players, winning_player, "CRICKET")
+            else:
+                mate_idx = self.mate(self.winner, len(players))
+                winning_names = [players[self.winner].name, players[mate_idx].name]
+                ctrophies.check_team_game_end_stats(players, winning_names, "CRICKET")
+                
+
             handler['return_code'] = 3
 
         # Last throw of the last round
@@ -530,55 +565,21 @@ class Game(cgame.Game):
         return ['NOPRESSURE']
 
     def pnj_score(self, players, actual_player, level, player_launch):
-        """
-        Computer Strike
-
-        Principe:
-          Affecter à différentes possibilités un taux de réussite :
-          - Pneu ou pas (L'expert ne fait jamais de pneu, le noob beaucoup)
-          - Echec ou pas : 1 échec est une fléchette plantée dans un chiffre qui ne compte pas
-              pour le cricket
-          - Définition de la liste des segments :
-              . 1 à 20
-              . Bull en fonction du % de Bull du niveau (le noob a du mal à toucher la bull)
-          - Pour chaque segment de la liste : Affectation d'un score, le score le plus élevé est
-                  le "tir" du PNJ. Sont pris en compte :
-              . La liste des segments à fermer (headers)
-              . La liste des segments ouverts (par n'importe quel joueur)
-              . La liste des segments ouverts par le PNJ
-              . La liste des segments fermés (par n'importe quel joueur)
-              . La liste des segments fermés par le PNJ
-              . Meilleur score pour le PNJ ou non
-
-          - Pour chaque "score", un random est effectué et est comparé aux différents seuils du
-                niveau du joueur
-          - Ensuite est effecté le multiplicateur, en fonction de taux de réussites également
-
-        Ainsi, meilleur est le niveau du PNJ, plus il va :
-          . Taper dans la cible
-          . Dans les chiffres indiqués
-          . Fermer les segments ouverts par d'autres joueurs
-          . Essayer de mettre plus de points qu'un autre joueur ou ouvrir un segment qu'il n'a
-                pas ouvert.
-          . Viser les recordos scores plus que les petits.
-
-                      |                                Rates                           |
-          Level       | Pneu  |Failure| Prefered|Prefered| Max  |Prefered|Triple|Double| Bull |
-                      |       |       |  open   | closed |number| points |      |      |      |
-         -------------+-------+-------+---------+--------+------+--------+------+------+------+
-          1 : noob    |   30  |   65  |     3%  |   0%   |  1%  |   0%   |  1   |   2  |  40  |
-          2           |   15  |   55  |    15%  |   2%   |  25% |   5%   |  5   |   8  |  50  |
-          3           |    3  |   15  |    35%  |   6%   |  45% |   7%   |  12  |  12  |  65  |
-          4           |    1  |    5  |    65%  |   8%   |  65% |  10%   |  25  |  16  |  80  |
-          5 : Expert  |    0  |    1  |    98%  |  16%   |  98% |  25%   |  55  |  32  |  95  |
-        """
-
+        # =========================================================================
+        # GUIDE DE RÉGLAGE DES NIVEAUX DE DIFFICULTÉ :
+        # - Légende : [Taux de pneu/raté complet (tyre), Taux d'échec/déviation (failure), 
+        #              Taux d'ouverture (open), Taux de fermeture (close), Taux max (max), 
+        #              Taux de points (points), Taux Triple (triple), Taux Double (double), Taux Bull (bull)]
+        # - Plus fort / précis : Diminuer tyre et failure, augmenter les taux de réussite, triples et doubles.
+        # - Plus humain / brouillon : Augmenter tyre et failure, baisser les taux tactiques.
+        # =========================================================================
+        # Niveaux progressifs : [tyre, failure, open, close, max, points, triple, double, bull]
         levels = [
-                    [30, 65,  3, 0, 1, 0,  1,  2, 40]
-                   ,[15, 55, 15, 2, 25, 5, 5,  8, 50]
-                   ,[3, 15, 35, 6, 45, 7, 12, 12, 65]
-                   ,[1, 5, 65, 8, 65, 10, 25, 16, 80]
-                   ,[0, 1, 98, 16, 98, 25, 45, 32, 95]
+                    [35, 70,  2, 0, 1, 0,  1,  2, 30],  # 1 : Noob (70% échec)
+                    [20, 45, 10, 1, 15, 3,  3,  5, 45],  # 2 : Débutant (45% échec)
+                    [8,  25, 30, 4, 35, 7,  8, 10, 60],  # 3 : Intermédiaire (25% échec)
+                    [2,  10, 60, 8, 65, 15, 18, 20, 80],  # 4 : Pro (10% échec)
+                    [0,   2, 90, 15, 95, 25, 32, 30, 95]   # 5 : Expert (2% échec)
                 ]
 
         tyre_rate = levels[level - 1][0]
@@ -593,102 +594,111 @@ class Game(cgame.Game):
         tyre_range = random.randrange(100)
 
         if tyre_rate > 0 and tyre_range < tyre_rate:
-            return 'MISSDART'
+            return 'MISS'
 
         scores = {}
-        open_list = []
-        closed_list = []
+        my_score = players[actual_player].get_score()
+        opponent_scores = [p.get_score() for p in players if p.ident != actual_player]
+        
+        if not opponent_scores:
+            opponent_scores = [0]
 
-        max_header = 0
-        max_score = 0
-        im_the_best = False
+        # Calcul de l'écart et de la position (seuil à 50 points)
+        if self.cutthroat:
+            best_opp_score = min(opponent_scores)
+            diff = my_score - best_opp_score
+            is_behind = diff > 0  
+            is_far_ahead = diff < -50  
+        else:
+            best_opp_score = max(opponent_scores)
+            diff = my_score - best_opp_score
+            is_behind = diff < 0  
+            is_far_ahead = diff > 50   
 
-        for player in players:
-            index = 0
-            for header in self.headers:
-                # 1=No hit, 2=Hit by a player or a team, 3=Closed by a player or a team
-                # 4=Closed by everybody
-                column_state = self.get_column_state(player.ident, players, index)
+        # --- FILTRE DES COLONNES TOTALEMENT FERMÉES ---
+        valid_headers = []
+        for index, header in enumerate(self.headers):
+            # En Cricket, pas de colonnes T et D, on traite tous les headers standards (nombres + B)
+            is_completely_closed = True
+            for player in players:
+                if player.get_col_value(index) < 3:
+                    is_completely_closed = False
+                    break
+            
+            if not is_completely_closed:
+                valid_headers.append(header)
 
-                if column_state in (2,3) :        # Open by someone
-                    if player.ident == actual_player:
-                        if header not in open_list and not player.get_col_value(index) == 3:
-                            open_list.append(header)
-                    elif header not in open_list:
-                        open_list.append(header)
+        # --- CONSTITUTION DES POSSIBILITÉS DE TIR ---
+        possibilities = list(valid_headers)
+        if random.randrange(100) < bull_rate and 'B' in self.headers:
+            bull_idx = self.headers.index('B') if 'B' in self.headers else -1
+            if bull_idx != -1:
+                if not all(p.get_col_value(bull_idx) >= 3 for p in players):
+                    possibilities.append('B')
 
-                if column_state == 3 :     # Closed by someone
-                    if player.ident == actual_player:
-                        if header not in closed_list  and player.get_col_value(index) == 3:
-                            closed_list.append(header)
-                    elif header not in closed_list and column_state == 4:
-                        closed_list.append(header)
-                index += 1
-            if player.get_score() > max_score:
-                max_score = player.get_score()
-
-        if players[actual_player].get_score() == max_score and max_score > 0:
-            im_the_best = True
-
-        for header in self.headers:
-            if header in open_list:
-                max_header = header
-
-        possibilities = [f'{number}' for number in range(1, 21)]
-        if random.randrange(100) < bull_rate:
-            possibilities.append('B')
-        random.shuffle(possibilities)
-
-        failure = random.randrange(100) < failure_rate
-
+        # --- ÉVALUATION DES SCORES DE CHAQUE CIBLE ---
         for poss in possibilities:
-            score = random.randrange(63)
+            numeric_val = int(poss) if poss.isdigit() else (25 if poss == 'B' else 0)
+            score = numeric_val * 5  
+            
+            col_idx = self.headers.index(poss) if poss in self.headers else -1
+            if col_idx != -1:
+                my_col_val = players[actual_player].get_col_value(col_idx)
+                
+                # 1. Colonne non fermée par l'IA (Objectif : Ouvrir / Fermer)
+                if my_col_val < 3:
+                    if is_far_ahead:
+                        score += 500 + (numeric_val * 10)  # Priorité absolue à la fin de partie
+                    elif is_behind and player_launch >= 2: 
+                        score += 400 + (numeric_val * 10)  # 3e fléchette en retard : on cherche à ouvrir/fermer
+                    elif random.randrange(100) < open_rate:
+                        score += 150
 
-            # Failure Rate
-            if poss in self.headers and failure:
-                score -= 500    # out
-            elif poss in self.headers:
-                score += 200
-            else:
-                score += 100
-
-            # Prefered Open
-            if poss in open_list and random.randrange(100) < open_rate and not poss in closed_list:
-                score += 200
-
-            # Prefered Close
-            if poss in closed_list and random.randrange(100) < close_rate and poss in open_list:
-                score += 99
-
-            # Prefered max score
-            if poss == max_header and random.randrange(100) < max_rate and not poss in closed_list:
-                score += 30
-
-            # Prefered add points
-            if poss in closed_list and random.randrange(100) < points_rate \
-                    and poss in open_list and not im_the_best:
-                score += 70
-
-            # Prefere open a new segment
-            if random.randrange(100) < open_rate and poss not in closed_list and \
-                    poss not in open_list and im_the_best and poss in self.headers:
-                score += 100
+                # 2. Colonne déjà fermée par l'IA (Objectif : Faire des points)
+                else:
+                    if is_far_ahead:
+                        score -= 1000  # Stop le gavage de points si large avance
+                    elif is_behind:
+                        if player_launch < 2: 
+                            # ATTAQUE MASSIVE : 1ère et 2ème fléchette, focus absolu sur les gros chiffres fermés (20, 19, 18...)
+                            score += 1500 + (numeric_val * 50)  
+                        else:
+                            score += 100
+                    elif random.randrange(100) < points_rate:
+                        score += 200
 
             scores[poss] = score
 
-        best = sorted(scores.items(), key=lambda item: item[1],reverse=True)[0][0]
-        mult_rate = random.randrange(100)
+        if not scores:
+            best = self.headers[0] if self.headers else '20'
+        else:
+            best = sorted(scores.items(), key=lambda item: item[1], reverse=True)[0][0]
+
+        # --- GESTION DE LA PRÉCISION (Taux d'échec du niveau) ---
+        if random.randrange(100) < failure_rate:
+            other_possibilities = [p for p in possibilities if p != best]
+            if other_possibilities:
+                best = random.choice(other_possibilities)
+
+        # --- CHOIX DU MULTIPLICATEUR ---
+        mult_roll = random.randrange(100)
+        
         if best != 'B':
-            if mult_rate < triple_rate:
+            if mult_roll < triple_rate:
                 score = f'T{best}'
-            elif mult_rate < double_rate:
+            elif mult_roll < (triple_rate + double_rate):
                 score = f'D{best}'
             else:
                 score = f'S{best}'
-        elif mult_rate < triple_rate:
-            score = 'DB'
         else:
-            score = 'SB'
+            if mult_roll < triple_rate:
+                score = 'DB'
+            else:
+                score = 'SB'
+
+        # --- PRÉDICTION DU COUP VISÉ ---
+        self.infos += f"Bot aims for: {score}\n"
+        players[actual_player].last_aim = score
 
         return score
 
@@ -838,6 +848,17 @@ class Game(cgame.Game):
         players[actual_player].darts_thrown += 1
         players[actual_player].add_dart(actual_round, player_launch, 'MISS', hit_value=0)
         self.display.play_sound('miss')
+        
+        hit = 'MISS'
+        print('CONTENU DE HIT  DEF MISS')
+        print(hit)
+        ### TROPHEES
+        ctrophies.process_single_dart(players[actual_player], hit)
+        
+        # On vérifie les trophées de volée uniquement à la 3ème fléchette
+        if player_launch == 3:
+            round_darts = players[actual_player].darts[-3:]
+            ctrophies.check_and_unlock_trophies(players[actual_player], round_darts)
 
     def check_players_allowed(self, nb_players):
         """
@@ -847,6 +868,36 @@ class Game(cgame.Game):
             return False
         return nb_players <= 8
 
+    def draw_symbol(self, color, center_x, center_y, size, thickness, score, ratio=None):
+        """
+        Remplit la case du Cricket en se basant sur la taille des colonnes et des lignes de Mickey.
+        """
+        box_w = int(self.target_col_w * 0.7)
+        box_h = int(self.row_h * 0.6)
+        
+        pos_x = int(center_x - box_w / 2)
+        pos_y = int(center_y - box_h / 2)
+
+        effective_score = max(0, min(int(score), 3))
+
+        if effective_score > 0:
+            fill_height = int(box_h * (effective_score / 3.0))
+            fill_y = pos_y + box_h - fill_height
+
+            # Marge de 2 pixels sur les côtés comme sur Mickey
+            margin_x = 2
+            draw_x = pos_x + margin_x
+            draw_w = max(2, box_w - (margin_x * 2))
+            
+            # Pas de marge artificielle sur la hauteur pour que le palier monte net
+            draw_y = fill_y
+            draw_h = fill_height
+
+            if draw_h > 0:
+                self.display.blit_rect(draw_x, draw_y, draw_w, draw_h, color)
+
+    # code pour afficher symboles classiques
+    '''
     def draw_symbol(self, color, center_x, center_y, size, thickness, score, ratio=None):
         pos_x = int(center_x - size / 2)
         pos_y = int(center_y - size / 2)
@@ -883,6 +934,7 @@ class Game(cgame.Game):
         pygame.draw.line(self.display.screen, color, (pos_x, pos_y), (pos_x + width, pos_y), thickness)
         pygame.draw.line(self.display.screen, color, (pos_x, pos_y + height), (pos_x + width, pos_y + height), thickness)
 
+    '''
     def draw_dart_score(self, dart_position, dart_value):
         mid_x = int(self.display.res_x / 4)
         mid_y = self.margin
@@ -952,426 +1004,178 @@ class Game(cgame.Game):
         return click_zones
 
     def refresh_game_screen(self, players, actual_round, max_round, rem_darts, nb_darts, logo, headers, actual_player, TxtOnLogo=False, OnScreenButtons=None, showScores=True, end_of_game=False, endOfSet=None, Set=None, MaxSet=None):
+            self.display.reset_background()
 
-        self.display.reset_background()
+            mpr = players[actual_player].show_mpr()
+            self.mpr = mpr
 
-        game = 'Cricket'
-        hit = ''
+            cell_bg = (20, 22, 28)        
+            header_bg = (35, 38, 48)      
+            grid_border_color = (60, 65, 78) 
 
-        scores = players[actual_player].rounds
-        mpr = players[actual_player].show_mpr()
-        self.mpr = mpr
-
-        game_background = f"background_{logo}"
-        game_background = self.display.file_class.get_full_filename(game_background, 'images')
-        if game_background is not None:
-            self.display.display_background(image=game_background)
-            self.display.save_background()
-        else:
-            self.display.display_background()
-
-        if len(players) > 6:
-            left_x = self.margin
-            left_y = int(self.display.res_y * 2 / 3) + self.margin
-            left_w = int(self.display.res_x / 6) - left_x
-            left_h = self.display.res_y - left_y
-        else:
-            left_x = self.margin
-            left_y = self.margin
-            left_w = int(self.display.res_x / 6) - left_x
-            left_h = int(((self.display.res_y / 3) - left_y) * 1.2)
-
-        mid_y = self.margin
-        mid_h = int(self.display.res_y * 2 / 3) - mid_y
-
-        if len(players) < 5:
-            mid_x = int(self.display.res_x / 4)
-            mid_w = int(self.display.res_x / 2)
-        elif len(players) < 7:
-            mid_x = int(self.display.res_x / 4)
-            mid_w = int(self.display.res_x * 34 / 48)
-        else:
-            mid_x = int(self.display.res_x / 24)
-            mid_w = int(self.display.res_x * 44 / 48)
-            symbol_w = int(left_w / 6)
-            symbol_h = int(left_h / 6)
-
-        target_x = int(mid_x + (mid_w / 2)) - int(self.display.res_x / 32)
-        target_y = mid_y + self.margin_2
-        target_w = int(self.display.res_x / 16)
-        target_h = int((mid_h - self.margin_4)/ 7)
-
-        symbol_w = int(left_w / 4)
-        symbol_h = int(left_h / 5)
-        self.symbol_thickness = self.margin_2
-        self.symbol_size = int(target_h * 3 / 4 - self.margin)
-        self.symbol_thickness2 = self.symbol_thickness
-        self.symbol_size2 = self.symbol_size
-        if len(players) > 6:
-            self.symbol_thickness2 = int(self.symbol_thickness / 2)
-            self.symbol_size2 = int(self.symbol_size / 2)
-
-        darts_x = int(self.display.res_x / 4)
-
-        scores_m = int(self.display.res_x / 96)
-        scores_x = mid_x + scores_m
-        scores_y = mid_y + self.margin
-        scores_w = int(self.display.res_x * 3 / 32)
-        scores_h = mid_h - self.margin_2
-
-        dart_x = int(darts_x + self.margin / 2)
-        dart_x_increment = int(self.display.res_x / 6)
-        dart_y = scores_y + scores_h + int(self.display.res_y / 32)
-        dart_h = target_h
-        dart_w = int(self.display.res_x / 6 - 2 * self.margin)
-
-        # Game type
-        game_width = int(self.display.res['x'] / 16)
-        game_x = int((self.display.res['x'] - game_width) / 2)
-        game_y = dart_y + dart_h + 2 * self.margin
-        game_height = int(self.display.res['y'] / 24)
-
-        # Background
-        self.display.blit_rect(0, 0, self.display.res_x, self.display.res_y, self.display.colorset['game-bg'])
-
-        # Round informations
-        self.display.blit_rect(left_x, left_y, left_w, left_h, self.display.colorset['game-bg'])
-        self.display.blit_text(f"Round", left_x, left_y, int(left_w / 3), left_h, color=self.display.colorset['game-round'], dafont='Impact', align='Left', valign='top', margin=False)
-        self.display.blit_text(f"{actual_round} / {max_round}", left_x + int(left_w / 2), left_y, left_w - int(left_w / 2), int(left_h / 4), color=self.display.colorset['game-round'], dafont='Impact', align='Right', valign='top', margin=False)
-
-        left_y += int(left_h / 5)
-
-        mpr_rectangle = (left_x, left_y, left_w, symbol_h)
-        self.display.blit_text(f'MPR', left_x, left_y, left_w, symbol_h, color=self.display.colorset['game-score'], dafont='Impact', align='Left')
-        sub = self.display.screen.subsurface(mpr_rectangle)
-        screenshot2 = pygame.Surface((mpr_rectangle[2], mpr_rectangle[3]))
-        self.display.blit_screen(screenshot2, sub, (0, 0))
-        self.display.blit_text(f'{mpr}', left_x , left_y, left_w, symbol_h, color=players[actual_player].color, dafont='Impact', align='Right')
-
-        left_y += int(left_h / 5)
-        rect_dart = None
-        for index in range(3):
-            if end_of_game:
-                continue
-            if actual_round - index > 0:
-                text1 = f'R{actual_round - index}'
-                score = 0
-                self.display.blit_text(text1, left_x, left_y, symbol_w, symbol_h, color=self.display.colorset['game-score'], dafont='Impact', align='Left')
-                index_s = 1
-                for dartx in scores[actual_round - 1 - index]:
-                    if dartx is not None and dartx[1::] in self.headers:
-                        multiplier = self.get_hit_unit(dartx)
-                        if multiplier > 0:
-                            self.draw_symbol(players[actual_player].color, \
-                                left_x + int(symbol_w / 2) + symbol_w * index_s, left_y + int(symbol_h / 2), \
-                                int(self.symbol_size / 2), int(self.symbol_thickness / 2), multiplier)
-                    elif dartx is not None:
-                        self.draw_symbol(self.display.colorset['game-darts'], left_x + int(symbol_w / 2) + symbol_w * index_s, \
-                                left_y + int(symbol_h / 2), int(self.symbol_size2 / 2), int(self.symbol_thickness2 / 2), -1)
-                    elif rect_dart is None:
-                        rect_dart = (left_x + symbol_w * index_s, left_y, symbol_w, symbol_h)
-
-                    index_s += 1
-
-            left_y += int(left_h / 5)
-
-        # Scores part
-        self.display.blit_rect(mid_x, mid_y, mid_w, mid_h, self.display.colorset['game-bg'])
-
-        index = 0
-        for target in self.headers:
-            if index % 2 == 0:
-                self.display.blit_rect(mid_x + self.margin, target_y + target_h * index, mid_w - self.margin_2, target_h, self.display.colorset['game-bg'])
-            self.display.blit_text(f'{target}', target_x, target_y + target_h * index, target_w, target_h, color=self.display.colorset['game-score'], dafont='Impact', align='Center')
-            index += 1
-
-        index = 0
-        for player in players:
-            if index == int((len(players) + 1) / 2) or (len(players) == 2 and index == 1):
-                scores_x += target_w + scores_m
-            elif(len(players) == 2 and index == 0):
-                scores_x += scores_w + scores_m
-
-            players[index].scores_x = int(scores_x + scores_w / 2)
-
-            if index == actual_player:
-                rectangle_color = players[actual_player].color
+            game_background = f"background_{logo}"
+            game_background = self.display.file_class.get_full_filename(game_background, 'images')
+            if game_background is not None:
+                self.display.display_background(image=game_background)
+                self.display.save_background()
             else:
-                rectangle_color = self.display.colorset['game-player']
-            self.draw_rect((scores_x, scores_y, scores_w, scores_h), 5, rectangle_color)
+                self.display.display_background()
 
-            index_c = 0
-            for column in players[index].columns:
-                if self.get_column_state(player.ident, players, index_c) == 4:
-                    self.draw_symbol(self.display.colorset['game-player'], players[index].scores_x, target_y + target_h * index_c + int(target_h / 2), self.symbol_size, self.symbol_thickness, column[0])
-                else:
-                    self.draw_symbol(players[index].color, players[index].scores_x, target_y + target_h * index_c + int(target_h / 2), self.symbol_size, self.symbol_thickness, column[0])
-                index_c += 1
+            self.display.blit_rect(0, 0, self.display.res_x, self.display.res_y, self.display.colorset['game-bg'])
 
-            scores_x += scores_w + scores_m
-            index += 1
+            # --- AFFICHAGE DU TITRE DU JEU EN HAUT ---
+            title_h = int(self.display.res_y * 0.08)
+            title_w = int(self.display.res_x * 0.4)
+            title_x = int((self.display.res_x - title_w) / 2)
+            title_y = int(self.margin)
+            self.display.blit_text("Cricket", title_x, title_y, title_w, title_h, color=(255, 255, 255), dafont='Impact', align='Center', valign='center', margin=False)
 
-        # For scrolling dart
-        pos_y = dart_y + dart_h + self.margin
-        height = int(self.display.res_y / 24)
+            left_x = self.margin
+            left_y = self.margin + title_h  # On décale le reste pour ne pas chevaucher le titre
+            left_w = int(self.display.res_x * 0.22)
+            
+            round_h = int(self.display.res_y * 0.05)
+            self.display.blit_rect(left_x, left_y, left_w, round_h, self.display.colorset['game-bg'])
+            self.display.blit_text(f"Tour : {actual_round}/{max_round}", left_x, left_y, left_w, round_h, color=self.display.colorset['game-round'], dafont='Impact', align='Left', valign='center', margin=False)
 
-        index_d = 0
-        if not end_of_game:
-            for dart in players[actual_player].darts:
-                if dart is None:
-                    if index_d == 0:
-                        dart_color = self.display.colorset['game-gold']
-                    elif index_d == 1:
-                        dart_color = self.display.colorset['game-silver']
+            mpr_y = left_y + round_h + self.margin
+            mpr_h = int(self.display.res_y * 0.05)
+            mpr_rectangle = (left_x, mpr_y, left_w, mpr_h)
+            
+            self.display.blit_text(f'MPR : {mpr}', left_x, mpr_y, left_w, mpr_h, color=players[actual_player].color, dafont='Impact', align='Left', valign='center')
+            
+            sub = self.display.screen.subsurface(mpr_rectangle)
+            screenshot2 = pygame.Surface((mpr_rectangle[2], mpr_rectangle[3]))
+            self.display.blit_screen(screenshot2, sub, (0, 0))
+
+            rect_dart = None
+
+            right_w = int(self.display.res_x * 0.35)
+            right_x = self.display.res_x - right_w - self.margin
+            dart_y = self.margin + title_h # On décale également le bloc darts vers le bas
+            dart_h = int(self.display.res_y * 0.08)
+            dart_w = int(right_w / 3)
+
+            index_d = 0
+            if not end_of_game:
+                for dart in players[actual_player].darts:
+                    box_x = right_x + index_d * dart_w
+                    margin_box_x = int(dart_w * 0.1)
+                    margin_box_y = int(dart_h * 0.15)
+                    
+                    b_x = box_x + margin_box_x
+                    b_y = dart_y + margin_box_y
+                    b_w = dart_w - (2 * margin_box_x)
+                    b_h = dart_h - (2 * margin_box_y)
+
+                    self.display.blit_rect(b_x, b_y, b_w, b_h, cell_bg)
+                    pygame.draw.rect(self.display.screen, grid_border_color, (b_x, b_y, b_w, b_h), 1)
+
+                    if dart is None:
+                        if index_d == 0:
+                            dart_color = self.display.colorset['game-gold']
+                        elif index_d == 1:
+                            dart_color = self.display.colorset['game-silver']
+                        else:
+                            dart_color = self.display.colorset['game-bronze']
+                        self.display.display_image(self.dart, b_x, b_y, b_w, b_h, center_x=True, change_colors=[[(0, 0, 0), dart_color]])
                     else:
-                        dart_color = self.display.colorset['game-bronze']
-                    self.display.blit_rect(dart_x + index_d * dart_x_increment, dart_y, dart_w, dart_h, self.display.colorset['game-bg'])
-                    self.display.display_image(self.dart, dart_x + index_d * dart_x_increment, dart_y, dart_w, dart_h, center_x=True, change_colors=[[(0, 0, 0), dart_color]])
-                    #pass
-                else:
-                    self.draw_dart_score(index_d, dart)
-                index_d += 1
+                        self.display.blit_text(str(dart), b_x, b_y, b_w, b_h, color=(255, 255, 255), dafont='Impact', align='Center', valign='center')
 
-        right_x = int(self.display.res['x'] * 13 / 16)
-        right_y = self.margin
-        right_width = int(self.display.res['x'] * 3 / 16)
-        right_height = int(self.display.res['y'] / 16)
+                    index_d += 1
 
-        if not end_of_game:
-            if self.display.game_type == 'online':
-                self.display.display_image(self.online_icon, game_x - 40, game_y + self.margin, width=32, height=32, UseCache=True)
-            self.display.blit_text(f"{self.display.game_type} game", game_x, game_y, game_width, game_height, color=(255, 0, 0), dafont='Impact', align='Center', valign='top', margin=False)
+            start_grid_y = mpr_y + mpr_h + (self.margin * 2)
+            available_h = self.display.res_y - start_grid_y - self.margin
 
-        self.display_players(players, actual_player, end_of_game)
+            nb_headers = len(self.headers)
+            
+            fixed_total_units = nb_headers + 3 
+            unit_w = int(self.display.res_x / (fixed_total_units + 1))
 
-        # On screen buttons
-        if OnScreenButtons is True or self.display.is_true(self.config.get_value('SectionGlobals', 'onscreenbuttons')):
-            click = self.onscreen_buttons()
+            name_col_w = unit_w * 2  
+            target_col_w = unit_w     
+            score_col_w = unit_w
 
-        # Game's options
-        option_height = right_height / 2
-        option_y = self.display.res['y'] - option_height
+            grid_w = name_col_w + (nb_headers * target_col_w) + score_col_w
+            grid_x = int((self.display.res_x - grid_w) / 2)
 
-        if self.display.colorset['game-option'] is not None:
-            for option, value in self.options.items():
-                if option == 'theme' or value is False:
-                    continue
-                text = self.display.lang.translate(f'{game}-{option}')
+            max_row_h = int((self.display.res_y - (mpr_y + mpr_h + self.margin * 2)) / 9)
+            calculated_row_h = int(available_h / 9)
+            row_h = min(calculated_row_h, max_row_h)
 
-                if value is True:
-                    self.display.blit_text(f'{text}', right_x, option_y, right_width, option_height, color=self.display.colorset['game-green'], dafont='Impact', align='Right')
-                else:
-                    self.display.blit_text(f'{text} : {value}', right_x, option_y, right_width, option_height, color=self.display.colorset['game-option'], dafont='Impact', align='Right')
-                option_y -= option_height
-        self.display.blit_text(f"{game.replace('_', ' ')}  ", right_x, option_y - option_height, right_width, option_height * 2, color=(255, 0, 0), dafont='Impact', align='Right')
+            self.target_col_w = target_col_w     
+            self.row_h = row_h
 
-        self.display.save_background()
-        self.display.update_screen()
+            total_table_h = row_h * (len(players) + 1)
+            
+            grid_y = start_grid_y + int((available_h - total_table_h) / 2)
 
-        # scrolling dart
-        rect1 = pygame.Rect(0, dart_y, self.display.res['x'], dart_h)
-        sub = self.display.screen.subsurface(rect1)
-        screenshot1 = pygame.Surface((self.display.res['x'], dart_h))
-        self.display.blit_screen(screenshot1, sub, (0, 0))
+            header_x = grid_x + name_col_w
+            for target in self.headers:
+                self.display.blit_rect(header_x, grid_y, target_col_w, row_h, header_bg)
+                pygame.draw.rect(self.display.screen, grid_border_color, (header_x, grid_y, target_col_w, row_h), 1)
+                self.display.blit_text(f'{target}', header_x, grid_y, target_col_w, row_h, color=(255, 255, 255), dafont='Impact', align='Center')
+                header_x += target_col_w
 
-        if rect_dart is not None:
-            sub = self.display.screen.subsurface(rect_dart)
-            screenshot3 = pygame.Surface((rect_dart[2], rect_dart[3]))
-            self.display.blit_screen(screenshot3, sub, (0, 0))
-        else:
+            self.symbol_size = int(row_h * 0.38)
+            self.symbol_thickness = 3
+
+            player_row_idx = 0
+            for index, player in enumerate(players):
+                p_y = grid_y + row_h + (player_row_idx * row_h)
+                is_active = (index == actual_player)
+                p_color = players[actual_player].color if is_active else self.display.colorset['game-player']
+
+                self.display.blit_rect(grid_x, p_y, name_col_w, row_h, p_color)
+                pygame.draw.rect(self.display.screen, (0, 0, 0), (grid_x, p_y, name_col_w, row_h), 1)
+                self.display.blit_text(player.name, grid_x + 4, p_y, name_col_w - 4, row_h, color=(255, 255, 255), dafont='Impact', align='Left')
+
+                c_x = grid_x + name_col_w
+                index_c = 0
+                for column in player.columns:
+                    self.display.blit_rect(c_x, p_y, target_col_w, row_h, cell_bg)
+                    pygame.draw.rect(self.display.screen, grid_border_color, (c_x, p_y, target_col_w, row_h), 1)
+                    
+                    center_x = c_x + int(target_col_w / 2)
+                    center_y = p_y + int(row_h / 2)
+                    
+                    if self.get_column_state(player.ident, players, index_c) == 4:
+                        self.draw_symbol((80, 85, 95), center_x, center_y, self.symbol_size, self.symbol_thickness, column[0])
+                    else:
+                        self.draw_symbol(player.color, center_x, center_y, self.symbol_size, self.symbol_thickness, column[0])
+                    
+                    c_x += target_col_w
+                    index_c += 1
+
+                score_x = grid_x + name_col_w + (nb_headers * target_col_w)
+                self.display.blit_rect(score_x, p_y, score_col_w, row_h, header_bg)
+                pygame.draw.rect(self.display.screen, grid_border_color, (score_x, p_y, score_col_w, row_h), 1)
+                self.display.blit_text(str(player.score), score_x, p_y, score_col_w - 2, row_h, color=(255, 255, 255), dafont='Impact', align='Right')
+
+                if is_active:
+                    pygame.draw.rect(self.display.screen, p_color, (grid_x, p_y, grid_w, row_h), 3)
+
+                player_row_idx += 1
+
+            click = None
+            if OnScreenButtons is True or self.display.is_true(self.config.get_value('SectionGlobals', 'onscreenbuttons')):
+                click = self.onscreen_buttons()
+
+            self.display.save_background()
+            self.display.update_screen()
+
+            rect1 = pygame.Rect(right_x, dart_y, right_w, dart_h)
+            sub = self.display.screen.subsurface(rect1)
+            screenshot1 = pygame.Surface((right_w, dart_h))
+            self.display.blit_screen(screenshot1, sub, (0, 0))
+
             screenshot3 = None
 
-        if end_of_game:
-            click = self.display.end_of_game_menu()
-            return click
+            if end_of_game:
+                click = self.display.end_of_game_menu()
+                return click
 
-        if OnScreenButtons is True or self.display.is_true(self.config.get_value('SectionGlobals', 'onscreenbuttons')):
-            return [click, [screenshot1, rect1], [screenshot2, mpr_rectangle], [screenshot3, rect_dart]]
-        else:
-            return [[], [screenshot1, rect1], [screenshot2, mpr_rectangle], [screenshot3, rect_dart]]
-
-    def display_players(self, players, actual_player, end_of_game):
-
-        heading_color = self.display.colorset['game-bg']
-        player_color = self.display.colorset['game-alt-headers']
-        # Display players and scores
-        player_width = int(self.display.res['x'] / max(2 * len(players), 6))
-        player_height = int(self.display.res['y'] / 8)
-        heading_height = int(self.display.res['y'] / 24)
-        players_x = int(self.display.res['x'] / 4 + (self.display.res['x'] / 2 - player_width * len(players)) / 2)
-        player_y = self.display.res_y - player_height - self.margin
-
-        if end_of_game:
-            player_y = self.display.res_y - 2 * player_height - self.margin
-        else:
-            player_y = self.display.res_y - player_height - self.margin
-
-        index = 0
-        for player in players:
-            color = player.color
-            if self.show_mpr :
-                if self.mpr:
-                    mpr = player.show_mpr()
-                    name = f'{player.name} - {mpr}'
-                else:
-                    name = f'{player.name} - 0.0'
+            if OnScreenButtons is True or self.display.is_true(self.config.get_value('SectionGlobals', 'onscreenbuttons')):
+                return [click, [screenshot1, rect1], [screenshot2, mpr_rectangle], [screenshot3, rect_dart]]
             else:
-                name = f'{player.name}'
-
-            score = player.score
-            player_x = players_x + index * player_width
-            if index != actual_player:
-                if index < actual_player:
-                    player_x -= int(player_width / 2)
-                else:
-                    player_x += int(player_width / 2)
-
-                self.display.blit_rect(player_x, player_y, player_width, heading_height, heading_color)
-                self.display.blit_rect(player_x, player_y + heading_height, player_width, player_height - heading_height, player_color)
-
-                if self.display.colorset['game-bg'] is not None:
-                    pygame.draw.line(self.display.screen, self.display.colorset['game-bg'], (player_x, player_y + heading_height), (player_x + player_width, player_y + heading_height), 2)
-                    pygame.draw.line(self.display.screen, self.display.colorset['game-bg'], (player_x, player_y), (player_x, player_y + player_height), 2)
-                    pygame.draw.line(self.display.screen, self.display.colorset['game-bg'], (player_x + player_width, player_y), (player_x + player_width, player_y + player_height), 2)
-
-                if index < actual_player:
-                    self.display.blit_text(name, player_x, player_y - self.margin, player_width, heading_height + self.margin_2, color=player_color, dafont='Impact', align='Left')
-                    self.display.blit_text(score, player_x, player_y + heading_height, player_width, player_height - heading_height, color=self.display.colorset['game-score'], dafont='Impact', align='Left')
-                else:
-                    self.display.blit_text(name, player_x, player_y - self.margin, player_width, heading_height + self.margin_2, color=player_color, dafont='Impact', align='Right')
-                    self.display.blit_text(score, player_x, player_y + heading_height, player_width, player_height - heading_height, color=self.display.colorset['game-score'], dafont='Impact', align='Right')
-                pygame.draw.line(self.display.screen, color, (player_x, player_y), (player_x + player_width, player_y), 8)
-            else:
-                # For actual player's infos
-                actual_color = color
-                actual_x = player_x - int(player_width / 2)
-                actual_name = name
-                actual_score = score
-            index += 1
-
-        # Actual player and his score
-        player_x = int(self.display.res['x'] / 4 + (self.display.res['x'] / 2 - player_width * len(players)) / 2) + actual_player * player_width - (player_width / 2)
-        player_x = actual_x
-        player_y -= self.margin
-        player_height += self.margin_2
-        player_width *= 2
-        dart_icon_size = player_height - heading_height - self.margin_2
-        self.display.blit_rect(player_x, player_y, player_width, heading_height, actual_color)
-        self.display.blit_rect(player_x, player_y + heading_height, player_width, player_height - heading_height, actual_color)
-        if self.display.colorset['game-bg'] is not None:
-            pygame.draw.line(self.display.screen, self.display.colorset['game-bg'], (player_x, player_y + heading_height), (player_x + player_width, player_y + heading_height), 2)
-            pygame.draw.line(self.display.screen, self.display.colorset['game-bg'], (player_x, player_y), (player_x, player_y + player_height), 2)
-            pygame.draw.line(self.display.screen, self.display.colorset['game-bg'], (player_x + player_width, player_y), (player_x + player_width, player_y + player_height), 2)
-        self.display.display_image(self.dart_icon, player_x + self.margin, player_y + heading_height + self.margin, width=dart_icon_size, height=dart_icon_size, UseCache=True)
-        self.display.blit_text(actual_name, player_x, player_y - self.margin, player_width, heading_height + self.margin_2, color=self.display.colorset['game-player-name'], dafont='Impact', align='Center')
-        self.display.blit_text(actual_score, player_x, player_y + heading_height, player_width, player_height - heading_height, color=self.display.colorset['game-score'], dafont='Impact', align='Right')
-
-        return (player_x, player_y, player_width, player_height)
-
-    def display_hit(self, rectangles, players, actual_player, player_launch, hit):
-        """
-        Nice hit animation
-        """
-
-        if hit == 'MISSDART':
-            return
-        screenshot1 = rectangles[1][0]
-        rect1 = rectangles[1][1]
-
-        screenshot_mpr = rectangles[2][0]
-        rectangle_mpr = rectangles[2][1]
-
-        screenshot_dart = rectangles[3][0]
-        rectangle_dart = rectangles[3][1]
-
-        mpr = players[actual_player].show_mpr()
-
-        width, height = self.display.display_image(self.trail, 0, rect1[1], rect1[2], rect1[3], UseCache=True)
-        # Image movement step
-        nb_steps = 15
-        step = int((self.display.res['x'] + width) / nb_steps)
-
-        sens = -1
-        min_x = int(self.display.res['x'])
-        max_x = -width
-
-        hit_x = int(self.display.res['x'] / 4) - self.margin_2
-        hit_y = int(self.display.res['y'] / 4) - self.margin_2
-        hit_w = self.display.mid_x + 4 * self.margin
-        hit_h = self.display.mid_y + 4 * self.margin
-
-        mid_x = int(self.display.res_x / 4)
-        mid_y = self.margin
-        mid_w = self.display.mid_x
-        mid_h = int(self.display.res_y * 2 / 3) - mid_y
-
-        target_x = self.display.mid_x - int(self.display.res_x / 32)
-        target_y = mid_y + self.margin_2
-        target_w = int(self.display.res_x / 16)
-        target_h = int((mid_h - self.margin_4)/ 7)
-
-        scores_m = int(self.display.res_x / 96)
-        scores_x = mid_x + scores_m
-        scores_y = mid_y + self.margin
-        scores_w = int(self.display.res_x * 3 / 32)
-        scores_h = mid_h - self.margin_2
-
-        mid_x = int(self.display.res['x'] / 4) + self.margin
-        mid_y = int(self.display.res['y'] * 3 / 4) + self.margin
-
-        mid_width = self.display.mid_x - self.margin_2
-        mid_height = int(self.display.res['y'] / 4) - self.margin_2
-
-        symbol_size = int(target_h * 3 / 4 - self.margin)
-        self.symbol_thickness = self.margin_2
-
-        rect_players = self.display_players(players, actual_player, False)
-        self.display.update_screen(rect=rect_players)
-
-
-        if hit[1::] in self.headers:
-            # column touched
-            column_hit = self.headers.index(hit[1::])
-        else:
-            column_hit = None
-
-        index = 0
-        for index in range(0, nb_steps + 2):
-            ratio = min(1, index / nb_steps)
-            dart_x = min_x + step * sens * index
-
-            # Scrolling dart
-            rect = (dart_x, rect1[1] , rect1[2] + 4 * step, rect1[3])
-            self.display.blit(screenshot1, (rect1[0], rect1[1]))
-            self.draw_dart_score(player_launch - 1, hit)
-
-            self.display.display_image(self.trail, dart_x, rect1[1], rect1[2], rect1[3], UseCache=True)
-            if index == nb_steps + 1:
-                act_mpr = mpr
-            else:
-                act_mpr = round(self.mpr + (mpr - self.mpr) / (nb_steps + 1 - index), 2)
-            self.display.blit(screenshot_mpr, (rectangle_mpr[0] , rectangle_mpr[1]))
-            self.display.blit_text(f'{act_mpr}', rectangle_mpr[0] , rectangle_mpr[1], rectangle_mpr[2], rectangle_mpr[3], color=players[actual_player].color, dafont='Impact', align='Right')
-
-            multiplier = self.get_hit_unit(hit)
-            pos_x = int(rectangle_dart[0] + rectangle_dart[2] / 2)
-            pos_y = int(rectangle_dart[1] + rectangle_dart[3] / 2)
-            if column_hit is None:
-                self.draw_symbol(self.display.colorset['game-darts'], pos_x, pos_y, int(self.symbol_size / 2), int(self.symbol_thickness / 2), -1, ratio=ratio)
-            else:
-                self.draw_symbol(players[actual_player].color, pos_x, pos_y, int(self.symbol_size2 / 2), int(self.symbol_thickness2 / 2), multiplier, ratio=ratio)
-
-            # Dart's symbol
-            if column_hit is not None and self.ok:
-                hit_x = players[actual_player].scores_x
-                hit_y = target_y + target_h * column_hit + int(target_h / 2)
-                self.draw_symbol(players[actual_player].color, hit_x, hit_y, self.symbol_size, self.symbol_thickness, players[actual_player].columns[column_hit][0], ratio=ratio)
-                rect2 = (hit_x - symbol_size, hit_y - symbol_size, 2 * symbol_size, 2 * symbol_size)
-                rect_array = [rect, rect2, rectangle_mpr, rectangle_dart]
-            else:
-                rect_array = [rect, rectangle_mpr, rectangle_dart]
-
-            self.display.update_screen(rect_array=rect_array)
-            index += 1
-
-        self.display.save_background()
+                return [[], [screenshot1, rect1], [screenshot2, mpr_rectangle], [screenshot3, rect_dart]]
