@@ -44,6 +44,8 @@ class Camera:
         self.incr_filter = 0
         self.path_of_filters_directory = None
         self.list_of_filter = []
+        # Filters already read and scaled, see filter_layer()
+        self._filter_layers = {}
         self.init_list_of_filters()
         self.init_var(config.read_file("Camera"), show_in_parametrage)
         self.work_in_progress = False
@@ -301,6 +303,20 @@ class Camera:
         except Exception as ex:
             self.logs.error(f"Error in ccamera update_list_of_filter_value() : {ex}")
             
+    def filter_layer(self, path, size):
+        '''
+        Filter read from its file and scaled only once (the preview used to read it
+        again from the SD card for each of its pictures)
+        '''
+        key = (path, os.path.getmtime(path), int(size[0]), int(size[1]))
+        layer = self._filter_layers.get(key)
+        if layer is None:
+            layer = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (key[2], key[3]))
+            if len(self._filter_layers) >= 8:
+                self._filter_layers.clear()
+            self._filter_layers[key] = layer
+        return layer
+
     def show_camera(self, screen, posX=0, posY=0, resW=0, resH=0):
         '''
         Display camera
@@ -349,11 +365,8 @@ class Camera:
                 #path_of_filter = self.get_photo_filter()
                 #if path_of_filter is not None:
                 if self.path_of_filter is not None:
-                    # On charge le calque
-                    #calque = pygame.image.load(path_of_filter).convert_alpha()
-                    calque = pygame.image.load(self.path_of_filter).convert_alpha()
-                    # On resize le calque
-                    calque = pygame.transform.scale(calque, (resW, resH))
+                    # Le calque, a la taille de l'apercu
+                    calque = self.filter_layer(self.path_of_filter, (resW, resH))
                     # On applique le calque
                     image.blit(calque,(0, 0))
                     
@@ -453,8 +466,7 @@ class Camera:
 
                     path_of_filter = self.get_photo_filter()
                     if path_of_filter is not None:
-                        calque = pygame.image.load(path_of_filter).convert_alpha()
-                        calque = pygame.transform.scale(calque, (1024, 765))
+                        calque = self.filter_layer(path_of_filter, (1024, 765))
                         picture_shot.blit(calque, (0, 0))
 
                     # save

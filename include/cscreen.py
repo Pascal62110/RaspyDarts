@@ -537,11 +537,19 @@ class Screen(pygame.Surface):
         if border:
             pygame.draw.rect(self.screen, border_color, (int(pos_x), int(pos_y), int(width), int(height)), border)
 
+    @lru_cache(maxsize=128)
+    def font(self, path, size):
+        '''
+        Return the font of this file and size. Kept once loaded : creating a font reads and
+        parses its file, and texts are drawn with the same fonts over and over
+        '''
+        return pygame.font.Font(path, size)
+
     def get_font(self, size):
         '''
         Return the font with size given
         '''
-        return pygame.font.Font(self.defaultfontpath, size)
+        return self.font(self.defaultfontpath, size)
 
     @lru_cache(maxsize=2048)
     def scale_text(self, text, width, height, dafont=None, divider=1.5, step=0.1):
@@ -555,7 +563,7 @@ class Screen(pygame.Surface):
 
         while True:
             text_size = int(height / divider)
-            font = pygame.font.Font(f'{dafont}', text_size)
+            font = self.font(f'{dafont}', text_size)
             font_size = font.size(str(text))
 
             if text_size <= 0:
@@ -606,9 +614,9 @@ class Screen(pygame.Surface):
         # Display Text
         scaled_text = self.scale_text(text, width - 2 * text_margin, height - 2 * text_margin, divider=divider, dafont=dafont)
         if dafont is None:
-            font = pygame.font.Font(f'{self.defaultfontpath}', scaled_text[0])
+            font = self.font(f'{self.defaultfontpath}', scaled_text[0])
         else:
-            font = pygame.font.Font(self.file_class.get_full_filename(dafont, 'fonts'), scaled_text[0])
+            font = self.font(self.file_class.get_full_filename(dafont, 'fonts'), scaled_text[0])
         # Render text
         text = font.render(text, True, color)
         # Calculate place of text
@@ -3476,7 +3484,7 @@ class Screen(pygame.Surface):
         font_file = self.file_class.get_full_filename('FreeSansBold', 'fonts')
         # Add description
         nb_lines = len(text)
-        font = pygame.font.Font(font_file, 50)
+        font = self.font(font_file, 50)
 
         index = 0
         maxsize = 0
@@ -3490,7 +3498,7 @@ class Screen(pygame.Surface):
 
         scaled_text = self.scale_text(text[longest], width - 2 * marge_x, (height - 2 * marge_y) / nb_lines, divider=1.5, step=0.05, dafont=font_file )
         font_size = scaled_text[0]
-        font = pygame.font.Font(font_file, font_size + self.margin)
+        font = self.font(font_file, font_size + self.margin)
 
         if nb_lines > 1:
             interline = (height - nb_lines * font_size - 2 * marge_y) / (nb_lines - 1)
@@ -7055,7 +7063,7 @@ class Screen(pygame.Surface):
         if not full:
             # Print game's name
             height = int((int(self.res['x']) / 1920) * 50)
-            font = pygame.font.Font(self.defaultfontpath, height)
+            font = self.font(self.defaultfontpath, height)
             game_name = self.lang.translate(f"{game.replace(' ', '_')}-name")
             if game_name == f"{game.replace(' ', '_')}-name":
                 game_name = game
@@ -7079,9 +7087,9 @@ class Screen(pygame.Surface):
         height = int((int(self.res['x']) / 1920) * 25)
         indice = 85
         if(self.colorset.get('font') is None):
-            font = pygame.font.Font(f'{self.config.fontsDir}/FreeSansBold.ttf', height)
+            font = self.font(f'{self.config.fontsDir}/FreeSansBold.ttf', height)
         else:
-            font = pygame.font.Font(self.colorset['font'], height)
+            font = self.font(self.colorset['font'], height)
 
         index = 0
         text_pos_y += 20 # Border radiue
@@ -7516,7 +7524,7 @@ class Screen(pygame.Surface):
             # Limit header to 3 char
             txt = str(headers[index][:3])
             scaled_text = self.scale_text(txt, self.box_width, self.line_height)
-            font = pygame.font.Font(self.defaultfontpath, scaled_text[0])
+            font = self.font(self.defaultfontpath, scaled_text[0])
             # Render text
             text = font.render(txt, True, self.colorset['menu-text-black'])
             # Calculate place of text
@@ -7987,7 +7995,7 @@ class Screen(pygame.Surface):
         border_size = int(self.box_width / 20)
         text_color = self.colorset['menu-text-black']
         scaled_text = self.scale_text(txt, width, height)
-        font = pygame.font.Font(self.defaultfontpath, scaled_text[0])
+        font = self.font(self.defaultfontpath, scaled_text[0])
         # Display rect container
         self.blit_rect(pos_x, pos_y, width, height, self.colorset['bg-LOGO'], border_size, border_color)
         # Render text
@@ -8062,6 +8070,18 @@ class Screen(pygame.Surface):
         # Scale to correct size
         return (pygame.transform.scale(image, (image_width, image_height)), (image_width, image_height))
 
+    def opaque_to_screen_format(self, image):
+        '''
+        An image without any transparent pixel (backgrounds, photos...) is blitted much
+        faster in the format of the screen than with an alpha channel
+        '''
+        try:
+            if pygame.surfarray.array_alpha(image).min() == 255:
+                return image.convert()
+        except Exception as e:
+            self.logs.debug(f"Image kept with its alpha channel : {e}")
+        return image
+
     #@debug
     @cperf.timed('display_image')
     def display_image(self, imagepath, pos_x, pos_y, width=0, height=0, Scale=False, center_x=False, center_y=False, rect=None, Screen=None, change_colors=None, enabledImage=True, UseCache=True):
@@ -8092,9 +8112,12 @@ class Screen(pygame.Surface):
                     image_pixel_array = pygame.PixelArray(loaded_image)
                     for change in change_colors:
                         image_pixel_array.replace(change[0], change[1])
+                    # Unlocks the image
+                    del image_pixel_array
         
                 # Scale
                 scaled = self.scale_image(loaded_image, scale=Scale, width=int(width), height=int(height))
+                scaled = (self.opaque_to_screen_format(scaled[0]), scaled[1])
                 # then store image + size
                 if UseCache:
                     self.imagecache[image_cache] = scaled
@@ -8200,7 +8223,7 @@ class Screen(pygame.Surface):
             txtcolor = self.colorset['menu-text-black']
         #  Player name size depends of player name number of char (dynamic size)
         scaled_text = self.scale_text(playername, self.pn_size - 2 * self.margin, self.line_height)
-        font = pygame.font.Font(self.defaultfontpath, scaled_text[0])
+        font = self.font(self.defaultfontpath, scaled_text[0])
         # Render the text. "True" means anti-aliased text.
         pos_x = self.margin * 2 + scaled_text[1]
         pos_y = pos_y + scaled_text[2]
@@ -8381,7 +8404,7 @@ class Screen(pygame.Surface):
 
         # Write text in box
         scaled_text = self.scale_text(text, self.box_width - self.margin * 2, self.line_height - self.margin * 2)
-        font = pygame.font.Font(self.defaultfontpath, scaled_text[0])
+        font = self.font(self.defaultfontpath, scaled_text[0])
         text = font.render(text, True, self.colorset[color])
         pos_x = column * self.box_width + self.pn_size + self.margin * 2 + scaled_text[1]
 
@@ -8424,7 +8447,7 @@ class Screen(pygame.Surface):
         #
         pos_x = int(self.pn_size + (int(self.config.get_value('SectionGlobals', 'nbcol')) + 1) * self.box_width)
         scaled_text = self.scale_text(txt, score_size - self.margin * 2, self.line_height - self.margin * 2)
-        font = pygame.font.Font(self.defaultfontpath, scaled_text[0])
+        font = self.font(self.defaultfontpath, scaled_text[0])
         text = font.render(txt, True, self.colorset['menu-text-black'])
         self.blit(text, [pos_x + self.margin * 2 + scaled_text[1], pos_y + scaled_text[2]])
 
@@ -8496,7 +8519,7 @@ class Screen(pygame.Surface):
         #
         scaled_text= self.scale_text(self.lang.translate('remaining-darts'), width, title_height)
         font_size = scaled_text[0]
-        font = pygame.font.Font(self.defaultfontpath, font_size)
+        font = self.font(self.defaultfontpath, font_size)
         text_x = int(pos_x + scaled_text[1])
         text_y = int(pos_y + scaled_text[2])
         text = font.render(self.lang.translate('remaining-darts'), True, self.colorset['menu-text-black'])
@@ -8530,7 +8553,7 @@ class Screen(pygame.Surface):
         #
         scaled_text= self.scale_text(self.lang.translate('remaining-darts'), width, title_height)
         font_size = scaled_text[0]
-        font = pygame.font.Font(self.defaultfontpath, font_size)
+        font = self.font(self.defaultfontpath, font_size)
         text_x = int(pos_x + scaled_text[1])
         text_y = int(pos_y + scaled_text[2])
         text = font.render(self.lang.translate('remaining-darts'), True, self.colorset['menu-text-black'])
@@ -8570,7 +8593,7 @@ class Screen(pygame.Surface):
         # Display header
         self.blit_rect(pos_x, pos_y, width, title_height, self.colorset['bg-optionslist-header'])
         scaled_text= self.scale_text(self.lang.translate('game-options'), width, height)
-        font = pygame.font.Font(self.defaultfontpath, scaled_text[0])
+        font = self.font(self.defaultfontpath, scaled_text[0])
         text_x = int(pos_x + scaled_text[1])
         text_y = int(pos_y + scaled_text[2])
         text = font.render(self.lang.translate('game-options'), True, self.colorset['menu-text-black'])
@@ -8584,7 +8607,7 @@ class Screen(pygame.Surface):
                 txt = self.lang.translate(f"{self.selectedgame.replace(' ', '_')}-{option}")
             scaled_text= self.scale_text(txt, width, height)
             font_size = scaled_text[0]
-            font = pygame.font.Font(self.defaultfontpath, font_size)
+            font = self.font(self.defaultfontpath, font_size)
             self.blit_rect(pos_x, pos_y, width, height, self.colorset['bg-optionslist'])
             text = font.render(txt, True, self.colorset['menu-text-black'])
             self.blit(text, [pos_x + scaled_text[1], pos_y + scaled_text[2]])
