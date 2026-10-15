@@ -3739,6 +3739,10 @@ class Screen(pygame.Surface):
                     self.restore_background()
                     self.reset_background()
                     return value
+                if v_type == 'number':
+                    # Refused : the limits are shown (Enter seemed not to work)
+                    self.message([f"{v_min} - {v_max}"], 1500, self.colorset['menu-ko'], 'middle', 'big')
+                    self.restore_background()
             elif key in ESCAPE_KEYS:
                 self.restore_background()
                 self.reset_background()
@@ -7308,7 +7312,7 @@ class Screen(pygame.Surface):
                 else:
                     click_zone = click_zones[f'F{selected}']
                     if options[selected][2] == 'max_round':
-                        min_value = 2
+                        min_value = 1
                         max_value = 99
                     elif options[selected][2] == 'Time':
                         min_value = 500
