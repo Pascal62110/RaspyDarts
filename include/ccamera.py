@@ -700,30 +700,50 @@ class Camera:
             self._filter_layers[key] = layer
         return layer
 
-    def preview_picture(self, width, height):
+    def preview_picture(self, width, height, load=True):
         '''
-        Last picture recorded, at the size of the preview. Read again only if it changed,
-        10 times per second at most : reading a 1280x960 JPEG takes 40 ms on a Pi 3
+        Last picture recorded, at the size of the preview, flipped and with the filter.
+        Made once per new picture, 10 times per second at most (reading a 1280x960 JPEG
+        takes 40 ms on a Pi 3, laying the filter as much). Returns (picture, new) ;
+        load=False gives the one already made (menu drawn again : no delay)
         '''
+        size_changed = self.preview is not None and self.preview.get_size() != (width, height)
+        if not load and self.preview is not None and not size_changed:
+            return self.preview, False
         path = RECORDER.last_picture()
         if path is None:
-            return None
+            return self.preview, False
         now = time.monotonic()
         try:
             mtime = os.path.getmtime(path)
-            if self.preview is None or self.preview.get_size() != (width, height) \
-                    or (mtime != self.preview_mtime and now - self.preview_time >= 0.1):
-                picture = pygame.transform.scale(pygame.image.load(path), (width, height))
-                self.preview = pygame.transform.flip(picture, self.flip_horizontal, self.flip_vertical)
-                self.preview_mtime = mtime
-                self.preview_time = now
-        except (OSError, pygame.error):
-            pass
-        return self.preview
+            if self.preview is not None and not size_changed \
+                    and (mtime == self.preview_mtime or now - self.preview_time < 0.1):
+                return self.preview, False
+            picture = pygame.transform.scale(pygame.image.load(path), (width, height))
+            picture = pygame.transform.flip(picture, self.flip_horizontal, self.flip_vertical)
 
-    def show_camera(self, screen, posX=0, posY=0, resW=0, resH=0):
+            # The filter changes every 30 pictures (3 seconds)
+            if self.incr_filter == 0:
+                self.path_of_filter = self.get_photo_filter()
+            self.incr_filter = (self.incr_filter + 1) % 30
+            # certains aiment supprimer les filtres en cours
+            if not self.filter_always_exist(self.path_of_filter):
+                self.path_of_filter = self.get_photo_filter()
+            if self.path_of_filter is not None:
+                picture.blit(self.filter_layer(self.path_of_filter, (width, height)), (0, 0))
+
+            self.preview = picture
+            self.preview_mtime = mtime
+            self.preview_time = now
+            return self.preview, True
+        except (OSError, pygame.error):
+            return self.preview, False
+
+    def show_camera(self, screen, posX=0, posY=0, resW=0, resH=0, load=True):
         '''
-        Display camera
+        Display camera. In the waiting loop (load=True) : drawn only when a new picture
+        came. Menu drawn again (load=False) : the last one, without sending it to the
+        screen (the menu does it)
         '''
         try:
             screen_width, screen_height = screen.get_size()
@@ -742,36 +762,20 @@ class Camera:
 
             camera_picture = Rect(posX, posY, resW, resH)
 
-            image = self.preview_picture(resW, resH) if self.is_connected() else None
+            image, new = self.preview_picture(resW, resH, load) if self.is_connected() else (None, False)
             if image is not None:
-                image = image.copy()
-                if self.incr_filter == 0:
-                    self.path_of_filter = self.get_photo_filter()
+                if new or not load:
+                    # display the preview
+                    screen.blit(image, (posX, posY))
+                    if load:
+                        pygame.display.update(camera_picture)
+                return
 
-                self.incr_filter += 1
-                if self.incr_filter == 30:
-                    self.incr_filter = 0
-
-                # certains aiment supprimer les filtres en cours
-                if not self.filter_always_exist(self.path_of_filter):
-                    self.path_of_filter = self.get_photo_filter()
-
-                if self.path_of_filter is not None:
-                    # Le calque, a la taille de l'apercu
-                    calque = self.filter_layer(self.path_of_filter, (resW, resH))
-                    # On applique le calque
-                    image.blit(calque,(0, 0))
-
-                # display the preview
-                screen.blit(image,(posX, posY))
-
-            else:
-                pygame.draw.rect(screen, pygame.Color(100, 100, 100), camera_picture)
-                pygame.draw.line(screen, (255, 255, 255), (posX, posY), (posX + resW, posY + resH), 10)
-                pygame.draw.line(screen, (255, 255, 255), (posX , posY + resH), (posX + resW, posY), 10)
-
-            # refresh
-            pygame.display.update(camera_picture)
+            pygame.draw.rect(screen, pygame.Color(100, 100, 100), camera_picture)
+            pygame.draw.line(screen, (255, 255, 255), (posX, posY), (posX + resW, posY + resH), 10)
+            pygame.draw.line(screen, (255, 255, 255), (posX , posY + resH), (posX + resW, posY), 10)
+            if load:
+                pygame.display.update(camera_picture)
 
         except Exception as ex:
             self.logs.error(f"Error in ccamera show_camera() : {ex}")

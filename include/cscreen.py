@@ -4235,7 +4235,7 @@ class Screen(pygame.Surface):
             posY_camera = int(click_zones['F1'][1] + (click_zones['F1'][3]/2))
             # The preview in the same picture as the menu : drawn after it, it disappeared
             # at each move in the menu, then came back
-            self.camera.show_camera(self.screen, posX=posX_camera, posY=posY_camera)
+            self.camera.show_camera(self.screen, posX=posX_camera, posY=posY_camera, load=False)
 
             ################
             # Update screen
