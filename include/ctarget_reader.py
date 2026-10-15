@@ -209,6 +209,7 @@ def main():
     lost = 0
     try:
         number = 0
+        previous = None
         while not stop and (end is None or time.monotonic() < end):
             dart = reader.next_dart(timeout=0.5)
             if dart is None:
@@ -216,20 +217,25 @@ def main():
             code, segment, (wake_us, search_us, contact_ms, edges, searches) = dart
             if args.test:
                 number += 1
-                timings = f"reveil {wake_us:4.0f}us  recherche {search_us:4.0f}us x{searches}  contact {contact_ms:4.1f}ms"
+                now = time.monotonic()
+                since = f"{now - previous:5.1f}s" if previous is not None else "     -"
+                previous = now
+                timings = f"+{since}  reveil {wake_us:3.0f}us  recherche {search_us:4.0f}us x{searches}  contact {contact_ms:4.1f}ms"
                 if code is None:
+                    # Contact open again before its column was found : a dart lost, or
+                    # a parasite (a dart which vibrates, a segment brushed). Not sent
                     lost += 1
-                    print(f"{number:3}  PERDUE      {timings}", flush=True)
+                    print(f"{number:3}  sans colonne {timings}", flush=True)
                 else:
                     darts.append((wake_us, search_us, contact_ms))
-                    print(f"{number:3}  {segment or '?':<4} {code:<6} {timings}", flush=True)
+                    print(f"{number:3}  {segment or '?':<4} {code:<7} {timings}", flush=True)
             elif code is not None:
                 print(f"{segment or '?'} {code}", flush=True)
     finally:
         reader.close()
 
     if args.test:
-        print(f"\n{len(darts)} flechette(s) lue(s), {lost} perdue(s)")
+        print(f"\n{len(darts)} flechette(s) lue(s), {lost} contact(s) sans colonne")
         if darts:
             wakes = sorted(d[0] for d in darts)
             searches = sorted(d[1] for d in darts)
