@@ -75,46 +75,34 @@ class Gpio_extender:
 
     def __init__(self, logs, buttons=None):
         """
-        Init self.mcp1 and buttons
+        Every MCP23017 found (addresses 0x20 to 0x27). The n-th one found has the letters
+        A/B, the next one C/D, then E/F... (8 pins each). All their pins start as inputs
         """
         self.logs = logs
         i2c = busio.I2C(board.SCL, board.SDA)
-        self.mcp1 = None
-        self.mcp2 = None
+        self.chips = []
         self.all_io = None
 
-        try:
-            self.mcp1 = MCP23017(i2c, address=0x20)
-            self.logs.info("MCP found at 0x20")
-        except:
-            self.logs.info("No MCP at 0x20")
+        for address in range(0x20, 0x28):
+            try:
+                self.chips.append(MCP23017(i2c, address=address))
+                self.logs.info(f"MCP found at {hex(address)}")
+            except Exception:
+                pass
+        # Names kept : the first one tells there is an extension card
+        self.mcp1 = self.chips[0] if self.chips else None
+        self.mcp2 = self.chips[1] if len(self.chips) > 1 else None
 
-        try:
-            self.mcp2 = MCP23017(i2c, address=0x21)
-            self.logs.info("MCP found at 0x21")
-        except:
-            self.logs.info("No MCP at 0x21")
-
-        # Make a list of all the pins (a.k.a 0-16)
-        pins = []
-        if self.mcp1 is not None:
-            for pin in range(0, 16):
-                pins.append(self.mcp1.get_pin(pin))
-                # Set pin to input
-                pins[pin].direction = Direction.INPUT
-                pins[pin].pull = Pull.UP
-            self.all_io = [f"{chr}{num}" for chr in ['A', 'B'] for num in [0, 1, 2, 3, 4, 5, 6, 7]]
-
-            if self.mcp2 is not None:
+        if self.chips:
+            self.all_io = []
+            for index, chip in enumerate(self.chips):
                 for pin in range(0, 16):
-                    pins.append(self.mcp2.get_pin(pin))
-                    # Set pin to input
-                    pins[pin].direction = Direction.OUTPUT
-                    pins[pin].value = 0
-
-                for letter in ['C', 'D']:
-                    for number in [0, 1, 2, 3, 4, 5, 6, 7]:
-                        self.all_io.append(f"{letter}{number}")
+                    # Inputs to begin with : set_io makes outputs of the toys. (With a
+                    # second card, the pins of the FIRST one were made outputs, low)
+                    io = chip.get_pin(pin)
+                    io.direction = Direction.INPUT
+                    io.pull = Pull.UP
+                self.all_io += self.pins_of(index)
 
             # Apply configuration
             if buttons:
@@ -123,6 +111,8 @@ class Gpio_extender:
                 self.buttons_list = {}
                 self.toys_list = {}
                 self.pin_switcher = {}
+        else:
+            self.logs.info("No MCP found (addresses 0x20 to 0x27)")
 
         self.banned_button = None
         # TODO REMOVE RD
@@ -139,25 +129,27 @@ class Gpio_extender:
     #        )
     # TODO REMOVE RD
     
+    @staticmethod
+    def pins_of(index):
+        '''
+        Names of the pins of the index-th card : A0..B7, C0..D7, E0..F7...
+        '''
+        return [f"{chr(65 + 2 * index + bank)}{number}" for bank in (0, 1) for number in range(0, 8)]
+
     def decode(self, value):
         """
-        Decode string to numeric (B3 => mcp1, address of input/output)
+        Decode a name : B3 => (pin of the card, its number 0-15 on the card, card index)
         """
-        if value not in self.all_io:
-            return None, None
+        if value not in (self.all_io or []):
+            return None, None, None
 
         try:
-            if value[:1:] in ('A', 'B'):
-                pin_number = (ord(value[:1:]) - 65) * 8 + int(value[1::])
-                return self.mcp1.get_pin(pin_number), pin_number
-            else:
-                if value[:1:] in ('C', 'D'):
-                    pin_number = (ord(value[:1:]) - 67) * 8 + int(value[1::])
-                    return self.mcp2.get_pin(pin_number), pin_number
-                else:
-                    return None, None
-        except: # pylint: disable=bare-except
-            return None, None
+            letter = ord(value[:1:]) - 65
+            index = letter // 2
+            pin_number = (letter % 2) * 8 + int(value[1::])
+            return self.chips[index].get_pin(pin_number), pin_number, index
+        except Exception: # pylint: disable=broad-except
+            return None, None, None
 
     def set_io(self, buttons):
         """
@@ -174,12 +166,12 @@ class Gpio_extender:
             return None
 
         for button in buttons:
-            value = buttons[button].upper()
-            address, pin_number = self.decode(value)
+            value = str(buttons[button]).upper()
+            address, pin_number, index = self.decode(value)
             if address is not None:
                 if button.startswith('PIN_'):
                     self.buttons_list[button] = (value, address, pin_number)
-                    self.pin_switcher[pin_number] = button
+                    self.pin_switcher[(index, pin_number)] = button
                     address.direction = Direction.INPUT
                     address.pull = Pull.UP
 
@@ -204,7 +196,7 @@ class Gpio_extender:
 
     def read_entries(self):
         """
-        Read self.mcp1
+        Read the cards holding buttons
         """
         global LAST_BUTTON
         global COUNT_BUTTON
@@ -214,7 +206,8 @@ class Gpio_extender:
         
         # TODO REMOVE RD
         #t0 = time.perf_counter()
-        value = hex(self.mcp1.gpio)
+        # One read per card holding buttons
+        values = {index: self.chips[index].gpio for index in {index for index, _pin in self.pin_switcher}}
         #t1 = time.perf_counter()
         
         ## Update cumulative stats (keep total in seconds)
@@ -232,10 +225,10 @@ class Gpio_extender:
         #    )
         # TODO REMOVE RD
 
-        for pin in self.pin_switcher:
-            button = self.pin_switcher.get(pin, "")
-            if ((not int(value, 16) & 2**pin and button != 'PIN_MISSDART')
-                or (int(value, 16) & 2**pin and button == 'PIN_MISSDART')):
+        for (index, pin), button in self.pin_switcher.items():
+            value = values[index]
+            if ((not value & 2**pin and button != 'PIN_MISSDART')
+                or (value & 2**pin and button == 'PIN_MISSDART')):
                 if button != self.banned_button:
                     return_value = button
                 else:

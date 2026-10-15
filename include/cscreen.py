@@ -1250,21 +1250,21 @@ class Screen(pygame.Surface):
         try:
             # The extension card opened by the game : created again here with an old way
             # (Gpio_extender(''), gpio.mcp), it failed and the card was "not found"
-            from digitalio import Pull
+            from digitalio import Direction, Pull
             gpio = self.rpi.gpio
             if gpio is None or gpio.mcp1 is None:
                 raise RuntimeError("no MCP23017")
 
-            pins = []
-            for pin in range(0, 16):
-                pins.append(gpio.mcp1.get_pin(pin))
-                pins[pin].pull = Pull.UP
-
+            # Every card : a pin read low with its pull-up is an output (toy, light)
             outputs = []
-            value = hex(gpio.mcp1.gpio)
-            for button in range(0, 16):
-                if not int(value, 16) & 2**button:
-                    outputs.append("{}".format(chr(65 + int(button / 8)) + chr(48 + button % 8)))    # Compute A0..B7
+            for index, chip in enumerate(gpio.chips):
+                names = gpio.pins_of(index)
+                for pin in range(0, 16):
+                    io = chip.get_pin(pin)
+                    io.direction = Direction.INPUT
+                    io.pull = Pull.UP
+                value = chip.gpio
+                outputs += [names[pin] for pin in range(0, 16) if not value & 2**pin]
 
             if len(outputs) > 0:
                 self.message([f"{self.lang.translate('config-toysfound')} {'/'.join(outputs)}"], 2500, None, 'middle', 'big')
