@@ -23,23 +23,29 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
-header .brand { grid-column: 2; text-align: center; }
+header { padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header .brand { text-align: center; }
 header h1 { margin: 0 0 6px; font-size: 1.7rem; letter-spacing: .5px; }
 header h1 span { color: var(--accent); }
-header #lang { grid-column: 3; justify-self: end; }
-nav.menu { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+nav.menu { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; }
+nav.menu select { padding: 3px 6px; margin-left: 6px; }
 nav.menu a, nav.menu button { border: 1px solid transparent; background: none; color: var(--text); font: inherit; padding: 4px 12px; border-radius: 999px; cursor: pointer; text-decoration: none; }
 nav.menu .active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 nav.menu a:hover, nav.menu button:hover { border-color: var(--line); }
-@media (max-width: 640px) {
-  header { grid-template-columns: 1fr; }
-  header .brand, header #lang { grid-column: 1; justify-self: center; }
-}
 dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text); padding: 20px 24px; text-align: center; }
 dialog::backdrop { background: rgba(0, 0, 0, .45); }
 dialog p { font-size: 1.1rem; margin: 0 0 14px; }
-ol.guide > li { margin: 14px 0 18px; }
+.carousel-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 12px; }
+.carousel-nav button { font-size: 1.4rem; line-height: 1; padding: 4px 16px; }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.dots button { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: inherit; font-size: .75rem; cursor: pointer; padding: 0; }
+.dots button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.slide { display: none; }
+.slide.active { display: block; }
+.slide-text { min-height: 4.8em; }
+.slide-text p { display: inline; margin: 0; }
+.slide-text .note { display: block; margin: 0; }
+.slide figure img { margin: 0 auto; }
 figure { margin: 8px 0 0; }
 figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
 figcaption { color: var(--muted); font-size: .85rem; margin-top: 4px; }
@@ -96,12 +102,12 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
       <a class="active" href="#1" data-t="menu-install"></a>
       <button type="button" id="menu-custom" data-t="menu-custom"></button>
       <a href="https://raspydarts.wordpress.com/" target="_blank" rel="noopener" data-t="menu-site"></a>
+      <select id="lang" aria-label="Langue">
+        <option value="fr">Français</option><option value="en">English</option><option value="de">Deutsch</option>
+        <option value="es">Español</option><option value="it">Italiano</option>
+      </select>
     </nav>
   </div>
-  <select id="lang" aria-label="Langue">
-    <option value="fr">Français</option><option value="en">English</option><option value="de">Deutsch</option>
-    <option value="es">Español</option><option value="it">Italiano</option>
-  </select>
 </header>
 
 <dialog id="wip"><p data-t="wip"></p><button class="main" id="wip-close" data-t="close"></button></dialog>
@@ -126,35 +132,40 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
   <!-- 2. Graver : captures de Raspberry Pi Imager 2.0.12 -->
   <section class="step" data-step="2">
     <h2 data-t="s2-title"></h2>
-    <ol class="guide">
-      <li><p data-t="s2-options"></p>
-        <figure><a href="images/imager/imager-01-appareil.png" target="_blank" rel="noopener"><img src="images/imager/imager-01-appareil.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-modify"></p>
-        <figure><a href="images/imager/imager-02-options.png" target="_blank" rel="noopener"><img src="images/imager/imager-02-options.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-repo"></p>
-        <div class="codebox"><span id="repo-url"></span><button class="small" data-copy="repo-url" data-t="copy"></button></div>
-        <figure><a href="images/imager/imager-03-depot.png" target="_blank" rel="noopener"><img src="images/imager/imager-03-depot.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-restarted"></p>
-        <figure><a href="images/imager/imager-04-depot-actif.png" target="_blank" rel="noopener"><img src="images/imager/imager-04-depot-actif.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-os"></p>
-        <figure><a href="images/imager/imager-05-os.png" target="_blank" rel="noopener"><img src="images/imager/imager-05-os.png" alt="" loading="lazy" width="682" height="482"></a><figcaption data-t="s2-shot-other"></figcaption></figure></li>
-      <li><p data-t="s2-storage"></p>
-        <figure><a href="images/imager/imager-06-stockage.png" target="_blank" rel="noopener"><img src="images/imager/imager-06-stockage.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-hostname"></p>
-        <figure><a href="images/imager/imager-07-nom-hote.png" target="_blank" rel="noopener"><img src="images/imager/imager-07-nom-hote.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-locale"></p>
-        <figure><a href="images/imager/imager-08-localisation.png" target="_blank" rel="noopener"><img src="images/imager/imager-08-localisation.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p class="note warn" data-t="s2-user"></p>
-        <figure><a href="images/imager/imager-09-utilisateur.png" target="_blank" rel="noopener"><img src="images/imager/imager-09-utilisateur.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-wifi"></p>
-        <figure><a href="images/imager/imager-10-wifi.png" target="_blank" rel="noopener"><img src="images/imager/imager-10-wifi.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-ssh"></p>
-        <figure><a href="images/imager/imager-11-ssh.png" target="_blank" rel="noopener"><img src="images/imager/imager-11-ssh.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-write"></p>
-        <figure><a href="images/imager/imager-12-ecrire.png" target="_blank" rel="noopener"><img src="images/imager/imager-12-ecrire.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-      <li><p data-t="s2-confirm"></p>
-        <figure><a href="images/imager/imager-13-confirmation.png" target="_blank" rel="noopener"><img src="images/imager/imager-13-confirmation.png" alt="" loading="lazy" width="682" height="482"></a></figure></li>
-    </ol>
+    <div class="carousel" id="carousel">
+      <div class="carousel-nav">
+        <button class="main ghost" id="slide-prev" aria-label="‹">‹</button>
+        <div class="dots" id="dots"></div>
+        <button class="main ghost" id="slide-next" aria-label="›">›</button>
+      </div>
+      <div class="slide" data-index="0"><div class="slide-text"><b>1.</b> <p data-t="s2-options"></p></div>
+        <figure><a href="images/imager/imager-01-appareil.png" target="_blank" rel="noopener"><img src="images/imager/imager-01-appareil.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="1"><div class="slide-text"><b>2.</b> <p data-t="s2-modify"></p></div>
+        <figure><a href="images/imager/imager-02-options.png" target="_blank" rel="noopener"><img src="images/imager/imager-02-options.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="2"><div class="slide-text"><b>3.</b> <p data-t="s2-repo"></p>
+        <div class="codebox"><span id="repo-url"></span><button class="small" data-copy="repo-url" data-t="copy"></button></div></div>
+        <figure><a href="images/imager/imager-03-depot.png" target="_blank" rel="noopener"><img src="images/imager/imager-03-depot.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="3"><div class="slide-text"><b>4.</b> <p data-t="s2-restarted"></p></div>
+        <figure><a href="images/imager/imager-04-depot-actif.png" target="_blank" rel="noopener"><img src="images/imager/imager-04-depot-actif.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="4"><div class="slide-text"><b>5.</b> <p data-t="s2-os"></p></div>
+        <figure><a href="images/imager/imager-05-os.png" target="_blank" rel="noopener"><img src="images/imager/imager-05-os.png" alt="" loading="lazy" width="682" height="482"></a><figcaption data-t="s2-shot-other"></figcaption></figure></div>
+      <div class="slide" data-index="5"><div class="slide-text"><b>6.</b> <p data-t="s2-storage"></p></div>
+        <figure><a href="images/imager/imager-06-stockage.png" target="_blank" rel="noopener"><img src="images/imager/imager-06-stockage.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="6"><div class="slide-text"><b>7.</b> <p data-t="s2-hostname"></p></div>
+        <figure><a href="images/imager/imager-07-nom-hote.png" target="_blank" rel="noopener"><img src="images/imager/imager-07-nom-hote.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="7"><div class="slide-text"><b>8.</b> <p data-t="s2-locale"></p></div>
+        <figure><a href="images/imager/imager-08-localisation.png" target="_blank" rel="noopener"><img src="images/imager/imager-08-localisation.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="8"><div class="slide-text"><b>9.</b> <p class="note warn" data-t="s2-user"></p></div>
+        <figure><a href="images/imager/imager-09-utilisateur.png" target="_blank" rel="noopener"><img src="images/imager/imager-09-utilisateur.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="9"><div class="slide-text"><b>10.</b> <p data-t="s2-wifi"></p></div>
+        <figure><a href="images/imager/imager-10-wifi.png" target="_blank" rel="noopener"><img src="images/imager/imager-10-wifi.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="10"><div class="slide-text"><b>11.</b> <p data-t="s2-ssh"></p></div>
+        <figure><a href="images/imager/imager-11-ssh.png" target="_blank" rel="noopener"><img src="images/imager/imager-11-ssh.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="11"><div class="slide-text"><b>12.</b> <p data-t="s2-write"></p></div>
+        <figure><a href="images/imager/imager-12-ecrire.png" target="_blank" rel="noopener"><img src="images/imager/imager-12-ecrire.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+      <div class="slide" data-index="12"><div class="slide-text"><b>13.</b> <p data-t="s2-confirm"></p></div>
+        <figure><a href="images/imager/imager-13-confirmation.png" target="_blank" rel="noopener"><img src="images/imager/imager-13-confirmation.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
+    </div>
     <div class="note" data-t="s2-access"></div>
   </section>
 
@@ -162,7 +173,11 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
   <section class="step" data-step="3">
     <h2 data-t="s3-title"></h2>
     <p data-t="s3-intro"></p>
+    <p><button class="main ghost" id="own-file" data-t="own-file"></button></p>
+    <div id="own-file-info" class="note ok hidden"><span data-t="own-file-info"></span>
+      <button class="small" id="own-file-undo" data-t="own-file-undo"></button></div>
 
+    <div id="config-form">
     <label for="locale" data-t="f-locale"></label>
     <select id="locale">
       <option value="fr_FR">Français</option><option value="en_GB">English</option><option value="de_DE">Deutsch</option>
@@ -224,6 +239,7 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
     <h3 data-t="f-file"></h3>
     <pre id="preview"></pre>
     <p class="hint" data-t="f-file-next"></p>
+    </div>
   </section>
 
   <!-- 4. Déposer -->
@@ -232,7 +248,8 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
     <ol>
       <li data-t="s4-reinsert"></li>
       <li data-t="s4-bootfs"></li>
-      <li><span data-t="s4-save"></span>
+      <li id="own-file-copy" class="hidden" data-t="s4-own"></li>
+      <li id="made-file"><span data-t="s4-save"></span>
         <p class="errors hidden" id="save-errors" data-t="save-errors"></p>
         <div class="savebar">
           <button class="main" id="save-sd" data-t="save-sd"></button>
@@ -538,7 +555,7 @@ function update() {
   $('preview').textContent = current.text;
   $('save-sd').disabled = $('download').disabled = current.errors.length > 0;
   $('save-errors').classList.toggle('hidden', current.errors.length === 0);
-  $('s5-calibration').classList.toggle('hidden', current.known);
+  $('s5-calibration').classList.toggle('hidden', current.known && stored('own') !== '1');
   $('save-hint').innerHTML = t('showSaveFilePicker' in window ? 'save-hint-ok' : 'save-hint-no');
   $('save-sd').classList.toggle('hidden', !('showSaveFilePicker' in window));
   store('card', code);
@@ -576,6 +593,51 @@ $('save-sd').addEventListener('click', async () => {
 });
 
 $('menu-custom').addEventListener('click', () => $('wip').showModal());
+
+// Step 2 : one screenshot of Raspberry Pi Imager at a time
+let slide = 0;
+const SLIDES = document.querySelectorAll('.slide');
+function showSlide(index) {
+  slide = (index + SLIDES.length) % SLIDES.length;
+  SLIDES.forEach((element, number) => element.classList.toggle('active', number === slide));
+  $('dots').querySelectorAll('button').forEach((dot, number) => dot.classList.toggle('active', number === slide));
+}
+SLIDES.forEach((_element, number) => {
+  const dot = document.createElement('button');
+  dot.textContent = number + 1;
+  dot.addEventListener('click', () => showSlide(number));
+  $('dots').appendChild(dot);
+});
+$('slide-prev').addEventListener('click', () => showSlide(slide - 1));
+$('slide-next').addEventListener('click', () => showSlide(slide + 1));
+document.addEventListener('keydown', (event) => {
+  if (step !== 2 || ['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target.tagName)) return;
+  if (event.key === 'ArrowLeft') showSlide(slide - 1);
+  if (event.key === 'ArrowRight') showSlide(slide + 1);
+});
+// Swipe on a phone
+let touchX = null;
+$('carousel').addEventListener('touchstart', (event) => { touchX = event.touches[0].clientX; }, {passive: true});
+$('carousel').addEventListener('touchend', (event) => {
+  if (touchX === null) return;
+  const moved = event.changedTouches[0].clientX - touchX;
+  if (Math.abs(moved) > 50) showSlide(slide + (moved < 0 ? 1 : -1));
+  touchX = null;
+});
+showSlide(0);
+
+// Step 3 : a file already made, only to put on the card
+function ownFile(own) {
+  $('config-form').classList.toggle('hidden', own);
+  $('own-file').classList.toggle('hidden', own);
+  $('own-file-info').classList.toggle('hidden', !own);
+  $('own-file-copy').classList.toggle('hidden', !own);
+  $('made-file').classList.toggle('hidden', own);
+  $('s5-calibration').classList.toggle('hidden', !own && current.known);
+  store('own', own ? '1' : '');
+}
+$('own-file').addEventListener('click', () => { ownFile(true); show(4); });
+$('own-file-undo').addEventListener('click', () => ownFile(false));
 window.addEventListener('hashchange', () => show(Number(location.hash.slice(1)) || 1));
 $('wip-close').addEventListener('click', () => $('wip').close());
 
@@ -615,6 +677,7 @@ lang = stored('lang') || (LANGS.includes(browser) ? browser : 'en');
 $('lang').value = lang;
 $('locale').value = LOCALES[lang];
 translate();
+ownFile(stored('own') === '1');
 // index.html#3 : the step 3 directly
 show(Number(location.hash.slice(1)) || Number(stored('step')) || 1);
 </script>
