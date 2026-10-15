@@ -357,6 +357,21 @@ class Craspberry():
             except queue.Empty:
                 pass
 
+    def hold(self, delay):
+        """
+        Keep what is shown (the name of the next player) delay seconds at most : a dart
+        or a key cuts it, like the animations. The dart is kept for the game. Without the
+        reader, the target could not be watched meanwhile : nothing is held
+        """
+        if self.target_reader is None:
+            return
+        end = time.monotonic() + delay
+        while self.pending_dart is None and time.monotonic() < end:
+            self.wait_dart(min(0.05, max(0, end - time.monotonic())))
+            pygame.event.pump()
+            if pygame.event.peek((pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN)):
+                break
+
     def setup_target_pins(self):
         """
         Pins of the target, when the game scans it

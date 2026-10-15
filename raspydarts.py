@@ -1439,6 +1439,9 @@ try:
                         display.message([players[actual_player].name], 0, None, 'middle', 'big')
                     # Play sound for first dart (playername otherwise default)
                     display.sound_start_round(players[actual_player].name, play_firstname=play_firstname)
+                    if handler['announcement'] is None:
+                        # Time to read the name, cut by the first dart
+                        rpi.hold(1.5)
 
                 ##############
                 #
