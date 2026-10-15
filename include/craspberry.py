@@ -537,12 +537,14 @@ class Craspberry():
 
         return gpio_input
 
-    def read_target(self):
+    def read_target(self, raw=False):
         """
-        Read GPIO inputs (Target's)
+        Read GPIO inputs (Target's) : the segment, or the code of the contact ("2410") if
+        raw (wizard of the target : no segment is known yet)
         """
         if self.target_reader is not None:
-            return self.keys.get(self.take_dart(), None)
+            code = self.take_dart()
+            return code if raw else self.keys.get(code, None)
 
         gpio_input = None
         # Read segments (S1, D2, T4...)
@@ -581,7 +583,7 @@ class Craspberry():
 
                     gpio.output(pinout, gpio.LOW)
 
-        return self.keys.get(gpio_input, None)
+        return gpio_input if raw else self.keys.get(gpio_input, None)
 
     def read_buttons(self):
         """
@@ -746,6 +748,8 @@ class Craspberry():
                 inputs = None
             elif context == 'test':
                 inputs = self.test_target()
+            elif context == 'wizard':
+                inputs = self.read_target(raw=True)
             else:
                 inputs = self.read_target()
 

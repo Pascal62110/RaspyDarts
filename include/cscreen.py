@@ -1150,75 +1150,35 @@ class Screen(pygame.Surface):
         self.rpi.set_leds_conf(new_leds)
 
         if card == 'Au':
-            # Parametrage de la cible
+            # Calibration of the target : the whole target is drawn, the segment to press
+            # blinks, a segment done turns green (with a sound). Escape : the one before
+            segments = list(self.config.keys)[:62]
+            done = []
+            lit = True
             j = 0
-            UsedKeys = []
-
-            self.display_background()    # display basic screen
             while j < 62:
-                key = list(self.config.keys)[j]
-                i = 0
-                txt = self.lang.translate('press-on').format(key)
-                self.message([txt], 0, None, 'fullbottom', 'big', refresh=False)    # Print background first
-                for key2 in list(self.config.keys):
-                    # Get type
-                    multiplier = key2[:1]
-                    # Define colors
-                    if i % 2 == 0 and multiplier in ('D', 'T'):
-                        part_color = self.colorset['menu-ok']
-                    elif multiplier in ('D', 'T'):
-                        part_color = self.colorset['menu-ko']
-                    else:
-                        part_color = None
-                    if key2 == key: part_color = self.colorset['menu-shortcut']
-                    # Draw the right thing
-                    if key2[1:] != 'B' and len(key2) <= 3:
-                        score = int(key2[1:])
-                    elif key2[1:] == 'B':
-                        score = 'B'
-                    if multiplier == 'S' and score != 'B':
-                        self.draw_exterior_simple(self.targets[score], part_color)
-                        self.draw_interior_simple(self.targets[score], part_color)
-                    elif multiplier == 'D' and score != 'B':
-                        self.draw_double(self.targets[score], part_color)
-                    elif multiplier == 'T' and score != 'B':
-                        self.draw_triple(self.targets[score], part_color)
-                    elif multiplier == 'S' and score == 'B':
-                        self.draw_bull(True, False, part_color)
-                    elif multiplier == 'D' and score == 'B':
-                        self.draw_bull(False, True, part_color)
-                    if key2 != 'D5':    # On T20 we switch color order
-                        i += 1
-                    if key2 == key or len(key2) > 3: break    # If key2 is not yet configurer or if it is buttons
-
-                subtxt = f"{self.lang.translate('press-on-parts')} - {self.lang.translate('left')} : {total - i}"
-                self.menu_header(self.lang.translate('board-calibration'), subtxt)
-
-                self.update_screen()
-
-                key_pressed = self.rpi.listen_inputs([], ['escape', 'enter', 'TOGGLEFULLSCREEN'], context = 'wizard')
-
+                key = segments[j]
+                self.draw_calibration(segments, j, lit)
+                # Code of the contact as it is ("2410") : the segment is not known yet
+                key_pressed = self.rpi.listen_inputs([], ['escape', 'enter', 'TOGGLEFULLSCREEN'], context='wizard', timeout=400)
+                if key_pressed is False:
+                    # Blinking
+                    lit = not lit
+                    continue
+                lit = True
                 if key_pressed == 'escape':
                     if j > 0:
-                        self.display_background()    # display basic screen
-                        j -= 2
-                        if UsedKeys:
-                            UsedKeys.pop(-1)
+                        j -= 1
+                        new_keys.pop(segments[j], None)
+                        done.pop()
                     else:
                         self.rpi.gpio_flush()
                         sys.exit(0)
-                elif key_pressed not in UsedKeys and key_pressed not in ('enter', ''):
+                elif key_pressed not in done and key_pressed not in ('enter', '', None):
                     new_keys[key] = key_pressed
-                    UsedKeys.append(key_pressed)
+                    done.append(key_pressed)
                     self.play_sound('Blaster')
-
-                else:
-                    # Cancel next step because of the key is the same than the previous or unauthorized
-                    i -= 1
-                    j-=1
-
-                i += 1
-                j+=1
+                    j += 1
 
             for l in [1, 2, 3, 4]:
                 new_keys[self.config.keys[j]] = ''
@@ -9113,6 +9073,57 @@ class Screen(pygame.Surface):
         else:
             self.logs.debug(f'Version of client ({self.config.pyDartsVersion}) \
                     and server ({serverversion}) are supposed to be compatible. Continuing...')
+
+    def calibration_color(self, segment):
+        '''
+        Colors of a dartboard, dimmed : the segments not done yet
+        '''
+        if segment == 'SB':
+            return (30, 70, 30)
+        if segment == 'DB':
+            return (90, 30, 30)
+        dark = self.targets[int(segment[1:])] % 2 == 1
+        if segment[0] == 'S':
+            return (55, 55, 55) if dark else (105, 100, 85)
+        return (90, 30, 30) if dark else (30, 80, 30)
+
+    def draw_segment(self, segment, color):
+        '''
+        One segment of the target : S20, D5, T19, SB, DB
+        '''
+        if segment == 'SB':
+            self.draw_bull(True, False, color)
+        elif segment == 'DB':
+            self.draw_bull(False, True, color)
+        else:
+            index = self.targets[int(segment[1:])]
+            if segment[0] == 'S':
+                self.draw_exterior_simple(index, color)
+                self.draw_interior_simple(index, color)
+            elif segment[0] == 'D':
+                self.draw_double(index, color)
+            else:
+                self.draw_triple(index, color)
+
+    def draw_calibration(self, segments, current, lit):
+        '''
+        Wizard of the target : the whole target, segments done in green, the one to press
+        blinking (lit or not), the others in the colors of a dartboard, dimmed
+        '''
+        self.display_background()
+        self.message([self.lang.translate('press-on').format(segments[current])], 0, None, 'fullbottom', 'big', refresh=False)
+        self.draw_background()
+        for index, segment in enumerate(segments):
+            if index < current:
+                color = self.colorset['menu-ok']
+            elif index == current:
+                color = self.colorset['menu-shortcut'] if lit else (20, 20, 20)
+            else:
+                color = self.calibration_color(segment)
+            self.draw_segment(segment, color)
+        self.menu_header(self.lang.translate('board-calibration'),
+                         f"{self.lang.translate('press-on-parts')} - {self.lang.translate('left')} : {len(segments) - current}")
+        self.update_screen()
 
     def draw_triple(self, angle_index, color=None, center=True):
         '''
