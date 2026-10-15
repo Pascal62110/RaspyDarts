@@ -2,6 +2,7 @@
 const T = {
 fr: {
   'title': 'Installer RaspyDarts', 'prev': 'Précédent', 'next': 'Suivant', 'copy': 'Copier', 'copied': 'Copié', 'close': 'Fermer',
+  'next-step': 'Étape suivante',
   'menu-install': 'Installation', 'menu-custom': 'Personnalisation', 'menu-site': 'Site',
   'wip': 'En cours de réalisation',
   'step1': 'Préparer', 'step2': 'Graver', 'step3': 'Configurer', 'step4': 'Déposer', 'step5': 'Démarrer',
@@ -73,6 +74,7 @@ fr: {
 },
 en: {
   'title': 'Install RaspyDarts', 'prev': 'Back', 'next': 'Next', 'copy': 'Copy', 'copied': 'Copied', 'close': 'Close',
+  'next-step': 'Next step',
   'menu-install': 'Installation', 'menu-custom': 'Customisation', 'menu-site': 'Website',
   'wip': 'Work in progress',
   'step1': 'Prepare', 'step2': 'Write', 'step3': 'Configure', 'step4': 'Copy', 'step5': 'Start',
@@ -144,6 +146,7 @@ en: {
 },
 de: {
   'title': 'RaspyDarts installieren', 'prev': 'Zurück', 'next': 'Weiter', 'copy': 'Kopieren', 'copied': 'Kopiert', 'close': 'Schließen',
+  'next-step': 'Nächster Schritt',
   'menu-install': 'Installation', 'menu-custom': 'Anpassung', 'menu-site': 'Website',
   'wip': 'In Arbeit',
   'step1': 'Vorbereiten', 'step2': 'Schreiben', 'step3': 'Konfigurieren', 'step4': 'Ablegen', 'step5': 'Starten',
@@ -215,6 +218,7 @@ de: {
 },
 es: {
   'title': 'Instalar RaspyDarts', 'prev': 'Anterior', 'next': 'Siguiente', 'copy': 'Copiar', 'copied': 'Copiado', 'close': 'Cerrar',
+  'next-step': 'Paso siguiente',
   'menu-install': 'Instalación', 'menu-custom': 'Personalización', 'menu-site': 'Sitio',
   'wip': 'En preparación',
   'step1': 'Preparar', 'step2': 'Grabar', 'step3': 'Configurar', 'step4': 'Copiar', 'step5': 'Arrancar',
@@ -286,6 +290,7 @@ es: {
 },
 it: {
   'title': 'Installare RaspyDarts', 'prev': 'Indietro', 'next': 'Avanti', 'copy': 'Copia', 'copied': 'Copiato', 'close': 'Chiudi',
+  'next-step': 'Passo successivo',
   'menu-install': 'Installazione', 'menu-custom': 'Personalizzazione', 'menu-site': 'Sito',
   'wip': 'In lavorazione',
   'step1': 'Preparare', 'step2': 'Scrivere', 'step3': 'Configurare', 'step4': 'Copiare', 'step5': 'Avviare',

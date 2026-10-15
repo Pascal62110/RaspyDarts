@@ -43,6 +43,7 @@ dialog p { font-size: 1.1rem; margin: 0 0 14px; }
 .slide figure .side:hover { background: var(--accent); }
 .slide figure .side.left { left: 6px; }
 .slide figure .side.right { right: 6px; }
+.carousel-nav button.arrow.wide, .slide figure .side.wide { width: auto; font-size: 1.05rem; font-weight: 600; padding: 0 16px; }
 .dots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .dots button { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: inherit; font-size: .75rem; cursor: pointer; padding: 0; }
 .dots button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
@@ -356,6 +357,7 @@ function translate() {
   document.title = `RaspyDarts · ${t('menu-install')}`;
   document.querySelectorAll('[data-t]').forEach((element) => { element.innerHTML = t(element.dataset.t); });
   buildSteps();
+  if (typeof showSlide === 'function' && SLIDES.length) showSlide(slide);
   buildCards();
   buildMcp();
   buildGpioButtons();
@@ -611,6 +613,16 @@ function showSlide(index) {
   slide = (index + SLIDES.length) % SLIDES.length;
   SLIDES.forEach((element, number) => element.classList.toggle('active', number === slide));
   $('dots').querySelectorAll('button').forEach((dot, number) => dot.classList.toggle('active', number === slide));
+  // Last screenshot : the arrows lead to the next step
+  const last = slide === SLIDES.length - 1;
+  $('slide-next').textContent = last ? `${t('next-step')} ›` : '›';
+  $('slide-next').classList.toggle('wide', last);
+  SLIDES[slide].querySelector('.side.right').textContent = last ? `${t('next-step')} ›` : '›';
+  SLIDES[slide].querySelector('.side.right').classList.toggle('wide', last);
+}
+function nextSlide() {
+  if (slide === SLIDES.length - 1) show(3);
+  else showSlide(slide + 1);
 }
 SLIDES.forEach((_element, number) => {
   const dot = document.createElement('button');
@@ -627,15 +639,15 @@ SLIDES.forEach((element) => {
     button.className = `side ${side}`;
     button.textContent = text;
     button.setAttribute('aria-label', text);
-    button.addEventListener('click', () => showSlide(slide + move));
+    button.addEventListener('click', () => (move > 0 ? nextSlide() : showSlide(slide - 1)));
     figure.appendChild(button);
   }
 });
-$('slide-next').addEventListener('click', () => showSlide(slide + 1));
+$('slide-next').addEventListener('click', nextSlide);
 document.addEventListener('keydown', (event) => {
   if (step !== 2 || ['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target.tagName)) return;
   if (event.key === 'ArrowLeft') showSlide(slide - 1);
-  if (event.key === 'ArrowRight') showSlide(slide + 1);
+  if (event.key === 'ArrowRight') nextSlide();
 });
 // Swipe on a phone
 let touchX = null;
@@ -643,7 +655,7 @@ $('carousel').addEventListener('touchstart', (event) => { touchX = event.touches
 $('carousel').addEventListener('touchend', (event) => {
   if (touchX === null) return;
   const moved = event.changedTouches[0].clientX - touchX;
-  if (Math.abs(moved) > 50) showSlide(slide + (moved < 0 ? 1 : -1));
+  if (Math.abs(moved) > 50) (moved < 0 ? nextSlide() : showSlide(slide - 1));
   touchX = null;
 });
 showSlide(0);
