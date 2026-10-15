@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import os
+import queue
+import sys
 import time
 import subprocess
+from threading import Thread
 import pygame
 
 from include import cvideos
+from include import cpaths
 from include import cperf
 # For GPIO Extender
 from RPi import GPIO as gpio
@@ -183,6 +188,12 @@ class Craspberry():
         self.newresolution = []
         self.banned_gpio = None
 
+        # Target read by its own process (see ctarget_reader.py). Without it, the target
+        # is scanned in the loop of listen_inputs, as before
+        self.target_reader = None
+        self.target_darts = queue.Queue()
+        self.pending_dart = None
+
         if config.file_exists:
             # Apply configuration
             for pin_gpio in [pin for pin in self.conf_inputs.values() if pin != '']:
@@ -222,6 +233,8 @@ class Craspberry():
                 else:
                     self.logs.error(f"Unknown {segment} configuration in [SectionKeys]")
 
+            # Before reset_gpio : the pins of the target must stay free for the reader
+            self.start_target_reader()
             self.reset_gpio()
 
         self.gpio = cgpio_extender.Gpio_extender(self.logs, self.buttons)
@@ -264,15 +277,102 @@ class Craspberry():
         """
         return MAX_GPIO
 
-    def reset_gpio(self):
+    def start_target_reader(self):
         """
-        Init target's GPIO
+        Launch the target reader. A dart closes its contact 1.1 to 3.7 ms only : scanned
+        here once per turn of listen_inputs (every 3 ms under Trixie), short contacts
+        were missed. The reader sleeps until the kernel signals a contact, in its own
+        process : darts are caught even while the game draws or plays a sound.
+        """
+        if not self.inputs or not self.outputs:
+            return
+        script = os.path.join(cpaths.ROOT_DIR, 'include', 'ctarget_reader.py')
+        command = [sys.executable, '-u', script,
+                   '--lines', ','.join(str(pin) for pin in self.inputs),
+                   '--columns', ','.join(str(pin) for pin in self.outputs)]
+        try:
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, text=True, bufsize=1)
+            # "READY" once the pins are reserved. Nothing if the reader fails (library
+            # missing, pins already used) : its error is in the log of the game
+            answer = process.stdout.readline().strip()
+        except OSError as error:
+            self.logs.error(f"Target reader not started : {error}")
+            return
+        if answer != 'READY':
+            process.kill()
+            self.logs.error("Target reader not started : the target is scanned by the game")
+            return
+        self.target_reader = process
+        Thread(target=self.receive_darts, args=(process,), daemon=True).start()
+        self.logs.info(f"Target read by its own process ({len(self.inputs)} inputs, {len(self.outputs)} outputs)")
+
+    def receive_darts(self, process):
+        """
+        Thread : darts sent by the reader, one code per line ("2610")
+        """
+        for line in process.stdout:
+            code = line.strip()
+            if code:
+                self.target_darts.put(code)
+        if self.target_reader is process:
+            # The reader stopped by itself : the game scans the target again
+            self.logs.error("Target reader stopped : the target is scanned by the game")
+            self.target_reader = None
+            self.setup_target_pins()
+
+    def stop_target_reader(self):
+        """
+        Stop the reader : its pins are configured again by the wiring assistant
+        """
+        process = self.target_reader
+        if process is None:
+            return
+        self.target_reader = None
+        process.terminate()
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+
+    def take_dart(self):
+        """
+        Code of the next dart sent by the reader, None if none
+        """
+        if self.pending_dart is not None:
+            dart, self.pending_dart = self.pending_dart, None
+            return dart
+        try:
+            return self.target_darts.get_nowait()
+        except queue.Empty:
+            return None
+
+    def wait_dart(self, delay):
+        """
+        Wait for a dart at most delay seconds, instead of looping for nothing.
+        The dart is kept for take_dart
+        """
+        if self.pending_dart is None:
+            try:
+                self.pending_dart = self.target_darts.get(timeout=delay)
+            except queue.Empty:
+                pass
+
+    def setup_target_pins(self):
+        """
+        Pins of the target, when the game scans it
         """
         for pin in self.inputs:
             gpio.setup(pin, gpio.IN)
 
         for pin in self.outputs:
             gpio.setup(pin, gpio.OUT)
+
+    def reset_gpio(self):
+        """
+        Init target's GPIO
+        """
+        if self.target_reader is None:
+            self.setup_target_pins()
 
         for pin in [pin for pin in self.pins]:
             # default : NO button, connected between GPIO and GND
@@ -285,6 +385,8 @@ class Craspberry():
         Init GPIO
         Used for initial configuration
         """
+        # The wiring assistant scans the target itself, on the pins it is given
+        self.stop_target_reader()
         for pin in pins:
             if direction == 'OUT':
                 gpio.setup(int(pins[pin]), gpio.OUT)
@@ -386,6 +488,14 @@ class Craspberry():
         """
         Test GPIO inputs (Target's)
         """
+        if self.target_reader is not None:
+            code = self.take_dart()
+            if code is None:
+                return []
+            if self.keys.get(code) is None:
+                return [1, f'ERREUR : Code : {code}']
+            return [0, self.keys[code]]
+
         gpio_input = []
         # Read segments (S1, D2, T4...)
         if self.inputs and self.outputs:
@@ -418,6 +528,9 @@ class Craspberry():
         """
         Read GPIO inputs (Target's)
         """
+        if self.target_reader is not None:
+            return self.keys.get(self.take_dart(), None)
+
         gpio_input = None
         # Read segments (S1, D2, T4...)
         if self.inputs and self.outputs:
@@ -622,6 +735,9 @@ class Craspberry():
 
             # Read target
             if not self.target_enabled:
+                # Darts thrown during the intro video are not played afterwards
+                if self.target_reader is not None:
+                    self.take_dart()
                 inputs = None
             elif context == 'test':
                 inputs = self.test_target()
@@ -656,6 +772,12 @@ class Craspberry():
                 # On force la dimension de la webcam
                 elif len(camera) == 6:                    
                     camera[0].show_camera(camera[1], posX=camera[2], posY=camera[3], resW=camera[4], resH=camera[5])
+
+            if self.target_reader is not None:
+                # Nothing to scan any more : wait for a dart instead of looping for nothing.
+                # After a shock sensor, the turns stay as short as when the game scanned
+                # the target (about 3 ms) : the 10 turns it waits for a dart last as long
+                self.wait_dart(0.003 if miss > 0 else 0.010)
 
             if miss > 10:
                 return 'MISS'
