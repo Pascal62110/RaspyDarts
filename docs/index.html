@@ -84,6 +84,7 @@ button.small { padding: 3px 10px; font-size: .85rem; }
 button.ghost { background: transparent; color: var(--text); border-color: var(--line); }
 button:disabled { opacity: .5; cursor: default; }
 .actions { display: flex; justify-content: space-between; gap: 10px; margin: 18px 0 10px; }
+.actions.top { margin: 0 0 14px; }
 label { display: block; font-weight: 600; margin: 12px 0 4px; }
 .hint { color: var(--muted); font-size: .9rem; margin: 2px 0 6px; }
 select, input[type="number"], input[type="text"] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; max-width: 100%; }
@@ -124,6 +125,10 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
 
 <main>
   <nav class="steps" id="steps"></nav>
+  <div class="actions top">
+    <button class="main ghost" data-move="-1" data-t="prev"></button>
+    <button class="main" data-move="1" data-t="next"></button>
+  </div>
 
   <!-- 1. Préparer -->
   <section class="step" data-step="1">
@@ -259,6 +264,17 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
       <li data-t="s4-reinsert"></li>
       <li data-t="s4-bootfs"></li>
       <li id="own-file-copy" class="hidden"><span data-t="s4-own"></span>
+        <input type="file" id="own-input" accept=".cfg,.txt" hidden>
+        <div class="savebar">
+          <button class="main" id="own-pick" data-t="own-pick"></button>
+          <span id="own-name"></span>
+        </div>
+        <p class="errors hidden" id="own-error" data-t="own-bad"></p>
+        <div class="savebar hidden" id="own-save">
+          <button class="main" id="own-save-sd" data-t="save-sd"></button>
+          <span id="own-status"></span>
+        </div>
+        <p class="hint" id="own-hint"></p>
         <p class="center"><button class="main big" id="own-file-undo4" data-t="own-file-undo"></button></p></li>
       <li id="made-file"><span data-t="s4-save"></span>
         <p class="errors hidden" id="save-errors" data-t="save-errors"></p>
@@ -288,8 +304,8 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
   </section>
 
   <div class="actions">
-    <button class="main ghost" id="prev" data-t="prev"></button>
-    <button class="main" id="next" data-t="next"></button>
+    <button class="main ghost" id="prev" data-move="-1" data-t="prev"></button>
+    <button class="main" id="next" data-move="1" data-t="next"></button>
   </div>
 </main>
 <footer><a href="https://github.com/rmdelcelier/RaspyDarts" target="_blank" rel="noopener">github.com/rmdelcelier/RaspyDarts</a></footer>
@@ -345,8 +361,8 @@ function show(index) {
   document.querySelectorAll('section.step').forEach((section) => {
     section.classList.toggle('active', Number(section.dataset.step) === step);
   });
-  $('prev').disabled = step === 1;
-  $('next').disabled = step === STEPS;
+  document.querySelectorAll('[data-move="-1"]').forEach((button) => { button.disabled = step === 1; });
+  document.querySelectorAll('[data-move="1"]').forEach((button) => { button.disabled = step === STEPS; });
   buildSteps();
   store('step', step);
   window.scrollTo({top: 0, behavior: 'smooth'});
@@ -570,6 +586,7 @@ function update() {
   $('s5-calibration').classList.toggle('hidden', current.known && stored('own') !== '1');
   $('save-hint').innerHTML = t('showSaveFilePicker' in window ? 'save-hint-ok' : 'save-hint-no');
   $('save-sd').classList.toggle('hidden', !('showSaveFilePicker' in window));
+  $('own-hint').innerHTML = t('showSaveFilePicker' in window ? 'own-hint-ok' : 'own-hint-no');
   store('card', code);
   store('mcp', $('mcp-count').value);
 }
@@ -589,19 +606,41 @@ $('download').addEventListener('click', () => {
 });
 
 // "Save as" of the browser (Chrome, Edge) : the drive bootfs is chosen there, the name is given
-$('save-sd').addEventListener('click', async () => {
+async function saveAs(data, status) {
   try {
     const handle = await window.showSaveFilePicker({
       suggestedName: 'raspydarts.cfg',
       types: [{description: 'RaspyDarts', accept: {'text/plain': ['.cfg']}}]
     });
     const writable = await handle.createWritable();
-    await writable.write(blob());
+    await writable.write(data);
     await writable.close();
-    $('save-status').textContent = t('saved');
+    status.textContent = t('saved');
   } catch (error) {
-    if (error.name !== 'AbortError') $('save-status').textContent = error.message;
+    if (error.name !== 'AbortError') status.textContent = error.message;
   }
+}
+$('save-sd').addEventListener('click', () => saveAs(blob(), $('save-status')));
+
+// Their own file : read, then written as it is (same bytes) under the name raspydarts.cfg
+let ownData = null;
+$('own-pick').addEventListener('click', () => $('own-input').click());
+$('own-input').addEventListener('change', async () => {
+  const file = $('own-input').files[0];
+  $('own-input').value = '';
+  if (!file) return;
+  const data = await file.arrayBuffer();
+  const text = new TextDecoder().decode(data);
+  // A configuration of the game : sections [Name], small
+  const looks = data.byteLength < 512 * 1024 && /^\s*\[[A-Za-z_][\w-]*\]\s*$/m.test(text);
+  ownData = looks ? data : null;
+  $('own-name').textContent = file.name;
+  $('own-status').textContent = '';
+  $('own-error').classList.toggle('hidden', looks);
+  $('own-save').classList.toggle('hidden', !looks || !('showSaveFilePicker' in window));
+});
+$('own-save-sd').addEventListener('click', () => {
+  if (ownData) saveAs(new Blob([ownData], {type: 'text/plain'}), $('own-status'));
 });
 
 $('menu-custom').addEventListener('click', () => $('wip').showModal());
@@ -686,8 +725,9 @@ document.querySelectorAll('[data-copy]').forEach((button) => {
   });
 });
 
-$('prev').addEventListener('click', () => show(step - 1));
-$('next').addEventListener('click', () => show(step + 1));
+document.querySelectorAll('[data-move]').forEach((button) => {
+  button.addEventListener('click', () => show(step + Number(button.dataset.move)));
+});
 $('lang').addEventListener('change', () => {
   lang = $('lang').value;
   store('lang', lang);
