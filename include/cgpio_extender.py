@@ -18,8 +18,6 @@ from digitalio import Direction, Pull
 from adafruit_mcp230xx.mcp23017 import MCP23017
 from threading import Thread
 
-from include import cperf
-
 LAST_BUTTON = None
 COUNT_BUTTON = 0
 
@@ -202,7 +200,6 @@ class Gpio_extender:
         """
         self.set_io(DEFAULTS)
 
-    @cperf.timed('mcp read_entries')
     def read_entries(self):
         """
         Read self.mcp1

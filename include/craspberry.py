@@ -10,7 +10,6 @@ import pygame
 
 from include import cvideos
 from include import cpaths
-from include import cperf
 # For GPIO Extender
 from RPi import GPIO as gpio
 from . import cgpio_extender
@@ -538,7 +537,6 @@ class Craspberry():
 
         return gpio_input
 
-    @cperf.timed('read_target')
     def read_target(self):
         """
         Read GPIO inputs (Target's)
@@ -585,7 +583,6 @@ class Craspberry():
 
         return self.keys.get(gpio_input, None)
 
-    @cperf.timed('read_buttons')
     def read_buttons(self):
         """
         Read GPIO (Button's)
@@ -701,14 +698,7 @@ class Craspberry():
 
         count = 0
         miss = 0
-        turn_start = None
         while True:
-            if cperf.ENABLED:
-                # Time between two reads of the target
-                now = time.perf_counter()
-                if turn_start is not None:
-                    cperf.add('listen_inputs loop', now - turn_start)
-                turn_start = now
             count += 1
             if count % 1000 == 0:
                 count = 0
@@ -799,7 +789,6 @@ class Craspberry():
             if miss > 0:
                 miss += 1
 
-    @cperf.timed('keyboard_mouse')
     def keyboard_mouse(self, k_type, specials, context=None, wait_events=None, firstname=None):
         """ KEYBOARD & MOUSE (from pygame)
         Context can be different, dependanding from where this method is used.  So
