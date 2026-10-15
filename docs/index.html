@@ -55,6 +55,9 @@ dialog p { font-size: 1.1rem; margin: 0 0 14px; }
 figure { margin: 8px 0 0; }
 figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
 figcaption { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+.center { text-align: center; }
+button.big { font-size: 1.1rem; font-weight: 600; padding: 12px 28px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0, 0, 0, .18); }
+button.big:hover { filter: brightness(1.1); }
 details { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; margin-top: 14px; }
 details summary { cursor: pointer; font-weight: 600; }
 main { max-width: 860px; margin: 0 auto; padding: 16px; }
@@ -179,9 +182,9 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
   <section class="step" data-step="3">
     <h2 data-t="s3-title"></h2>
     <p data-t="s3-intro"></p>
-    <p><button class="main ghost" id="own-file" data-t="own-file"></button></p>
-    <div id="own-file-info" class="note ok hidden"><p data-t="own-file-info"></p>
-      <button class="main" id="own-file-undo" data-t="own-file-undo"></button></div>
+    <p class="center"><button class="main big" id="own-file" data-t="own-file"></button></p>
+    <div id="own-file-info" class="note ok hidden center"><p data-t="own-file-info"></p>
+      <button class="main big" id="own-file-undo" data-t="own-file-undo"></button></div>
 
     <div id="config-form">
     <label for="locale" data-t="f-locale"></label>
@@ -255,7 +258,7 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
       <li data-t="s4-reinsert"></li>
       <li data-t="s4-bootfs"></li>
       <li id="own-file-copy" class="hidden"><span data-t="s4-own"></span>
-        <p><button class="main ghost" id="own-file-undo4" data-t="own-file-undo"></button></p></li>
+        <p class="center"><button class="main big" id="own-file-undo4" data-t="own-file-undo"></button></p></li>
       <li id="made-file"><span data-t="s4-save"></span>
         <p class="errors hidden" id="save-errors" data-t="save-errors"></p>
         <div class="savebar">
