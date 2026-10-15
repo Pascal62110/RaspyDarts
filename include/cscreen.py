@@ -138,6 +138,8 @@ class Screen(pygame.Surface):
         # Image cache (speed up pygame image load process
         self.games = {}
         self.imagecache = {}
+        self.tinted_backgrounds = {}
+        self.pristine_background = None
         # For drawing a dart board
         self.targets = {20: 1, 1: 2, 18: 3, 4: 4, 13: 5, 6: 6, 10: 7, 15: 8, 2: 9, 17: 10, 3: 11, 19: 12, 7: 13,
                          16: 14, 8: 15, 11: 16, 14: 17, 9: 18, 12: 19, 5: 20}
@@ -234,40 +236,27 @@ class Screen(pygame.Surface):
         self.image_player.level = int(self.config.get_value('SectionGlobals', 'videos'))
 
     def blit(self, source, destination, area=None):
-        if PYGAME2:
-            if area is not None:
-                self.screen.blit(source, destination, area=area, special_flags=pygame.BLEND_ALPHA_SDL2)
-            else:
-                self.screen.blit(source, destination, special_flags=pygame.BLEND_ALPHA_SDL2)
-        elif area is not None:
-            self.screen.blit(source, destination, area=area)
-        else:
-            self.screen.blit(source, destination)
+        # Something drawn : the background is not intact any more (see blit_rect)
+        self.pristine_background = None
+        self.blit_screen(self.screen, source, destination, area)
 
     def blit_screen(self, screen, source, destination, area=None):
-        if area is None:
-            if PYGAME2:
-                screen.blit(source, destination, special_flags=pygame.BLEND_ALPHA_SDL2)
-            else:
-                screen.blit(source, destination)
-        elif PYGAME2:
+        '''
+        Blit with alpha blending, except the opaque sources : copied as they are, same
+        result, several times faster (pygame is built without NEON on the Pi)
+        '''
+        opaque = not source.get_flags() & pygame.SRCALPHA and source.get_alpha() is None
+        if PYGAME2 and not opaque:
             screen.blit(source, destination, area=area, special_flags=pygame.BLEND_ALPHA_SDL2)
         else:
-            screen.blit(source, destination,special_flags=pygame.BLEND_ALPHA_SDL2)
+            screen.blit(source, destination, area=area)
 
     def save_background(self):
         '''
         To use the game's screen instead of classic background
         '''
-        # Grab screen
-        rect = pygame.Rect(0, 0, self.res_x, self.res_y)
-        sub = self.screen.subsurface(rect)
-        screenshot = pygame.Surface((self.res_x, self.res_y))
-        if PYGAME2:
-            screenshot.blit(sub, (0, 0), special_flags=pygame.BLEND_ALPHA_SDL2)
-        else:
-            screenshot.blit(sub, (0, 0))
-        self.game_background = screenshot
+        # Grab screen (a copy : blending it took 18 ms on a Pi 3 at each dart)
+        self.game_background = self.screen.copy()
 
     def restore_background(self, refresh=True):
         '''
@@ -291,6 +280,7 @@ class Screen(pygame.Surface):
         self.logs.debug(f"Cleaning image cache")
         if self.background is None or self.background != background:
             self.imagecache = {}
+            self.tinted_backgrounds = {}
         self.background = background
         self.logs.debug(f"Background is now {self.background}")
         self.set_intro_background(background)
@@ -368,6 +358,7 @@ class Screen(pygame.Surface):
 
         if newresolution:
             self.imagecache = {}
+            self.tinted_backgrounds = {}
         # Toggle if requested
         if self.fullscreen and Toggle:
             self.fullscreen = False
@@ -529,12 +520,27 @@ class Screen(pygame.Surface):
         if not border_color:
             border_color = self.colorset['menu-border']
 
+        # A veil on the whole background just displayed (game screens, at each dart) :
+        # blending 1920x1080 pixels took 35 ms on a Pi 3. The result is kept, then copied
+        key = None
+        if not border and self.pristine_background is not None \
+                and (int(pos_x), int(pos_y), int(width), int(height)) == (0, 0) + self.screen.get_size():
+            key = (self.pristine_background, tuple(color), Alpha)
+            if key in self.tinted_backgrounds:
+                self.screen.blit(self.tinted_backgrounds[key], (0, 0))
+                self.pristine_background = None
+                return
+
         surface = pygame.Surface((int(width), int(height)))    # the size of your rect
         surface.set_alpha(Alpha)    # alpha level
         surface.fill(color)    # this fills the entire surface
         self.blit(surface, (int(pos_x), int(pos_y)))    # (0, 0) are the top-left coordinates
         if border:
             pygame.draw.rect(self.screen, border_color, (int(pos_x), int(pos_y), int(width), int(height)), border)
+        if key is not None:
+            if len(self.tinted_backgrounds) >= 8:
+                self.tinted_backgrounds = {}
+            self.tinted_backgrounds[key] = self.screen.copy()
 
     @lru_cache(maxsize=128)
     def font(self, path, size):
@@ -8015,11 +8021,15 @@ class Screen(pygame.Surface):
         elif image is not None:
             image = self.file_class.get_full_filename(image, 'images')
 
+        # The background alone is on the screen (see blit_rect) : said at the end
+        pristine = None
         if self.colorset['bg-global']:
             self.screen.fill(self.colorset['bg-global'])
+            pristine = ('fill', tuple(self.colorset['bg-global']))
         # If there is no background color in used colorset, try to use image
         if self.game_background is not None and image is None:
             self.restore_background()
+            pristine = None
 
         elif not self.colorset['bg-global'] and (self.background is not None or image is not None):
             if image is None:
@@ -8027,6 +8037,7 @@ class Screen(pygame.Surface):
 
             if rect is None:
                 self.display_image(image, 0, 0, self.res['x'], self.res['y'], Scale=True)
+                pristine = None if display_version else ('image', image)
             else:
                 self.display_image(image, 0, 0, self.res['x'], self.res['y'], Scale=True, rect=rect)
 
@@ -8039,6 +8050,8 @@ class Screen(pygame.Surface):
 
                 self.blit_text(version, pos_x , pos_y, width, height, self.colorset['menu-text-white'], \
                         dafont=self.file_class.get_full_filename('Impact', 'fonts'))
+
+        self.pristine_background = pristine
 
     def scale_image(self, image, scale=True, width=0, height=0):
         '''
