@@ -889,19 +889,86 @@ class Screen(pygame.Surface):
             self.logs.debug(f"Issue is {e}")
             return False
 
-    def get_rpi_config(self):
+    def on_desktop(self, function):
         '''
-        1st execution : the wizard, on the background of the desktop whatever the theme
+        The wizard and the calibration : on the background of the desktop whatever the theme
         '''
         background, bg_global = self.background, self.colorset.get('bg-global')
         self.background = os.path.join(cpaths.ROOT_DIR, 'images', 'background_clear.png')
         self.colorset['bg-global'] = None
         self.reset_background()
         try:
-            return self.wizard()
+            return function()
         finally:
             self.background = background
             self.colorset['bg-global'] = bg_global
+
+    def get_rpi_config(self):
+        '''
+        1st execution : the wizard
+        '''
+        return self.on_desktop(self.wizard)
+
+    def calibration_needed(self):
+        '''
+        The target is wired on the GPIO but none of its segments is known : configuration
+        made without it (page of the web site, target of no known model)
+        '''
+        if not (self.rpi.inputs and self.rpi.outputs):
+            return False
+        keys = self.config.config.get('SectionKeys', {})
+        return not any(keys.get(segment) for segment in list(self.config.keys)[:62])
+
+    def calibration_only(self):
+        '''
+        Only the calibration of the target, the rest of the configuration being there.
+        Escape on the first segment : not now (asked again at the next start)
+        '''
+        calibrated = self.on_desktop(self.calibrate_target)
+        if calibrated is None:
+            return False
+        keys = dict(self.config.config.get('SectionKeys', {}))
+        keys.update(calibrated)
+        self.rpi.set_keys_conf(keys)
+        self.config.write_file()
+        self.message([f"{self.lang.translate('config-restart')}"], 2500, None, 'middle', 'big')
+        return True
+
+    def calibrate_target(self):
+        '''
+        Calibration of the target : the whole target is drawn, the segment to press blinks,
+        a segment done turns green (with a sound). Escape : the one before ; on the first
+        one, None. Space : the segment left unset (not told on the screen)
+        Returns {segment: code of its contact ("2410")}
+        '''
+        new_keys = {}
+        segments = list(self.config.keys)[:62]
+        lit = True
+        j = 0
+        while j < 62:
+            key = segments[j]
+            self.draw_calibration(segments, j, lit, new_keys)
+            # Code of the contact as it is ("2410") : the segment is not known yet
+            key_pressed = self.rpi.listen_inputs([], ['escape', 'enter', 'space', 'TOGGLEFULLSCREEN'], context='wizard', timeout=400)
+            if key_pressed is False:
+                # Blinking
+                lit = not lit
+                continue
+            lit = True
+            if key_pressed == 'escape':
+                if j == 0:
+                    return None
+                j -= 1
+                new_keys.pop(segments[j], None)
+            elif key_pressed == 'space':
+                # Not wired, broken
+                new_keys[key] = ''
+                j += 1
+            elif key_pressed not in new_keys.values() and key_pressed not in ('enter', '', None):
+                new_keys[key] = key_pressed
+                self.play_sound('Blaster')
+                j += 1
+        return new_keys
 
     def wizard(self):
         '''
@@ -1164,36 +1231,12 @@ class Screen(pygame.Surface):
         self.rpi.set_leds_conf(new_leds)
 
         if card == 'Au':
-            # Calibration of the target : the whole target is drawn, the segment to press
-            # blinks, a segment done turns green (with a sound). Escape : the one before
-            segments = list(self.config.keys)[:62]
-            lit = True
-            j = 0
-            while j < 62:
-                key = segments[j]
-                self.draw_calibration(segments, j, lit, new_keys)
-                # Code of the contact as it is ("2410") : the segment is not known yet
-                key_pressed = self.rpi.listen_inputs([], ['escape', 'enter', 'space', 'TOGGLEFULLSCREEN'], context='wizard', timeout=400)
-                if key_pressed is False:
-                    # Blinking
-                    lit = not lit
-                    continue
-                lit = True
-                if key_pressed == 'escape':
-                    if j > 0:
-                        j -= 1
-                        new_keys.pop(segments[j], None)
-                    else:
-                        self.rpi.gpio_flush()
-                        sys.exit(0)
-                elif key_pressed == 'space':
-                    # Not told on the screen : a segment left unset (not wired, broken)
-                    new_keys[key] = ''
-                    j += 1
-                elif key_pressed not in new_keys.values() and key_pressed not in ('enter', '', None):
-                    new_keys[key] = key_pressed
-                    self.play_sound('Blaster')
-                    j += 1
+            calibrated = self.calibrate_target()
+            if calibrated is None:
+                self.rpi.gpio_flush()
+                sys.exit(0)
+            new_keys.update(calibrated)
+            j = 62
 
             for l in [1, 2, 3, 4]:
                 new_keys[self.config.keys[j]] = ''

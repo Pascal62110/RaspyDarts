@@ -431,6 +431,14 @@ if not Config.file_exists:
     p_strip = False
     game_type = 'restart'
 
+elif display.calibration_needed():
+    # Configuration made without the target (page of the web site, target of no known
+    # model) : only its segments are asked
+    logs.info("No segment of the target calibrated : calibration")
+    display.show()
+    if display.calibration_only():
+        game_type = 'restart'
+
 #####################
 # Init some vars
 #####################
