@@ -1167,14 +1167,13 @@ class Screen(pygame.Surface):
             # Calibration of the target : the whole target is drawn, the segment to press
             # blinks, a segment done turns green (with a sound). Escape : the one before
             segments = list(self.config.keys)[:62]
-            done = []
             lit = True
             j = 0
             while j < 62:
                 key = segments[j]
-                self.draw_calibration(segments, j, lit)
+                self.draw_calibration(segments, j, lit, new_keys)
                 # Code of the contact as it is ("2410") : the segment is not known yet
-                key_pressed = self.rpi.listen_inputs([], ['escape', 'enter', 'TOGGLEFULLSCREEN'], context='wizard', timeout=400)
+                key_pressed = self.rpi.listen_inputs([], ['escape', 'enter', 'space', 'TOGGLEFULLSCREEN'], context='wizard', timeout=400)
                 if key_pressed is False:
                     # Blinking
                     lit = not lit
@@ -1184,13 +1183,15 @@ class Screen(pygame.Surface):
                     if j > 0:
                         j -= 1
                         new_keys.pop(segments[j], None)
-                        done.pop()
                     else:
                         self.rpi.gpio_flush()
                         sys.exit(0)
-                elif key_pressed not in done and key_pressed not in ('enter', '', None):
+                elif key_pressed == 'space':
+                    # Not told on the screen : a segment left unset (not wired, broken)
+                    new_keys[key] = ''
+                    j += 1
+                elif key_pressed not in new_keys.values() and key_pressed not in ('enter', '', None):
                     new_keys[key] = key_pressed
-                    done.append(key_pressed)
                     self.play_sound('Blaster')
                     j += 1
 
@@ -9125,16 +9126,17 @@ class Screen(pygame.Surface):
             else:
                 self.draw_triple(index, color)
 
-    def draw_calibration(self, segments, current, lit):
+    def draw_calibration(self, segments, current, lit, codes):
         '''
-        Wizard of the target : the whole target, segments done in green, the one to press
-        blinking (lit or not), the others in the colors of a dartboard, dimmed
+        Wizard of the target : the whole target, segments done in green (skipped ones
+        dimmed : no code in codes), the one to press blinking (lit or not), the others in
+        the colors of a dartboard, dimmed
         '''
         self.display_background()
         self.message([self.lang.translate('press-on').format(segments[current])], 0, None, 'fullbottom', 'big', refresh=False)
         self.draw_background()
         for index, segment in enumerate(segments):
-            if index < current:
+            if index < current and codes.get(segment):
                 color = self.colorset['menu-ok']
             elif index == current:
                 color = self.colorset['menu-shortcut'] if lit else (20, 20, 20)
