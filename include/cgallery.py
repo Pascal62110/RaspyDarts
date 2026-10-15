@@ -313,6 +313,14 @@ button:disabled{opacity:.4}
 .folder svg{width:100%;height:auto;display:block}
 @media print{header,.actions,.warning,.big{display:none}}
 """
+# Deleting : sent by the script, then the page shown REPLACES the deleted one in the
+# history (location.replace) : the back button of a phone can not come back to it. A page
+# shown again from the memory of the browser (back/forward cache, Safari keeps even
+# no-store pages) is asked again : a deleted game sends to the list
+SCRIPT = ('<script>function send(f){fetch(f.action,{method:"POST",body:new URLSearchParams(new FormData(f))})'
+          '.then(function(r){if(r.status==403){r.text().then(function(t){document.open();document.write(t);'
+          'document.close();});}else{location.replace(r.url);}});return false;}'
+          'window.addEventListener("pageshow",function(e){if(e.persisted)location.reload();});</script>')
 FOLDER = ('<svg viewBox="0 0 64 48"><path d="M2 8a4 4 0 0 1 4-4h16l6 6h30a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4H6'
           'a4 4 0 0 1-4-4z" fill="#d9a441"/><path d="M2 16h60v26a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#f0c05a"/></svg>')
 
@@ -323,7 +331,7 @@ def page(conf, title, body, back=True):
     home = f'<a href="/">&larr; {html.escape(_("gallery-all"))}</a>' if back else ''
     return (f'<!doctype html><html lang="{conf["lang"]}"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width,initial-scale=1">'
-            f'<title>{html.escape(title)}</title><style>{STYLE}</style></head><body>'
+            f'<title>{html.escape(title)}</title><style>{STYLE}</style>{SCRIPT}</head><body>'
             f'<header>{home}<h1>{html.escape(title)}</h1></header>{warning}{body}</body></html>')
 
 
@@ -592,8 +600,8 @@ class Handler(BaseHTTPRequestHandler):
         _ = conf['_']
         if conf['password']:
             text = json.dumps(f"{_(question)}\n{_('gallery-delete-password')}")
-            return html.escape(f"var p=prompt({text});if(p===null)return false;this.password.value=p;return true;")
-        return html.escape(f"return confirm({json.dumps(_(question))})")
+            return html.escape(f"var p=prompt({text});if(p===null)return false;this.password.value=p;return send(this);")
+        return html.escape(f"if(!confirm({json.dumps(_(question))}))return false;return send(this);")
 
     def zip(self, conf, raw):
         found = find(conf, urllib.parse.quote(raw, safe=''))
