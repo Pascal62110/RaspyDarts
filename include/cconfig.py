@@ -1023,66 +1023,10 @@ class Config:
 
         return data[0].strip()
 
-    # A configuration made beforehand (page of the web site), put on the partition of the SD
-    # card seen by Windows : /boot/firmware under Trixie, /boot under Buster
-    BOOT_CONFIGS = ('/boot/firmware/raspydarts.cfg', '/boot/raspydarts.cfg')
-
-    def import_boot_config(self):
-        """
-        The configuration put on the SD card is taken once : a new file put there later is
-        taken again (its fingerprint is kept). Its sections replace the ones of the current
-        configuration, kept aside first ; the others stay as they are
-        """
-        import hashlib
-        import shutil
-        import time
-
-        source = next((path for path in self.BOOT_CONFIGS if os.path.isfile(path)), None)
-        if source is None:
-            return
-        marker = os.path.join(self.user_dir, '.boot_config')
-        try:
-            with open(source, 'rb') as file:
-                data = file.read()
-            fingerprint = hashlib.sha256(data).hexdigest()
-            if os.path.isfile(marker) and open(marker, encoding='utf-8').read().strip() == fingerprint:
-                return
-
-            imported = configparser.ConfigParser(inline_comment_prefixes="#", interpolation=None)
-            imported.optionxform = str
-            imported.read_string(data.decode('utf-8-sig'))
-
-            os.makedirs(self.user_dir, exist_ok=True)
-            if os.path.isfile(self.configFile):
-                kept = f"{self.configFile}.avant-import-{time.strftime('%Y%m%d-%H%M%S')}"
-                shutil.copy2(self.configFile, kept)
-                current = configparser.ConfigParser(inline_comment_prefixes="#", interpolation=None)
-                current.optionxform = str
-                current.read(self.configFile, encoding='utf-8')
-                for section in imported.sections():
-                    if current.has_section(section):
-                        current.remove_section(section)
-                    current.add_section(section)
-                    for key, value in imported.items(section):
-                        current.set(section, key, value)
-                text = ''.join(f"[{section}]\n" + ''.join(f"{key}:{value}\n" for key, value in current.items(section)) + "\n"
-                               for section in current.sections())
-                self.logs.info(f"Configuration of {source} imported ({', '.join(imported.sections())}), the former one kept in {kept}")
-            else:
-                text = data.decode('utf-8-sig')
-                self.logs.info(f"Configuration of {source} imported")
-            with open(self.configFile, 'w', encoding='utf-8') as file:
-                file.write(text)
-            with open(marker, 'w', encoding='utf-8') as file:
-                file.write(fingerprint)
-        except (OSError, UnicodeDecodeError, configparser.Error) as error:
-            self.logs.error(f"Configuration of {source} not imported : {error}")
-
     def check_config_file(self):
         """
         Check if the config file exists and if not, create it
         """
-        self.import_boot_config()
         self.file_exists = True
         # Create config folder in profile if necessary
         if not os.path.isfile(self.configFile):
