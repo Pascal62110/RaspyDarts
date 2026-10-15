@@ -36,7 +36,13 @@ dialog { border: 1px solid var(--line); border-radius: var(--radius); background
 dialog::backdrop { background: rgba(0, 0, 0, .45); }
 dialog p { font-size: 1.1rem; margin: 0 0 14px; }
 .carousel-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 12px; }
-.carousel-nav button { font-size: 1.4rem; line-height: 1; padding: 4px 16px; }
+.carousel-nav button.arrow { font-size: 2rem; line-height: 1; width: 52px; height: 44px; padding: 0 0 4px; border-radius: 10px; flex: none; }
+.slide figure { position: relative; }
+.slide figure .side { position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 64px; border: none; border-radius: 10px;
+  background: rgba(0, 0, 0, .55); color: #fff; font-size: 2.2rem; line-height: 1; cursor: pointer; padding: 0 0 6px; }
+.slide figure .side:hover { background: var(--accent); }
+.slide figure .side.left { left: 6px; }
+.slide figure .side.right { right: 6px; }
 .dots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .dots button { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: inherit; font-size: .75rem; cursor: pointer; padding: 0; }
 .dots button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
@@ -134,9 +140,9 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
     <h2 data-t="s2-title"></h2>
     <div class="carousel" id="carousel">
       <div class="carousel-nav">
-        <button class="main ghost" id="slide-prev" aria-label="‹">‹</button>
+        <button class="main arrow" id="slide-prev" aria-label="‹">‹</button>
         <div class="dots" id="dots"></div>
-        <button class="main ghost" id="slide-next" aria-label="›">›</button>
+        <button class="main arrow" id="slide-next" aria-label="›">›</button>
       </div>
       <div class="slide" data-index="0"><div class="slide-text"><b>1.</b> <p data-t="s2-options"></p></div>
         <figure><a href="images/imager/imager-01-appareil.png" target="_blank" rel="noopener"><img src="images/imager/imager-01-appareil.png" alt="" loading="lazy" width="682" height="482"></a></figure></div>
@@ -174,8 +180,8 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
     <h2 data-t="s3-title"></h2>
     <p data-t="s3-intro"></p>
     <p><button class="main ghost" id="own-file" data-t="own-file"></button></p>
-    <div id="own-file-info" class="note ok hidden"><span data-t="own-file-info"></span>
-      <button class="small" id="own-file-undo" data-t="own-file-undo"></button></div>
+    <div id="own-file-info" class="note ok hidden"><p data-t="own-file-info"></p>
+      <button class="main" id="own-file-undo" data-t="own-file-undo"></button></div>
 
     <div id="config-form">
     <label for="locale" data-t="f-locale"></label>
@@ -248,7 +254,8 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
     <ol>
       <li data-t="s4-reinsert"></li>
       <li data-t="s4-bootfs"></li>
-      <li id="own-file-copy" class="hidden" data-t="s4-own"></li>
+      <li id="own-file-copy" class="hidden"><span data-t="s4-own"></span>
+        <p><button class="main ghost" id="own-file-undo4" data-t="own-file-undo"></button></p></li>
       <li id="made-file"><span data-t="s4-save"></span>
         <p class="errors hidden" id="save-errors" data-t="save-errors"></p>
         <div class="savebar">
@@ -609,6 +616,18 @@ SLIDES.forEach((_element, number) => {
   $('dots').appendChild(dot);
 });
 $('slide-prev').addEventListener('click', () => showSlide(slide - 1));
+// Arrows on each screenshot too
+SLIDES.forEach((element) => {
+  const figure = element.querySelector('figure');
+  for (const [side, move, text] of [['left', -1, '‹'], ['right', 1, '›']]) {
+    const button = document.createElement('button');
+    button.className = `side ${side}`;
+    button.textContent = text;
+    button.setAttribute('aria-label', text);
+    button.addEventListener('click', () => showSlide(slide + move));
+    figure.appendChild(button);
+  }
+});
 $('slide-next').addEventListener('click', () => showSlide(slide + 1));
 document.addEventListener('keydown', (event) => {
   if (step !== 2 || ['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target.tagName)) return;
@@ -638,6 +657,7 @@ function ownFile(own) {
 }
 $('own-file').addEventListener('click', () => { ownFile(true); show(4); });
 $('own-file-undo').addEventListener('click', () => ownFile(false));
+$('own-file-undo4').addEventListener('click', () => { ownFile(false); show(3); });
 window.addEventListener('hashchange', () => show(Number(location.hash.slice(1)) || 1));
 $('wip-close').addEventListener('click', () => $('wip').close());
 
