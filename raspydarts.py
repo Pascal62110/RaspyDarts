@@ -298,8 +298,7 @@ if rpi_error is not None:
 # Manage Webcam USB
 camera = ccamera.Camera(Config, display, logs)
 # Gallery of the memories on the local network : its own service, kept when the game stops
-if camera.camera_id != '-1':
-    cgallery.ensure_running(logs)
+cgallery.ensure_running(logs)
 
 # Client of Master Server
 NetMasterClient = cclient.MasterClient(logs)

@@ -1247,16 +1247,20 @@ class Screen(pygame.Surface):
     def setup_io_extender(self):
 
         try:
-            from . import cgpio_extender
-            gpio = cgpio_extender.Gpio_extender('')
+            # The extension card opened by the game : created again here with an old way
+            # (Gpio_extender(''), gpio.mcp), it failed and the card was "not found"
+            from digitalio import Pull
+            gpio = self.rpi.gpio
+            if gpio is None or gpio.mcp1 is None:
+                raise RuntimeError("no MCP23017")
 
             pins = []
             for pin in range(0, 16):
-                pins.append(gpio.mcp.get_pin(pin))
-                pins[pin].pull = gpio.pull_up
+                pins.append(gpio.mcp1.get_pin(pin))
+                pins[pin].pull = Pull.UP
 
             outputs = []
-            value = hex(gpio.mcp.gpio)
+            value = hex(gpio.mcp1.gpio)
             for button in range(0, 16):
                 if not int(value, 16) & 2**button:
                     outputs.append("{}".format(chr(65 + int(button / 8)) + chr(48 + button % 8)))    # Compute A0..B7
@@ -1317,7 +1321,8 @@ class Screen(pygame.Surface):
                 config[key] = value
 
             return config
-        except:
+        except Exception as error:
+            self.logs.warning(f"Extension card not configured : {error}")
             self.message([self.lang.translate('config-noMCP')], 3000, None, 'middle', 'big', bg_color='menu-ko')
             return None
 
@@ -6337,7 +6342,8 @@ class Screen(pygame.Surface):
         '''
         selected = 1
         # Gallery of the memories (see cgallery) when a webcam is set up
-        gallery = not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')) and self.camera.camera_id != '-1'
+        # (also before a webcam is set up : it says there are no memories yet)
+        gallery = not bool(self.config.get_value('SectionGlobals', 'exhibition_mode'))
         if bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
             nb_elements = 3
         else:

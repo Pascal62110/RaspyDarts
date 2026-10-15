@@ -37,7 +37,9 @@ DEFAULTS = {
     'PIN_VOLUME_DOWN':'B4',
     'PIN_VOLUME_MUTE':'B5',
     'PIN_CPTPLAYER':'B6',
-    'PIN_MISSDART':'B7',
+    # A shock sensor is rare : on a free pin (read as pressed, its logic is reversed) it
+    # was banned at each start
+    'PIN_MISSDART':'',
     'LIGHT_NEXTPLAYER':'',
     'LIGHT_BACK':'',
     'LIGHT_NAVIGATE':'',
