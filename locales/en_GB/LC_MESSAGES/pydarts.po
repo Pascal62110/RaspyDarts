@@ -2778,6 +2778,12 @@ msgstr "Enter"
 msgid "gallery-wrong"
 msgstr "Wrong password."
 
+msgid "gallery-delete-selection"
+msgstr "Delete the selection"
+
+msgid "gallery-delete-selected"
+msgstr "Delete all the selected games?"
+
 msgid "gallery-delete-password"
 msgstr "Gallery password:"
 

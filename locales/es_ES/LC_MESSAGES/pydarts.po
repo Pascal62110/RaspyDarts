@@ -548,6 +548,12 @@ msgstr "Entrar"
 msgid "gallery-wrong"
 msgstr "Contraseña incorrecta."
 
+msgid "gallery-delete-selection"
+msgstr "Borrar la selección"
+
+msgid "gallery-delete-selected"
+msgstr "¿Borrar todas las partidas seleccionadas?"
+
 msgid "gallery-delete-password"
 msgstr "Contraseña de la galería:"
 

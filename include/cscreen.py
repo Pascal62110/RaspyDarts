@@ -4141,7 +4141,8 @@ class Screen(pygame.Surface):
                 conf_values = [('0', 'Rien'), ('1', 'QUE Photos'), ('2', 'QUE Videos'), ('3', 'ALEATOIREMENT Photos ou Videos')]
             elif (conf in ('picture_path', 'video_path', 'events', 'path_google_drive')):
                 conf_type = 'string'
-                min_value = 1
+                # Google Drive : empty is allowed (the root of the drive)
+                min_value = 0 if conf == 'path_google_drive' else 1
                 max_value = 128
             elif ('nb_picture' in conf):
                 conf_type = 'dropdown'

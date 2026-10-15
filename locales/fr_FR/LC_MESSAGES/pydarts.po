@@ -883,6 +883,12 @@ msgstr "Entrer"
 msgid "gallery-wrong"
 msgstr "Mot de passe incorrect."
 
+msgid "gallery-delete-selection"
+msgstr "Supprimer la sélection"
+
+msgid "gallery-delete-selected"
+msgstr "Supprimer toutes les parties sélectionnées ?"
+
 msgid "gallery-delete-password"
 msgstr "Mot de passe de la galerie :"
 

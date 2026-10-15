@@ -255,6 +255,17 @@ def find(conf, partie, name=None):
     return None
 
 
+def delete_partie(conf, date, game):
+    '''
+    All the memories of a game, and the date (or game) folder left empty
+    '''
+    for folder in folders(conf, date, game):
+        shutil.rmtree(folder, ignore_errors=True)
+        parent = os.path.dirname(folder)
+        if os.path.isdir(parent) and not os.listdir(parent):
+            os.rmdir(parent)
+
+
 def thumbnail(path):
     '''
     Small JPEG of a photo or of the first second of a clip, kept in CACHE_DIR
@@ -293,6 +304,11 @@ h1{font-size:1.2em;margin:0}
 .big form{margin:0}
 form.login{padding:24px 16px}
 input{font-size:1em;padding:8px}
+.card{position:relative}
+.pick{position:absolute;top:6px;left:6px}
+.pick input{width:22px;height:22px}
+button:disabled{opacity:.4}
+.big{margin-top:12px}
 .folder{display:block;padding:18px 28px 6px}
 .folder svg{width:100%;height:auto;display:block}
 @media print{header,.actions,.warning,.big{display:none}}
@@ -333,6 +349,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header('Content-Type', kind)
         self.send_header('Content-Length', str(len(data)))
+        if kind.startswith('text/html'):
+            # Going back after a deletion asks the page again (no deleted game shown)
+            self.send_header('Cache-Control', 'no-store')
         for header, value in (headers or {}).items():
             self.send_header(header, value)
         self.end_headers()
@@ -487,15 +506,23 @@ class Handler(BaseHTTPRequestHandler):
                 found = find(conf, partie, parts[2])
                 if found is not None:
                     os.remove(found[2])
+                    if not memories(conf, found[0], found[1]):
+                        # Its last memory : the game goes, back to the list
+                        delete_partie(conf, found[0], found[1])
+                        return self.redirect('/')
                 return self.redirect(f"/p/{partie}")
             found = find(conf, partie)
             if found is not None:
-                for folder in folders(conf, found[0], found[1]):
-                    shutil.rmtree(folder, ignore_errors=True)
-                    # The date folder (or game folder) left empty goes too
-                    parent = os.path.dirname(folder)
-                    if os.path.isdir(parent) and not os.listdir(parent):
-                        os.rmdir(parent)
+                delete_partie(conf, found[0], found[1])
+            return self.redirect('/')
+        if parts == ['delete-many']:
+            if conf['password'] and not check_password(form.get('password', [''])[0], conf['password']):
+                _ = conf['_']
+                return self.send(403, page(conf, _('gallery-wrong'), f'<p class="big"><a href="/">&larr; {html.escape(_("gallery-back"))}</a></p>'))
+            for raw in form.get('p', []):
+                found = find(conf, urllib.parse.quote(raw, safe=''))
+                if found is not None:
+                    delete_partie(conf, found[0], found[1])
             return self.redirect('/')
         self.not_found(conf)
 
@@ -506,19 +533,29 @@ class Handler(BaseHTTPRequestHandler):
             ident = partie_id(date, game)
             photos = sum(1 for name, _p in files if name.lower().endswith(PHOTOS))
             count = _('gallery-counts').replace('{photos}', str(photos)).replace('{videos}', str(len(files) - photos))
-            cards.append(f'<div class="card"><a href="/p/{ident}" class="folder">{FOLDER}</a>'
+            cards.append(f'<div class="card"><label class="pick"><input type="checkbox" name="p" value="{html.escape(f"{date}/{game}")}" onchange="picked()"></label>'
+                         f'<a href="/p/{ident}" class="folder">{FOLDER}</a>'
                          f'<div class="name"><b>{html.escape(describe(date, game))}</b><br>{html.escape(count)}</div></div>')
-        body = f'<div class="grid">{"".join(cards)}</div>' if cards else f'<p class="big">{html.escape(_("gallery-none"))}</p>'
+        if cards:
+            confirm = self.confirmation(conf, 'gallery-delete-selected')
+            script = ('<script>function picked(){document.getElementById("many").disabled='
+                      '!document.querySelector("input[name=p]:checked");}</script>')
+            body = (f'<form method="post" action="/delete-many" onsubmit="{confirm}"><input type="hidden" name="password">'
+                    f'<div class="big"><button class="delete" id="many" disabled>{html.escape(_("gallery-delete-selection"))}</button></div>'
+                    f'<div class="grid">{"".join(cards)}</div></form>{script}')
+        else:
+            body = f'<p class="big">{html.escape(_("gallery-none"))}</p>'
         self.send(200, page(conf, _('gallery-title'), body, back=False))
 
     def partie(self, conf, raw):
         _ = conf['_']
         ident = urllib.parse.quote(raw, safe='')
         found = find(conf, ident)
-        if found is None:
-            return self.not_found(conf)
+        files = memories(conf, found[0], found[1]) if found is not None else []
+        if not files:
+            # Deleted (back button, old QR code) : the list of the games
+            return self.redirect('/')
         date, game, _path = found
-        files = memories(conf, date, game)
         texts = {key: html.escape(_(key)) for key in ('gallery-download', 'gallery-print', 'gallery-delete')}
         confirm_one, confirm_all = self.confirmation(conf, 'gallery-delete-one'), self.confirmation(conf, 'gallery-delete-all')
         cards = []

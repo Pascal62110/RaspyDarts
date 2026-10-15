@@ -542,6 +542,12 @@ msgstr "Eintreten"
 msgid "gallery-wrong"
 msgstr "Falsches Passwort."
 
+msgid "gallery-delete-selection"
+msgstr "Auswahl löschen"
+
+msgid "gallery-delete-selected"
+msgstr "Alle ausgewählten Spiele löschen?"
+
 msgid "gallery-delete-password"
 msgstr "Passwort der Galerie:"
 

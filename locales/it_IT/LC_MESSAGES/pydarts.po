@@ -3232,6 +3232,12 @@ msgstr "Entra"
 msgid "gallery-wrong"
 msgstr "Password errata."
 
+msgid "gallery-delete-selection"
+msgstr "Elimina la selezione"
+
+msgid "gallery-delete-selected"
+msgstr "Eliminare tutte le partite selezionate?"
+
 msgid "gallery-delete-password"
 msgstr "Password della galleria:"
 
