@@ -1284,14 +1284,16 @@ class Screen(pygame.Surface):
 
             # One step per pin : the button wired on each input, then the toy on each
             # output. Escape : the step before (its choice proposed again) ; on the first
-            # one, the card is left as it is. "Skip" : nothing on this pin
+            # one, the card is left as it is. "Skip" : nothing on this pin. A light or a
+            # toy is not always read low : they are proposed on the inputs too, after the
+            # buttons
             steps = [('pin', pin) for pin in gpio.all_io if pin not in outputs] + [('toy', pin) for pin in outputs]
             chosen = {}
             index = 0
             while index < len(steps):
                 kind, pin = steps[index]
                 if kind == 'pin':
-                    title, sub, names = 'config-pin', 'config-pin-sub', buttons_list
+                    title, sub, names = 'config-pin', 'config-pin-sub', buttons_list + toys_list
                 else:
                     title, sub, names = 'config-toy', 'config-toy-sub', toys_list
                 taken = [value for step, value in chosen.items() if step != index]
@@ -1314,8 +1316,8 @@ class Screen(pygame.Surface):
                 index += 1
 
             for step, value in chosen.items():
-                kind, pin = steps[step]
-                if kind == 'pin':
+                _kind, pin = steps[step]
+                if value.startswith('PIN_'):
                     buttons_conf[value] = pin
                 else:
                     toys_conf[value] = pin

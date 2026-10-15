@@ -21,6 +21,23 @@ from threading import Thread
 LAST_BUTTON = None
 COUNT_BUTTON = 0
 
+# Register of the MCP23017 used to recognise it : input polarity of the bank A (0 for the
+# game). Another chip on 0x20-0x27 (PCF8574 of a LCD, ...) does not give back what is written
+_IPOLA = 0x02
+
+
+def is_mcp23017(chip):
+    '''
+    The chip answering on the address is a MCP23017 : a value written in IPOLA is read back
+    '''
+    try:
+        chip._write_u8(_IPOLA, 0xA5)
+        found = chip._read_u8(_IPOLA) == 0xA5
+        chip._write_u8(_IPOLA, 0x00)
+        return found
+    except OSError:
+        return False
+
 DEFAULTS = {
     'PIN_UP': 'A0',
     'PIN_DOWN': 'A1',
@@ -76,19 +93,40 @@ class Gpio_extender:
     def __init__(self, logs, buttons=None):
         """
         Every MCP23017 found (addresses 0x20 to 0x27). The n-th one found has the letters
-        A/B, the next one C/D, then E/F... (8 pins each). All their pins start as inputs
+        A/B, the next one C/D, then E/F... (8 pins each). All their pins start as inputs.
+        The other chips of the bus are only told in the log : nothing is written to them
         """
         self.logs = logs
         i2c = busio.I2C(board.SCL, board.SDA)
         self.chips = []
         self.all_io = None
 
-        for address in range(0x20, 0x28):
+        addresses = []
+        try:
+            while not i2c.try_lock():
+                time.sleep(0.01)
             try:
+                addresses = i2c.scan()
+            finally:
+                i2c.unlock()
+        except Exception as error: # pylint: disable=broad-except
+            self.logs.warning(f"I2C bus not read : {error}")
+        self.logs.info(f"I2C devices : {' '.join(hex(address) for address in addresses) or 'none'}")
+
+        for address in addresses:
+            if not 0x20 <= address <= 0x27:
+                self.logs.info(f"I2C device at {hex(address)} : not a MCP23017 address")
+                continue
+            try:
+                chip = MCP23017(i2c, address=address, reset=False)
+                if not is_mcp23017(chip):
+                    self.logs.warning(f"I2C device at {hex(address)} is not a MCP23017 : left aside")
+                    continue
+                # Now only, the reset of the library (all inputs, no pull-up...)
                 self.chips.append(MCP23017(i2c, address=address))
                 self.logs.info(f"MCP found at {hex(address)}")
-            except Exception:
-                pass
+            except Exception as error: # pylint: disable=broad-except
+                self.logs.warning(f"I2C device at {hex(address)} : {error}")
         # Names kept : the first one tells there is an extension card
         self.mcp1 = self.chips[0] if self.chips else None
         self.mcp2 = self.chips[1] if len(self.chips) > 1 else None
