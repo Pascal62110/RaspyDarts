@@ -3250,3 +3250,6 @@ msgstr "Modalità esposizione"
 msgid "exhibition-sub"
 msgstr "Pulsanti del menu principale visibili in modalità esposizione"
 
+msgid "config-skip"
+msgstr "Salta"
+

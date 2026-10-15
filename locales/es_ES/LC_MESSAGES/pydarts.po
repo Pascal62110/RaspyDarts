@@ -566,3 +566,6 @@ msgstr "Modo exposición"
 msgid "exhibition-sub"
 msgstr "Botones del menú principal visibles en modo exposición"
 
+msgid "config-skip"
+msgstr "Saltar"
+

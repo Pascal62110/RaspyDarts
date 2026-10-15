@@ -560,3 +560,6 @@ msgstr "Ausstellungsmodus"
 msgid "exhibition-sub"
 msgstr "Im Ausstellungsmodus sichtbare Schaltflächen des Hauptmenüs"
 
+msgid "config-skip"
+msgstr "Überspringen"
+

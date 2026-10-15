@@ -3884,3 +3884,6 @@ msgstr "Mode exposition"
 msgid "exhibition-sub"
 msgstr "Boutons du menu principal visibles en mode exposition"
 
+msgid "config-skip"
+msgstr "Passer"
+

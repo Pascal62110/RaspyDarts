@@ -1278,29 +1278,47 @@ class Screen(pygame.Surface):
             for key in gpio.get_defaults():
                 if key.startswith('PIN_'):
                     buttons_list.append(key)
-                if key.startswith('LIGHT_'):
+                # Lights of the buttons and toys (TOY1...) : both on the outputs
+                if key.startswith(('LIGHT_', 'TOY')):
                     toys_list.append(key)
 
-            for pin in gpio.all_io:
-                if not pin in outputs:
-                    self.display_background()
-                    self.menu_header(f"{self.lang.translate('config-pin')} {pin}", f"{self.lang.translate('config-pin-sub')}")
-                    self.update_screen()
-                    buttons_dd = [(button, f"{self.lang.translate(button)}") for button in buttons_list] + [('None', 'Aucun')]
-                    button = self.dropdown(6 * self.res_x_16, 3 * self.res_y_16, buttons_dd)
-                    if button != 'None':
-                        buttons_list.remove(button)
-                        buttons_conf[button] = pin
-
-            for pin in outputs:
+            # One step per pin : the button wired on each input, then the toy on each
+            # output. Escape : the step before (its choice proposed again) ; on the first
+            # one, the card is left as it is. "Skip" : nothing on this pin
+            steps = [('pin', pin) for pin in gpio.all_io if pin not in outputs] + [('toy', pin) for pin in outputs]
+            chosen = {}
+            index = 0
+            while index < len(steps):
+                kind, pin = steps[index]
+                if kind == 'pin':
+                    title, sub, names = 'config-pin', 'config-pin-sub', buttons_list
+                else:
+                    title, sub, names = 'config-toy', 'config-toy-sub', toys_list
+                taken = [value for step, value in chosen.items() if step != index]
+                choices = [(name, self.lang.translate(name)) for name in names if name not in taken]
+                choices.append(('None', self.lang.translate('config-skip')))
                 self.display_background()
-                self.menu_header(f"{self.lang.translate('config-toy')} {pin}", f"{self.lang.translate('config-toy-sub')}")
+                self.menu_header(f"{self.lang.translate(title)} {pin}", self.lang.translate(sub))
                 self.update_screen()
-                toys_dd = [(toy, f"{self.lang.translate(toy)}") for toy in toys_list] + [('None', 'Aucun')]
-                toy = self.dropdown(6 * self.res_x_16, 3 * self.res_y_16, toys_dd)
-                if toy != 'None':
-                    toys_list.remove(toy)
-                    toys_conf[toy] = pin
+                answer = self.dropdown(6 * self.res_x_16, 3 * self.res_y_16, choices, navigate=chosen.get(index))
+                if answer == 'escape':
+                    if index == 0:
+                        return None
+                    chosen.pop(index, None)
+                    index -= 1
+                    continue
+                if answer == 'None':
+                    chosen.pop(index, None)
+                else:
+                    chosen[index] = answer
+                index += 1
+
+            for step, value in chosen.items():
+                kind, pin = steps[step]
+                if kind == 'pin':
+                    buttons_conf[value] = pin
+                else:
+                    toys_conf[value] = pin
 
             config = {}
             for key in gpio.get_defaults():
@@ -1314,7 +1332,7 @@ class Screen(pygame.Surface):
                         value = buttons_conf.get(key, '')
                     else:
                         value = ''
-                elif key.startswith('LIGHT_'):
+                elif key.startswith(('LIGHT_', 'TOY')):
                     if buttons_conf is not None:
                         value = toys_conf.get(key, '')
                     else:

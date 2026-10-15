@@ -2796,3 +2796,6 @@ msgstr "Exhibition mode"
 msgid "exhibition-sub"
 msgstr "Buttons of the main menu shown in exhibition mode"
 
+msgid "config-skip"
+msgstr "Skip"
+
