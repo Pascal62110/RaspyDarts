@@ -8075,11 +8075,11 @@ class Screen(pygame.Surface):
         An image without any transparent pixel (backgrounds, photos...) is blitted much
         faster in the format of the screen than with an alpha channel
         '''
-        try:
-            if pygame.surfarray.array_alpha(image).min() == 255:
-                return image.convert()
-        except Exception as e:
-            self.logs.debug(f"Image kept with its alpha channel : {e}")
+        # Bits set for the pixels whose alpha is above 254 (pygame.mask, not surfarray :
+        # numpy is not loaded, see raspydarts.py)
+        mask = pygame.mask.from_surface(image, 254)
+        if mask.count() == image.get_width() * image.get_height():
+            return image.convert()
         return image
 
     #@debug
