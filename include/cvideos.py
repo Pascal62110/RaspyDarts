@@ -25,6 +25,17 @@ def find_player():
                 break
     return FOUND_PLAYER[0]
 
+# Videos launched by the game (animations) : the photos and clips of the webcam are
+# shown once they are over (see ccamera.show_in_turn)
+PLAYING = []
+
+def playing():
+    '''
+    Is a video of the game being played ?
+    '''
+    PLAYING[:] = [process for process in PLAYING if process.poll() is None]
+    return bool(PLAYING)
+
 def player_command(player, video, volume=None, window=None):
     """
     Build the command line used to play a video
@@ -115,10 +126,13 @@ class Videos():
         self.logs.debug(f"{' '.join(command)}")
         if wait:
             with subp.Popen(command, stdout=subp.DEVNULL, stderr=subp.DEVNULL) as process :
+                PLAYING.append(process)
                 process.wait()
                 return True
         else:
-            return subp.Popen(command, stdin=subp.PIPE, stdout=subp.DEVNULL, stderr=subp.DEVNULL)
+            process = subp.Popen(command, stdin=subp.PIPE, stdout=subp.DEVNULL, stderr=subp.DEVNULL)
+            PLAYING.append(process)
+            return process
 
     ################################################################
     ### Methode pour lire un plusieurs videos

@@ -29,6 +29,12 @@ class PopupManager:
             
             if fullscreen:
                 img = Image.open(image_path)
+            if fullscreen and img.size == (screen_width, screen_height):
+                # Already made at the size of the screen by the game (see ccamera.popup_picture)
+                photo = tk.PhotoImage(file=image_path)
+                max_width = int(screen_width)
+                max_height = int(screen_height)
+            elif fullscreen:
                 scale = min(screen_width / img.width, screen_height / img.height)
                 new_w = int(img.width * scale)
                 new_h = int(img.height * scale)
