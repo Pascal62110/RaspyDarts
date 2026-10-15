@@ -3253,3 +3253,54 @@ msgstr "Pulsanti del menu principale visibili in modalità esposizione"
 msgid "config-skip"
 msgstr "Salta"
 
+msgid "deposit-title"
+msgstr "Nuova configurazione trovata"
+
+msgid "deposit-sub"
+msgstr "Valori diversi dalla configurazione attuale, per categoria"
+
+msgid "deposit-apply"
+msgstr "Aggiorna questi valori"
+
+msgid "deposit-drop"
+msgstr "Elimina il nuovo file"
+
+msgid "deposit-SectionGlobals"
+msgstr "Impostazioni generali"
+
+msgid "deposit-SectionAdvanced"
+msgstr "Impostazioni avanzate"
+
+msgid "deposit-SectionKeys"
+msgstr "Segmenti del bersaglio"
+
+msgid "deposit-Raspberry"
+msgstr "Pulsanti della scheda di espansione"
+
+msgid "deposit-Raspberry_Leds"
+msgstr "LED"
+
+msgid "deposit-Raspberry_BoardPinsIns"
+msgstr "Pin di ingresso del bersaglio"
+
+msgid "deposit-Raspberry_BoardPinsOuts"
+msgstr "Pin di uscita del bersaglio"
+
+msgid "deposit-LEDTarget"
+msgstr "LED del bersaglio"
+
+msgid "deposit-Camera"
+msgstr "Webcam"
+
+msgid "deposit-Gallery"
+msgstr "Galleria"
+
+msgid "deposit-Events"
+msgstr "Eventi luminosi"
+
+msgid "deposit-Favorites"
+msgstr "Preferiti"
+
+msgid "deposit-Server"
+msgstr "Server di gioco in rete"
+

@@ -1023,6 +1023,92 @@ class Config:
 
         return data[0].strip()
 
+    def deposit_file(self):
+        """
+        Configuration put on the SD card while there was one already : put aside by the
+        service raspydarts-boot (see the installation), proposed at the start
+        """
+        return os.path.join(self.user_dir, 'raspydarts.cfg.depose')
+
+    @staticmethod
+    def file_value(section, value):
+        """
+        A value as read_file gives it
+        """
+        if len(value) == 0 or value == "''":
+            return ''
+        if value.startswith("'") and value.endswith("'"):
+            return value[1:-1]
+        if section == 'Events' or section.startswith('Colorset-'):
+            return ast.literal_eval(value)
+        if value in ('False', 'True'):
+            return value == 'True'
+        return value
+
+    def deposit_changes(self):
+        """
+        The values of the deposited file different from the current ones : {section: {key: value}},
+        None without file. An empty segment does not erase a calibration (file made without
+        the target). Sections and keys unknown to the game are left aside
+        """
+        path = self.deposit_file()
+        if not os.path.isfile(path):
+            return None
+        deposited = configparser.ConfigParser(inline_comment_prefixes="#", interpolation=None)
+        deposited.optionxform = str
+        try:
+            deposited.read(path, encoding='utf-8-sig')
+        except (configparser.Error, UnicodeDecodeError) as error:
+            self.logs.error(f"Deposited configuration unreadable, removed : {error}")
+            self.drop_deposit()
+            return None
+
+        changes = {}
+        for section in deposited.sections():
+            if section not in DefaultConfig and not section.startswith('game-'):
+                self.logs.warning(f"Deposited configuration : section {section} unknown")
+                continue
+            if section not in self.config:
+                self.read_file(section)
+            current = self.config.get(section) or {}
+            for key, raw in deposited.items(section):
+                if not section.startswith('game-') and key not in DefaultConfig[section]:
+                    self.logs.warning(f"Deposited configuration : {key} unknown in {section}")
+                    continue
+                try:
+                    value = self.file_value(section, raw)
+                except (ValueError, SyntaxError):
+                    self.logs.warning(f"Deposited configuration : {section}/{key} unreadable")
+                    continue
+                if section == 'SectionKeys' and value == '':
+                    continue
+                if str(current.get(key, '')) != str(value):
+                    changes.setdefault(section, {})[key] = value
+        return changes
+
+    def apply_deposit(self, changes):
+        """
+        The new values taken : the current configuration kept aside first (one file)
+        """
+        import shutil
+        shutil.copy2(self.configFile, f"{self.configFile}.avant-depot")
+        for section, values in changes.items():
+            if section not in self.config or not self.config[section]:
+                self.config[section] = self.init_section(section) if section in DefaultConfig else {}
+            self.config[section].update(values)
+        self.write_file()
+        self.drop_deposit()
+        self.logs.info(f"Deposited configuration taken : {', '.join(changes)}")
+
+    def drop_deposit(self):
+        """
+        Deposited file removed
+        """
+        try:
+            os.remove(self.deposit_file())
+        except OSError:
+            pass
+
     def check_config_file(self):
         """
         Check if the config file exists and if not, create it

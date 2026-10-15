@@ -2799,3 +2799,54 @@ msgstr "Buttons of the main menu shown in exhibition mode"
 msgid "config-skip"
 msgstr "Skip"
 
+msgid "deposit-title"
+msgstr "New configuration found"
+
+msgid "deposit-sub"
+msgstr "Values different from the current configuration, by category"
+
+msgid "deposit-apply"
+msgstr "Update these values"
+
+msgid "deposit-drop"
+msgstr "Delete the new file"
+
+msgid "deposit-SectionGlobals"
+msgstr "General settings"
+
+msgid "deposit-SectionAdvanced"
+msgstr "Advanced settings"
+
+msgid "deposit-SectionKeys"
+msgstr "Segments of the target"
+
+msgid "deposit-Raspberry"
+msgstr "Buttons of the extension card"
+
+msgid "deposit-Raspberry_Leds"
+msgstr "LEDs"
+
+msgid "deposit-Raspberry_BoardPinsIns"
+msgstr "Input pins of the target"
+
+msgid "deposit-Raspberry_BoardPinsOuts"
+msgstr "Output pins of the target"
+
+msgid "deposit-LEDTarget"
+msgstr "LEDs of the target"
+
+msgid "deposit-Camera"
+msgstr "Webcam"
+
+msgid "deposit-Gallery"
+msgstr "Gallery"
+
+msgid "deposit-Events"
+msgstr "Light events"
+
+msgid "deposit-Favorites"
+msgstr "Favorites"
+
+msgid "deposit-Server"
+msgstr "Network game server"
+

@@ -3887,3 +3887,54 @@ msgstr "Boutons du menu principal visibles en mode exposition"
 msgid "config-skip"
 msgstr "Passer"
 
+msgid "deposit-title"
+msgstr "Nouvelle configuration déposée"
+
+msgid "deposit-sub"
+msgstr "Valeurs différentes de la configuration actuelle, par catégorie"
+
+msgid "deposit-apply"
+msgstr "Mettre à jour ces valeurs"
+
+msgid "deposit-drop"
+msgstr "Supprimer le fichier déposé"
+
+msgid "deposit-SectionGlobals"
+msgstr "Réglages généraux"
+
+msgid "deposit-SectionAdvanced"
+msgstr "Réglages avancés"
+
+msgid "deposit-SectionKeys"
+msgstr "Segments de la cible"
+
+msgid "deposit-Raspberry"
+msgstr "Boutons de la carte d'extension"
+
+msgid "deposit-Raspberry_Leds"
+msgstr "LED"
+
+msgid "deposit-Raspberry_BoardPinsIns"
+msgstr "Broches d'entrée de la cible"
+
+msgid "deposit-Raspberry_BoardPinsOuts"
+msgstr "Broches de sortie de la cible"
+
+msgid "deposit-LEDTarget"
+msgstr "LED de la cible"
+
+msgid "deposit-Camera"
+msgstr "Webcam"
+
+msgid "deposit-Gallery"
+msgstr "Galerie"
+
+msgid "deposit-Events"
+msgstr "Événements lumineux"
+
+msgid "deposit-Favorites"
+msgstr "Favoris"
+
+msgid "deposit-Server"
+msgstr "Serveur de jeu en réseau"
+

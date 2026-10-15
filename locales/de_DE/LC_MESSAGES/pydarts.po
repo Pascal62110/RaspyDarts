@@ -563,3 +563,54 @@ msgstr "Im Ausstellungsmodus sichtbare Schaltflächen des Hauptmenüs"
 msgid "config-skip"
 msgstr "Überspringen"
 
+msgid "deposit-title"
+msgstr "Neue Konfiguration gefunden"
+
+msgid "deposit-sub"
+msgstr "Von der aktuellen Konfiguration abweichende Werte, nach Kategorie"
+
+msgid "deposit-apply"
+msgstr "Diese Werte übernehmen"
+
+msgid "deposit-drop"
+msgstr "Neue Datei löschen"
+
+msgid "deposit-SectionGlobals"
+msgstr "Allgemeine Einstellungen"
+
+msgid "deposit-SectionAdvanced"
+msgstr "Erweiterte Einstellungen"
+
+msgid "deposit-SectionKeys"
+msgstr "Segmente der Zielscheibe"
+
+msgid "deposit-Raspberry"
+msgstr "Tasten der Erweiterungskarte"
+
+msgid "deposit-Raspberry_Leds"
+msgstr "LEDs"
+
+msgid "deposit-Raspberry_BoardPinsIns"
+msgstr "Eingangspins der Zielscheibe"
+
+msgid "deposit-Raspberry_BoardPinsOuts"
+msgstr "Ausgangspins der Zielscheibe"
+
+msgid "deposit-LEDTarget"
+msgstr "LEDs der Zielscheibe"
+
+msgid "deposit-Camera"
+msgstr "Webcam"
+
+msgid "deposit-Gallery"
+msgstr "Galerie"
+
+msgid "deposit-Events"
+msgstr "Lichtereignisse"
+
+msgid "deposit-Favorites"
+msgstr "Favoriten"
+
+msgid "deposit-Server"
+msgstr "Netzwerkspielserver"
+

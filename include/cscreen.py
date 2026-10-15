@@ -909,6 +909,37 @@ class Screen(pygame.Surface):
         '''
         return self.on_desktop(self.wizard)
 
+    # Names of the sections of the configuration, for the deposited file
+    DEPOSIT_SECTIONS = ('SectionGlobals', 'SectionAdvanced', 'SectionKeys', 'Raspberry', 'Raspberry_Leds',
+                        'Raspberry_BoardPinsIns', 'Raspberry_BoardPinsOuts', 'LEDTarget', 'Camera', 'Gallery',
+                        'Events', 'Favorites', 'Server')
+
+    def deposit_menu(self, changes):
+        '''
+        A configuration was put on the SD card : its new values listed by category, taken
+        or the file removed. Returns True (taken), False (removed), None (escape : asked
+        again at the next start)
+        '''
+        lines = []
+        for section, values in changes.items():
+            name = self.lang.translate(f'deposit-{section}') if section in self.DEPOSIT_SECTIONS else section
+            lines.append(f"{name} : {len(values)}")
+        choices = [('yes', self.lang.translate('deposit-apply')), ('no', self.lang.translate('deposit-drop'))]
+        self.display_background()
+        self.menu_header(self.lang.translate('deposit-title'), self.lang.translate('deposit-sub'))
+        height = int(self.res['y'] / 18)
+        top = int(self.res['y'] * 9 / 16)
+        shown = lines[:8]
+        box = pygame.Rect(int(self.res['x'] / 5), top - height // 2, int(self.res['x'] * 3 / 5), (len(shown) + 1) * height)
+        self.new_blit_rect2(box, self.colorset['message-bg'], alpha=255, corners='All', border_radius=int(height / 2))
+        for index, line in enumerate(shown):
+            self.blit_text2(line, pygame.Rect(box.x, top + index * height, box.w, height), self.colorset['message-text'])
+        self.update_screen()
+        answer = self.dropdown(6 * self.res_x_16, 3 * self.res_y_16, choices)
+        if answer == 'escape':
+            return None
+        return answer == 'yes'
+
     def calibration_needed(self):
         '''
         The target is wired on the GPIO but none of its segments is known : configuration

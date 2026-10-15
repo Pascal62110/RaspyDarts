@@ -431,7 +431,23 @@ if not Config.file_exists:
     p_strip = False
     game_type = 'restart'
 
-elif display.calibration_needed():
+elif (deposit := Config.deposit_changes()) is not None:
+    # Configuration put on the SD card while there was one : its new values, or nothing
+    if not deposit:
+        logs.info("Deposited configuration identical : removed")
+        Config.drop_deposit()
+    else:
+        display.show()
+        taken = display.deposit_menu(deposit)
+        if taken:
+            Config.apply_deposit(deposit)
+            display.message([f"{display.lang.translate('config-restart')}"], 2500, None, 'middle', 'big')
+            game_type = 'restart'
+        elif taken is False:
+            logs.info("Deposited configuration refused : removed")
+            Config.drop_deposit()
+
+if game_type != 'restart' and Config.file_exists and display.calibration_needed():
     # Configuration made without the target (page of the web site, target of no known
     # model) : only its segments are asked
     logs.info("No segment of the target calibrated : calibration")
