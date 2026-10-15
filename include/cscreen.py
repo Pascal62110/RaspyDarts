@@ -4226,7 +4226,13 @@ class Screen(pygame.Surface):
             
             click_zones['escape'] = self.display_button(nb_elements + 1 == selected, 'back', special='escape')
             click_zones['save'] = self.display_button(nb_elements + 2 == selected, 'save', special='return')
-            
+
+            posX_camera = int(click_zones['F1'][0] + click_zones['F1'][2] + 100)
+            posY_camera = int(click_zones['F1'][1] + (click_zones['F1'][3]/2))
+            # The preview in the same picture as the menu : drawn after it, it disappeared
+            # at each move in the menu, then came back
+            self.camera.show_camera(self.screen, posX=posX_camera, posY=posY_camera)
+
             ################
             # Update screen
             if refresh:
@@ -4234,10 +4240,7 @@ class Screen(pygame.Surface):
                 refresh = False
             elif old_selection is None:
                 self.update_screen(rect_array=[click_zones[cz] for cz in click_zones])
-            
-            posX_camera = int(click_zones['F1'][0] + click_zones['F1'][2] + 100)
-            posY_camera = int(click_zones['F1'][1] + (click_zones['F1'][3]/2))
-            
+
             key = self.rpi.listen_inputs(['arrows', 'fx'],
                                          ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON', 'single-click', 'enter', 'space',\
                                           'backspace']
