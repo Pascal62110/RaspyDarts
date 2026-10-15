@@ -797,7 +797,10 @@ class Craspberry():
         pygame events are consumed here
         """
         realkey = -1
-        events = pygame.event.get()
+        # One by one : this method returns at the first key, the events not read yet
+        # stay for the next call (pygame.event.get() took them all : keys typed
+        # together, or during the name of the player, were lost)
+        events = iter(pygame.event.poll, pygame.event.Event(pygame.NOEVENT))
 
         # Look for events
         for event in events:
