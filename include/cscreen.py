@@ -4139,7 +4139,7 @@ class Screen(pygame.Surface):
             elif ('choice_of_memories' in conf):
                 conf_type = 'dropdown'
                 conf_values = [('0', 'Rien'), ('1', 'QUE Photos'), ('2', 'QUE Videos'), ('3', 'ALEATOIREMENT Photos ou Videos')]
-            elif (conf in ('picture_path', 'video_path', 'events', 'path_google_drive', 'gallery_password')):
+            elif (conf in ('picture_path', 'video_path', 'events', 'path_google_drive')):
                 conf_type = 'string'
                 min_value = 1
                 max_value = 128
@@ -4168,8 +4168,10 @@ class Screen(pygame.Surface):
             elif ('video_res_height' in conf):
                 resh_vids = menu_config_camera[conf]
                 
+            # gallery_password : set on the gallery screen (see gallery_menu)
             if conf not in ('picture_path', 'video_path', 'picture_res_width', 'picture_res_height',
-                            'video_res_width', 'video_res_height', 'resolutions_available', 'fps', 'duree_ms'): 
+                            'video_res_width', 'video_res_height', 'resolutions_available', 'fps', 'duree_ms',
+                            'gallery_password'): 
                 menu_configuration.append([conf, menu_config_camera[conf], conf_type, max_value, conf_values, min_value, zero])
             
         if None != resw_picts and None != resh_picts:
@@ -4334,14 +4336,14 @@ class Screen(pygame.Surface):
                     self.camera.init_var(config_camera, show_in_parametrage=True)
                     self.camera.camera_start()
                         
-                elif key_press in ('picture_path', 'video_path', 'events', 'path_google_drive', 'gallery_password'):
+                elif key_press in ('picture_path', 'video_path', 'events', 'path_google_drive'):
                     click_zone = cursor[selected - 1]
                     tmp = self.input_value_item(menu_configuration[selected - 1][2], menu_configuration[selected - 1][1], 
                             menu_configuration[selected - 1][5], menu_configuration[selected - 1][3], 
                             text = menu_configuration[selected - 1][0], zero = menu_configuration[selected - 1][6])
                     if tmp != 'escape':
                         menu_configuration[selected - 1][1] = tmp
-                        if key_press in ('events', 'path_google_drive', 'gallery_password'):
+                        if key_press in ('events', 'path_google_drive'):
                             config_camera[key_press] = tmp
                         else:
                             if not os.path.exists(tmp):
@@ -6492,30 +6494,53 @@ class Screen(pygame.Surface):
 
     def gallery_menu(self):
         '''
-        QR code of the gallery of the memories (see cgallery). Any key goes back
+        QR code of the gallery of the memories (see cgallery), and its password : only its
+        hash is kept in the configuration. A QR code shown here logs in at once
         '''
         from include import cgallery
         import qrcode
-        # From the configuration : the setup menu of the webcam may just have changed it
-        password = str(self.config.config.get('Camera', {}).get('gallery_password', '')).strip()
-        url = cgallery.address(cgallery.local_ip(), password=password)
-        picture = qrcode.make(url)
-        picture = (picture.get_image() if hasattr(picture, 'get_image') else picture).convert('RGB')
-        side = int(self.res['y'] * 0.55)
-        code = pygame.transform.scale(pygame.image.fromstring(picture.tobytes(), picture.size, 'RGB'), (side, side))
+        selected = 2
+        while True:
+            camera = self.config.config.setdefault('Camera', {})
+            stored = str(camera.get('gallery_password', '')).strip()
+            url = cgallery.address(cgallery.local_ip(), stored=stored)
+            picture = qrcode.make(url)
+            picture = (picture.get_image() if hasattr(picture, 'get_image') else picture).convert('RGB')
+            side = int(self.res['y'] * 0.55)
+            code = pygame.transform.scale(pygame.image.fromstring(picture.tobytes(), picture.size, 'RGB'), (side, side))
 
-        self.display_background()
-        self.menu_header(self.lang.translate('gallery'), self.lang.translate('gallery-scan'))
-        pos_y = int(self.res['y'] / 5)
-        self.blit(code, (int((self.res['x'] - side) / 2), pos_y))
-        pos_y += side + self.margin * 2
-        line = int(self.res['y'] / 18)
-        self.blit_text(url.split('?')[0], 0, pos_y, self.res['x'], line, self.colorset['menu-text-white'])
-        if not password:
-            self.blit_text(self.lang.translate('gallery-no-password'), 0, pos_y + line, self.res['x'], line, self.colorset['menu-ko'])
-        self.update_screen()
-        self.rpi.listen_inputs(['arrows', 'fx', 'alpha', 'num', 'math'],
-                               ['escape', 'enter', 'space', 'PLAYERBUTTON', 'BACKUPBUTTON', 'GAMEBUTTON', 'single-click'])
+            self.display_background()
+            self.menu_header(self.lang.translate('gallery'), self.lang.translate('gallery-scan'))
+            pos_y = int(self.res['y'] / 5)
+            self.blit(code, (int((self.res['x'] - side) / 2), pos_y))
+            pos_y += side + self.margin * 2
+            line = int(self.res['y'] / 20)
+            self.blit_text(url.split('?')[0], 0, pos_y, self.res['x'], line, self.colorset['menu-text-white'])
+            if not stored:
+                self.blit_text(self.lang.translate('gallery-no-password'), 0, pos_y + line, self.res['x'], line, self.colorset['menu-ko'])
+            click_zones = {'escape': self.display_button(selected == 1, 'back', special='escape'),
+                           'password': self.display_button(selected == 2, 'gallery-password', special='return')}
+            self.update_screen()
+
+            key = self.rpi.listen_inputs(['arrows', 'fx'],
+                                         ['escape', 'enter', 'space', 'PLAYERBUTTON', 'BACKUPBUTTON', 'GAMEBUTTON', 'single-click'])
+            clicked = self.is_clicked(click_zones, key)
+            if clicked:
+                key = clicked
+            if key in LEFT_KEYS:
+                selected = 1
+            elif key in RIGHT_KEYS:
+                selected = 2
+            elif key == 'password' or (key in ENTER_KEYS and selected == 2):
+                # Empty : no password any more
+                typed = self.input_value_item('string', '', 0, 32, text='gallery_password')
+                if typed != 'escape':
+                    camera['gallery_password'] = cgallery.hash_password(typed) if typed else ''
+                    self.config.write_file()
+                    text = 'gallery-password-set' if typed else 'gallery-password-removed'
+                    self.message([self.lang.translate(text)], 1500, self.colorset['menu-ok'], 'middle', 'big')
+            elif key in ESCAPE_KEYS or key in ENTER_KEYS or key == 'escape':
+                return
 
     def extract_version(self, file_name):
         '''

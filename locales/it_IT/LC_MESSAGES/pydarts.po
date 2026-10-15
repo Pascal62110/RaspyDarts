@@ -3163,3 +3163,72 @@ msgstr "Scansiona per vedere, scaricare, stampare o cancellare le foto e i video
 msgid "gallery-no-password"
 msgstr "Nessuna password : chiunque sulla rete può cancellare i ricordi"
 
+msgid "gallery-password"
+msgstr "Password"
+
+msgid "gallery-password-set"
+msgstr "Password salvata"
+
+msgid "gallery-password-removed"
+msgstr "Password rimossa"
+
+msgid "gallery-title"
+msgstr "Galleria RaspyDarts"
+
+msgid "gallery-all"
+msgstr "Tutte le partite"
+
+msgid "gallery-none"
+msgstr "Ancora nessun ricordo."
+
+msgid "gallery-empty"
+msgstr "Nessun ricordo."
+
+msgid "gallery-gone"
+msgstr "Questo ricordo non esiste più."
+
+msgid "gallery-notfound"
+msgstr "Non trovato"
+
+msgid "gallery-error"
+msgstr "Errore"
+
+msgid "gallery-warning"
+msgstr "Nessuna password : chiunque su questa rete può cancellare i ricordi (si imposta nella schermata « Galleria » della macchina)."
+
+msgid "gallery-counts"
+msgstr "{photos} foto, {videos} video"
+
+msgid "gallery-download"
+msgstr "Scarica"
+
+msgid "gallery-print"
+msgstr "Stampa"
+
+msgid "gallery-delete"
+msgstr "Elimina"
+
+msgid "gallery-delete-one"
+msgstr "Eliminare questo ricordo?"
+
+msgid "gallery-download-all"
+msgstr "Scarica tutto, uno alla volta"
+
+msgid "gallery-zip"
+msgstr "Scarica tutto (ZIP)"
+
+msgid "gallery-delete-game"
+msgstr "Elimina la partita"
+
+msgid "gallery-delete-all"
+msgstr "Eliminare tutti i ricordi di questa partita?"
+
+msgid "gallery-password-label"
+msgstr "Password della galleria:"
+
+msgid "gallery-enter"
+msgstr "Entra"
+
+msgid "gallery-wrong"
+msgstr "Password errata."
+

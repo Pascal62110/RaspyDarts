@@ -473,3 +473,72 @@ msgstr "Scannen, um die Fotos und Videos der Spiele anzusehen, herunterzuladen, 
 msgid "gallery-no-password"
 msgstr "Kein Passwort : jeder im Netzwerk kann die Erinnerungen löschen"
 
+msgid "gallery-password"
+msgstr "Passwort"
+
+msgid "gallery-password-set"
+msgstr "Passwort gespeichert"
+
+msgid "gallery-password-removed"
+msgstr "Passwort entfernt"
+
+msgid "gallery-title"
+msgstr "RaspyDarts-Galerie"
+
+msgid "gallery-all"
+msgstr "Alle Spiele"
+
+msgid "gallery-none"
+msgstr "Noch keine Erinnerungen."
+
+msgid "gallery-empty"
+msgstr "Keine Erinnerungen."
+
+msgid "gallery-gone"
+msgstr "Diese Erinnerung gibt es nicht mehr."
+
+msgid "gallery-notfound"
+msgstr "Nicht gefunden"
+
+msgid "gallery-error"
+msgstr "Fehler"
+
+msgid "gallery-warning"
+msgstr "Kein Passwort : jeder in diesem Netzwerk kann die Erinnerungen löschen (Einstellung im Bildschirm « Galerie » des Automaten)."
+
+msgid "gallery-counts"
+msgstr "{photos} Foto(s), {videos} Video(s)"
+
+msgid "gallery-download"
+msgstr "Herunterladen"
+
+msgid "gallery-print"
+msgstr "Drucken"
+
+msgid "gallery-delete"
+msgstr "Löschen"
+
+msgid "gallery-delete-one"
+msgstr "Diese Erinnerung löschen?"
+
+msgid "gallery-download-all"
+msgstr "Alles einzeln herunterladen"
+
+msgid "gallery-zip"
+msgstr "Alles herunterladen (ZIP)"
+
+msgid "gallery-delete-game"
+msgstr "Spiel löschen"
+
+msgid "gallery-delete-all"
+msgstr "Alle Erinnerungen dieses Spiels löschen?"
+
+msgid "gallery-password-label"
+msgstr "Passwort der Galerie:"
+
+msgid "gallery-enter"
+msgstr "Eintreten"
+
+msgid "gallery-wrong"
+msgstr "Falsches Passwort."
+

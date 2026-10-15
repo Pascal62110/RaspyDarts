@@ -7,28 +7,29 @@ Runs as its own service (see ensure_running) : available even when the game is n
 Each game is a folder of the pictures and of the videos (see ccamera.folder_tree) :
     <date>/<game>  or  <game>/<date>   (directory_order of [Camera])
 Pages : all the games, one game ; each memory can be seen, downloaded, printed, deleted,
-a game can be downloaded (ZIP) or deleted.
+a game can be downloaded (one by one, or a ZIP) or deleted. In the language of the borne.
 
-Password : gallery_password of [Camera]. Without one, all is allowed and every page says
-so. The QR codes shown by the borne carry a key (see token) : being in front of it is
-enough ; typing the address asks for the password.
+Password : set on the gallery screen of the borne. Only its hash is kept, in
+gallery_password of [Camera] (any character can be used, '%' included). Without one, all
+is allowed and every page says so. The QR codes shown by the borne carry a key (see
+token) : being in front of it is enough ; typing the address asks for the password.
 
 Usage :
     python3 include/cgallery.py          the server (port PORT)
 """
 
 import configparser
+import gettext
 import hashlib
+import hmac
 import html
-import io
+import json
 import os
 import shutil
 import socket
 import subprocess
 import sys
 import tempfile
-import threading
-import time
 import urllib.parse
 import zipfile
 from http import cookies
@@ -44,6 +45,10 @@ VIDEOS = ('.mp4',)
 THUMB_SIZE = 360
 CACHE_DIR = os.path.join(cpaths.user_dir(), 'gallery_cache')
 COOKIE = 'raspydarts_gallery'
+HASH = 'pbkdf2_sha256'
+# About 0.3 s on a Pi 3 : only when the password is set or typed
+ITERATIONS = 60000
+LANGUAGES = {'fr': 'fr_FR', 'en': 'en_GB', 'de': 'de_DE', 'es': 'es_ES', 'it': 'it_IT'}
 
 
 # ------------------------------------------------------------------ shared with the game
@@ -58,11 +63,32 @@ def secret():
         return socket.gethostname()
 
 
-def token(password):
+def hash_password(password):
     '''
-    Key given by the QR codes of the borne, and kept by the browser once logged in
+    What is kept in the configuration : the hash, never the password
     '''
-    return hashlib.sha256(f"{secret()}:{password}".encode()).hexdigest()[:24]
+    salt = os.urandom(16).hex()
+    digest = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), bytes.fromhex(salt), ITERATIONS).hex()
+    return f"{HASH}${ITERATIONS}${salt}${digest}"
+
+
+def check_password(password, stored):
+    try:
+        kind, iterations, salt, digest = stored.split('$')
+    except ValueError:
+        return False
+    if kind != HASH:
+        return False
+    computed = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), bytes.fromhex(salt), int(iterations)).hex()
+    return hmac.compare_digest(computed, digest)
+
+
+def token(stored):
+    '''
+    Key given by the QR codes of the borne, and kept by the browser once logged in.
+    Made from the hash : it changes with the password
+    '''
+    return hashlib.sha256(f"{secret()}:{stored}".encode()).hexdigest()[:24]
 
 
 def partie_id(date, game):
@@ -72,12 +98,12 @@ def partie_id(date, game):
     return urllib.parse.quote(f"{date}/{game}", safe='')
 
 
-def address(ip, partie=None, password=''):
+def address(ip, partie=None, stored=''):
     '''
     Address of the gallery (or of one game) for a QR code of the borne
     '''
     path = f"/p/{partie}" if partie else "/"
-    key = f"?k={token(password)}" if password else ""
+    key = f"?k={token(stored)}" if stored else ""
     return f"http://{ip}:{PORT}{path}{key}"
 
 
@@ -128,9 +154,26 @@ def ensure_running(logs=None):
 
 
 # ------------------------------------------------------------------ the memories
+_translators = {}
+
+
+def translator(locale):
+    '''
+    Texts in the language of the borne (the translations of the game)
+    '''
+    language = LANGUAGES.get(str(locale)[:2].lower(), 'en_GB')
+    if language not in _translators:
+        try:
+            _translators[language] = gettext.translation('pydarts', os.path.join(ROOT_DIR, 'locales'),
+                                                         [f'{language}.UTF-8']).gettext
+        except OSError:
+            _translators[language] = lambda text: text
+    return _translators[language]
+
+
 def settings():
     '''
-    [Camera] of the configuration, read at each request : changes apply at once
+    Configuration of the borne, read at each request : changes apply at once
     '''
     config = configparser.ConfigParser(inline_comment_prefixes='#', interpolation=None)
     config.optionxform = str
@@ -139,12 +182,15 @@ def settings():
         path = os.path.join(cpaths.user_dir(), cpaths.OLD_CONFIG_NAME)
     config.read(path, encoding='utf-8')
     camera = dict(config['Camera']) if config.has_section('Camera') else {}
+    locale = config['SectionGlobals'].get('locale', 'fr_FR') if config.has_section('SectionGlobals') else 'fr_FR'
     home = cpaths.user_home()
     return {
         'pictures': cpaths.usable_dir(camera.get('picture_path', ''), os.path.join(home, 'Pictures')),
         'videos': cpaths.usable_dir(camera.get('video_path', ''), os.path.join(home, 'Videos')),
         'order': camera.get('directory_order', '0').strip(),
-        'password': camera.get('gallery_password', '').strip().strip("'"),
+        'password': camera.get('gallery_password', '').strip(),
+        '_': translator(locale),
+        'lang': str(locale)[:2].lower(),
     }
 
 
@@ -160,7 +206,7 @@ def parties(conf):
     '''
     All the games with memories : [(last change, date, game, files)], newest first
     '''
-    found = {}
+    found = set()
     for root in (conf['pictures'], conf['videos']):
         if not os.path.isdir(root):
             continue
@@ -169,10 +215,8 @@ def parties(conf):
             if not os.path.isdir(path):
                 continue
             for second in os.listdir(path):
-                if not os.path.isdir(os.path.join(path, second)):
-                    continue
-                date, game = (first, second) if conf['order'] != '1' else (second, first)
-                found.setdefault((date, game), None)
+                if os.path.isdir(os.path.join(path, second)):
+                    found.add((first, second) if conf['order'] != '1' else (second, first))
     result = []
     for date, game in found:
         files = memories(conf, date, game)
@@ -244,20 +288,18 @@ h1{font-size:1.2em;margin:0}
  padding:6px 10px;font-size:.85em;text-decoration:none;cursor:pointer}
 .actions .delete,.big .delete{background:#7a2b1e}
 .big{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px}
-.video{position:relative}
-.video:after{content:"\\25B6";position:absolute;top:8px;left:10px;font-size:1.4em;text-shadow:0 0 4px #000}
+.big form{margin:0}
 form.login{padding:24px 16px}
 input{font-size:1em;padding:8px}
 @media print{header,.actions,.warning,.big{display:none}}
 """
 
 
-def page(title, body, conf, back=True):
-    warning = '' if conf['password'] else (
-        '<div class="warning">Aucun mot de passe : n\'importe qui sur ce réseau peut supprimer les souvenirs '
-        '(réglage dans les paramètres de la webcam de la borne).</div>')
-    home = '<a href="/">&larr; Toutes les parties</a>' if back else ''
-    return (f'<!doctype html><html lang="fr"><head><meta charset="utf-8">'
+def page(conf, title, body, back=True):
+    _ = conf['_']
+    warning = '' if conf['password'] else f'<div class="warning">{html.escape(_("gallery-warning"))}</div>'
+    home = f'<a href="/">&larr; {html.escape(_("gallery-all"))}</a>' if back else ''
+    return (f'<!doctype html><html lang="{conf["lang"]}"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<title>{html.escape(title)}</title><style>{STYLE}</style></head><body>'
             f'<header>{home}<h1>{html.escape(title)}</h1></header>{warning}{body}</body></html>')
@@ -298,6 +340,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header(header, value)
         self.send_header('Content-Length', '0')
         self.end_headers()
+
+    def not_found(self, conf, text='gallery-notfound'):
+        _ = conf['_']
+        self.send(404, page(conf, _('gallery-notfound'), f'<p class="big">{html.escape(_(text))}</p>'))
 
     def send_file(self, path, kind, download_name=None):
         '''
@@ -341,26 +387,31 @@ class Handler(BaseHTTPRequestHandler):
                 remaining -= len(chunk)
 
     # -- access
+    def logged_in(self, conf):
+        good = token(conf['password'])
+        return {'Set-Cookie': f'{COOKIE}={good}; Path=/; Max-Age=31536000; SameSite=Lax'}
+
     def allowed(self, conf, query):
         '''
         True if no password, or the right key (QR code, cookie). A key in the address is
-        kept as a cookie, then removed from the address
+        kept as a cookie, then removed from the address. None : already answered
         '''
         if not conf['password']:
             return True
         good = token(conf['password'])
         if query.get('k', [''])[0] == good:
-            self.redirect(self.path.split('?')[0], {'Set-Cookie': f'{COOKIE}={good}; Path=/; Max-Age=31536000'})
+            self.redirect(self.path.split('?')[0], self.logged_in(conf))
             return None
         jar = cookies.SimpleCookie(self.headers.get('Cookie', ''))
-        return COOKIE in jar and jar[COOKIE].value == good
+        return COOKIE in jar and hmac.compare_digest(jar[COOKIE].value, good)
 
     def login_page(self, conf, wrong=False):
-        message = '<p>Mot de passe incorrect.</p>' if wrong else ''
+        _ = conf['_']
+        message = f'<p>{html.escape(_("gallery-wrong"))}</p>' if wrong else ''
         body = (f'<form class="login" method="post" action="/login?next={urllib.parse.quote(self.path)}">'
-                f'{message}<p>Mot de passe de la galerie :</p>'
-                f'<input type="password" name="password" autofocus> <button>Entrer</button></form>')
-        self.send(200, page('Galerie RaspyDarts', body, conf, back=False))
+                f'{message}<p>{html.escape(_("gallery-password-label"))}</p>'
+                f'<input type="password" name="password" autofocus> <button>{html.escape(_("gallery-enter"))}</button></form>')
+        self.send(200, page(conf, _('gallery-title'), body, back=False))
 
     # -- routes
     def do_HEAD(self):
@@ -368,9 +419,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         conf = settings()
+        _ = conf['_']
         url = urllib.parse.urlsplit(self.path)
-        query = urllib.parse.parse_qs(url.query)
-        access = self.allowed(conf, query)
+        access = self.allowed(conf, urllib.parse.parse_qs(url.query))
         if access is None:
             return
         if not access:
@@ -384,7 +435,7 @@ class Handler(BaseHTTPRequestHandler):
             if parts[0] in ('f', 't', 'd', 'print') and len(parts) == 3:
                 found = find(conf, urllib.parse.quote(parts[1], safe=''), parts[2])
                 if found is None:
-                    return self.send(404, page('Introuvable', '<p class="big">Ce souvenir n\'existe plus.</p>', conf))
+                    return self.not_found(conf, 'gallery-gone')
                 path = found[2]
                 kind = 'video/mp4' if path.lower().endswith(VIDEOS) else (
                     'image/png' if path.lower().endswith('.png') else 'image/jpeg')
@@ -400,8 +451,8 @@ class Handler(BaseHTTPRequestHandler):
             if parts[0] == 'zip' and len(parts) == 2:
                 return self.zip(conf, parts[1])
         except (OSError, ValueError, subprocess.SubprocessError) as error:
-            return self.send(500, page('Erreur', f'<p class="big">{html.escape(str(error))}</p>', conf))
-        self.send(404, page('Introuvable', '', conf))
+            return self.send(500, page(conf, _('gallery-error'), f'<p class="big">{html.escape(str(error))}</p>'))
+        self.not_found(conf)
 
     def do_POST(self):
         conf = settings()
@@ -413,8 +464,8 @@ class Handler(BaseHTTPRequestHandler):
             target = query.get('next', ['/'])[0]
             if not target.startswith('/'):
                 target = '/'
-            if conf['password'] and form.get('password', [''])[0] == conf['password']:
-                return self.redirect(target, {'Set-Cookie': f'{COOKIE}={token(conf["password"])}; Path=/; Max-Age=31536000'})
+            if conf['password'] and check_password(form.get('password', [''])[0], conf['password']):
+                return self.redirect(target, self.logged_in(conf))
             return self.login_page(conf, wrong=True)
         if not self.allowed(conf, {}):
             return self.login_page(conf)
@@ -435,54 +486,61 @@ class Handler(BaseHTTPRequestHandler):
                     if os.path.isdir(parent) and not os.listdir(parent):
                         os.rmdir(parent)
             return self.redirect('/')
-        self.send(404, page('Introuvable', '', conf))
+        self.not_found(conf)
 
     def home(self, conf):
+        _ = conf['_']
         cards = []
         for _changed, date, game, files in parties(conf):
             ident = partie_id(date, game)
-            first = files[0][0]
             photos = sum(1 for name, _p in files if name.lower().endswith(PHOTOS))
-            count = f"{photos} photo(s), {len(files) - photos} vidéo(s)"
-            cards.append(f'<div class="card"><a href="/p/{ident}"><img loading="lazy" src="/t/{ident}/{urllib.parse.quote(first)}"></a>'
-                         f'<div class="name"><b>{html.escape(describe(date, game))}</b><br>{count}</div></div>')
-        body = f'<div class="grid">{"".join(cards)}</div>' if cards else '<p class="big">Aucun souvenir pour le moment.</p>'
-        self.send(200, page('Galerie RaspyDarts', body, conf, back=False))
+            count = _('gallery-counts').replace('{photos}', str(photos)).replace('{videos}', str(len(files) - photos))
+            cards.append(f'<div class="card"><a href="/p/{ident}"><img loading="lazy" src="/t/{ident}/{urllib.parse.quote(files[0][0])}"></a>'
+                         f'<div class="name"><b>{html.escape(describe(date, game))}</b><br>{html.escape(count)}</div></div>')
+        body = f'<div class="grid">{"".join(cards)}</div>' if cards else f'<p class="big">{html.escape(_("gallery-none"))}</p>'
+        self.send(200, page(conf, _('gallery-title'), body, back=False))
 
     def partie(self, conf, raw):
+        _ = conf['_']
         ident = urllib.parse.quote(raw, safe='')
         found = find(conf, ident)
         if found is None:
-            return self.send(404, page('Introuvable', '', conf))
-        date, game, _ = found
+            return self.not_found(conf)
+        date, game, _path = found
         files = memories(conf, date, game)
+        texts = {key: html.escape(_(key)) for key in ('gallery-download', 'gallery-print', 'gallery-delete')}
         cards = []
-        for name, path in files:
+        for name, _path in files:
             quoted = urllib.parse.quote(name)
-            video = name.lower().endswith(VIDEOS)
-            if video:
+            if name.lower().endswith(VIDEOS):
                 view = f'<video controls preload="none" poster="/t/{ident}/{quoted}" src="/f/{ident}/{quoted}" style="width:100%"></video>'
                 printing = ''
             else:
                 view = f'<a href="/f/{ident}/{quoted}"><img loading="lazy" src="/t/{ident}/{quoted}"></a>'
-                printing = f'<a href="/print/{ident}/{quoted}" target="_blank">Imprimer</a>'
-            cards.append(f'<div class="card{" video" if video else ""}">{view}'
+                printing = f'<a href="/print/{ident}/{quoted}" target="_blank">{texts["gallery-print"]}</a>'
+            cards.append(f'<div class="card">{view}'
                          f'<div class="name">{html.escape(os.path.splitext(name)[0])}</div><div class="actions">'
-                         f'<a href="/d/{ident}/{quoted}">Télécharger</a>{printing}'
-                         f'<form method="post" action="/delete/{ident}/{quoted}" onsubmit="return confirm(\'Supprimer ce souvenir ?\')">'
-                         f'<button class="delete">Supprimer</button></form></div></div>')
-        actions = (f'<div class="big"><a href="/zip/{ident}">Tout télécharger (ZIP)</a>'
-                   f'<form method="post" action="/delete/{ident}" onsubmit="return confirm(\'Supprimer tous les souvenirs de cette partie ?\')">'
-                   f'<button class="delete">Supprimer la partie</button></form></div>')
-        body = actions + (f'<div class="grid">{"".join(cards)}</div>' if cards else '<p class="big">Aucun souvenir.</p>')
-        self.send(200, page(describe(date, game), body, conf))
+                         f'<a href="/d/{ident}/{quoted}">{texts["gallery-download"]}</a>{printing}'
+                         f'<form method="post" action="/delete/{ident}/{quoted}" onsubmit="return confirm({html.escape(json.dumps(_("gallery-delete-one")))})">'
+                         f'<button class="delete">{texts["gallery-delete"]}</button></form></div></div>')
+        # On a phone : each file downloaded in turn (sharing them all needs HTTPS)
+        downloads = json.dumps([f"/d/{ident}/{urllib.parse.quote(name)}" for name, _p in files])
+        script = (f'<script>async function downloadAll(){{for(const url of {downloads}){{'
+                  f'const a=document.createElement("a");a.href=url;a.download="";document.body.appendChild(a);'
+                  f'a.click();a.remove();await new Promise(r=>setTimeout(r,1200));}}}}</script>')
+        actions = (f'<div class="big"><button onclick="downloadAll()">{html.escape(_("gallery-download-all"))}</button>'
+                   f'<a href="/zip/{ident}">{html.escape(_("gallery-zip"))}</a>'
+                   f'<form method="post" action="/delete/{ident}" onsubmit="return confirm({html.escape(json.dumps(_("gallery-delete-all")))})">'
+                   f'<button class="delete">{html.escape(_("gallery-delete-game"))}</button></form></div>')
+        grid = f'<div class="grid">{"".join(cards)}</div>' if cards else f'<p class="big">{html.escape(_("gallery-empty"))}</p>'
+        self.send(200, page(conf, describe(date, game), actions + grid + script))
 
     def zip(self, conf, raw):
         found = find(conf, urllib.parse.quote(raw, safe=''))
         if found is None:
-            return self.send(404, page('Introuvable', '', conf))
-        date, game, _ = found
-        with tempfile.TemporaryFile(dir='/tmp' if os.path.isdir('/tmp') else None) as archive:
+            return self.not_found(conf)
+        date, game, _path = found
+        with tempfile.TemporaryFile() as archive:
             # Stored, not compressed : photos and videos are already
             with zipfile.ZipFile(archive, 'w', zipfile.ZIP_STORED) as content:
                 for name, path in memories(conf, date, game):

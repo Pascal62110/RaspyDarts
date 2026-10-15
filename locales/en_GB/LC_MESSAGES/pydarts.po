@@ -2709,3 +2709,72 @@ msgstr "Scan to view, download, print or delete the photos and videos of the gam
 msgid "gallery-no-password"
 msgstr "No password : anyone on the network can delete the memories"
 
+msgid "gallery-password"
+msgstr "Password"
+
+msgid "gallery-password-set"
+msgstr "Password saved"
+
+msgid "gallery-password-removed"
+msgstr "Password removed"
+
+msgid "gallery-title"
+msgstr "RaspyDarts gallery"
+
+msgid "gallery-all"
+msgstr "All the games"
+
+msgid "gallery-none"
+msgstr "No memories yet."
+
+msgid "gallery-empty"
+msgstr "No memories."
+
+msgid "gallery-gone"
+msgstr "This memory no longer exists."
+
+msgid "gallery-notfound"
+msgstr "Not found"
+
+msgid "gallery-error"
+msgstr "Error"
+
+msgid "gallery-warning"
+msgstr "No password : anyone on this network can delete the memories (set it on the « Gallery » screen of the machine)."
+
+msgid "gallery-counts"
+msgstr "{photos} photo(s), {videos} video(s)"
+
+msgid "gallery-download"
+msgstr "Download"
+
+msgid "gallery-print"
+msgstr "Print"
+
+msgid "gallery-delete"
+msgstr "Delete"
+
+msgid "gallery-delete-one"
+msgstr "Delete this memory?"
+
+msgid "gallery-download-all"
+msgstr "Download all, one by one"
+
+msgid "gallery-zip"
+msgstr "Download all (ZIP)"
+
+msgid "gallery-delete-game"
+msgstr "Delete the game"
+
+msgid "gallery-delete-all"
+msgstr "Delete all the memories of this game?"
+
+msgid "gallery-password-label"
+msgstr "Gallery password:"
+
+msgid "gallery-enter"
+msgstr "Enter"
+
+msgid "gallery-wrong"
+msgstr "Wrong password."
+

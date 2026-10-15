@@ -814,6 +814,75 @@ msgstr "Scannez pour voir, télécharger, imprimer ou supprimer les photos et vi
 msgid "gallery-no-password"
 msgstr "Aucun mot de passe : n'importe qui sur le réseau peut supprimer les souvenirs"
 
+msgid "gallery-password"
+msgstr "Mot de passe"
+
+msgid "gallery-password-set"
+msgstr "Mot de passe enregistré"
+
+msgid "gallery-password-removed"
+msgstr "Mot de passe supprimé"
+
+msgid "gallery-title"
+msgstr "Galerie RaspyDarts"
+
+msgid "gallery-all"
+msgstr "Toutes les parties"
+
+msgid "gallery-none"
+msgstr "Aucun souvenir pour le moment."
+
+msgid "gallery-empty"
+msgstr "Aucun souvenir."
+
+msgid "gallery-gone"
+msgstr "Ce souvenir n'existe plus."
+
+msgid "gallery-notfound"
+msgstr "Introuvable"
+
+msgid "gallery-error"
+msgstr "Erreur"
+
+msgid "gallery-warning"
+msgstr "Aucun mot de passe : n'importe qui sur ce réseau peut supprimer les souvenirs (réglage sur l'écran « Galerie » de la borne)."
+
+msgid "gallery-counts"
+msgstr "{photos} photo(s), {videos} vidéo(s)"
+
+msgid "gallery-download"
+msgstr "Télécharger"
+
+msgid "gallery-print"
+msgstr "Imprimer"
+
+msgid "gallery-delete"
+msgstr "Supprimer"
+
+msgid "gallery-delete-one"
+msgstr "Supprimer ce souvenir ?"
+
+msgid "gallery-download-all"
+msgstr "Tout télécharger, un par un"
+
+msgid "gallery-zip"
+msgstr "Tout télécharger (ZIP)"
+
+msgid "gallery-delete-game"
+msgstr "Supprimer la partie"
+
+msgid "gallery-delete-all"
+msgstr "Supprimer tous les souvenirs de cette partie ?"
+
+msgid "gallery-password-label"
+msgstr "Mot de passe de la galerie :"
+
+msgid "gallery-enter"
+msgstr "Entrer"
+
+msgid "gallery-wrong"
+msgstr "Mot de passe incorrect."
+
 ######## MESSAGES ########
 
 msgid "Loading logos..."

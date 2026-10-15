@@ -383,6 +383,7 @@ class Camera:
         self.camera = None
         self.update_filter = 0
         self.logs = log
+        self.config = config
         self.userDirectory = f"{config.user_dir}"
         self.photo_filter_directory = "images/photo_filter"
         self.theme = str(config.get_value('SectionGlobals', 'colorset'))
@@ -436,7 +437,6 @@ class Camera:
         self.upload_cloud = bool(config_camera['upload_cloud'] == '1')
         self.fullscreen = bool(config_camera['fullscreen_pop'] == '1')
         self.duree = int(config_camera['duree_ms'])
-        self.gallery_password = str(config_camera.get('gallery_password', '')).strip()
         # Photos and clips come from the same recording : the size of the videos (the one
         # the setup menu offers) is used for both
         flips = tuple(f for f, wanted in (('hflip', self.flip_horizontal), ('vflip', self.flip_vertical)) if wanted)
@@ -1081,7 +1081,9 @@ class Camera:
                     # The page of this game in the gallery of the borne (see cgallery)
                     from include import cgallery
                     import qrcode
-                    url = cgallery.address(cgallery.local_ip(), cgallery.partie_id(*self.last_partie), self.gallery_password)
+                    # Hash of the password, set on the gallery screen (see Screen.gallery_menu)
+                    stored = str(self.config.config.get('Camera', {}).get('gallery_password', '')).strip()
+                    url = cgallery.address(cgallery.local_ip(), cgallery.partie_id(*self.last_partie), stored)
                     picture = qrcode.make(url)
                     self.show_qr_popup(picture.get_image() if hasattr(picture, 'get_image') else picture)
                         
