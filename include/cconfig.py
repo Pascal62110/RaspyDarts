@@ -223,9 +223,13 @@ DefaultConfig['Camera'] = {
     'upload_cloud': '0',
     'path_google_drive': '',
     'fullscreen_pop': '0',
-    'duree_ms': '5000',
-    # Gallery of the memories on the local network (see cgallery) : empty, no password
-    'gallery_password': ''
+    'duree_ms': '5000'
+    }
+# Gallery of the memories on the local network (see cgallery). Its own section : the
+# setup menu of the webcam writes back the [Camera] it read, and erased the password
+DefaultConfig['Gallery'] = {
+    # Hash of the password (see cgallery.hash_password) : empty, no password
+    'password': ''
     }
 # A deplacer dans un fichier yaml
 #
@@ -1274,6 +1278,10 @@ class Config:
         self.conf += f"masterclosegames:{Server['masterclosegames']}\n"
 
         self.config_section("Camera", "Camera USB settings")
+
+        if 'Gallery' not in self.config:
+            self.config['Gallery'] = self.init_section('Gallery')
+        self.config_section("Gallery", "Gallery of the memories : hash of its password")
 
         self.config_section("Favorites", "High level customization")
         self.config_section("Raspberry_BoardPinsIns", "Input GPIO section")

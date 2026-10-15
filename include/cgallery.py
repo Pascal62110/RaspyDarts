@@ -9,10 +9,11 @@ Each game is a folder of the pictures and of the videos (see ccamera.folder_tree
 Pages : all the games, one game ; each memory can be seen, downloaded, printed, deleted,
 a game can be downloaded (one by one, or a ZIP) or deleted. In the language of the borne.
 
-Password : set on the gallery screen of the borne. Only its hash is kept, in
-gallery_password of [Camera] (any character can be used, '%' included). Without one, all
-is allowed and every page says so. The QR codes shown by the borne carry a key (see
-token) : being in front of it is enough ; typing the address asks for the password.
+Password : set on the gallery screen of the borne. Only its hash is kept, in password of
+[Gallery] (any character can be used, '%' included). Without one, all is allowed and every
+page says so. The QR codes shown by the borne carry a key (see token) : being in front of
+it is enough to see and download ; typing the address asks for the password. Deleting
+always asks for it.
 
 Usage :
     python3 include/cgallery.py          the server (port PORT)
@@ -182,13 +183,14 @@ def settings():
         path = os.path.join(cpaths.user_dir(), cpaths.OLD_CONFIG_NAME)
     config.read(path, encoding='utf-8')
     camera = dict(config['Camera']) if config.has_section('Camera') else {}
+    gallery = dict(config['Gallery']) if config.has_section('Gallery') else {}
     locale = config['SectionGlobals'].get('locale', 'fr_FR') if config.has_section('SectionGlobals') else 'fr_FR'
     home = cpaths.user_home()
     return {
         'pictures': cpaths.usable_dir(camera.get('picture_path', ''), os.path.join(home, 'Pictures')),
         'videos': cpaths.usable_dir(camera.get('video_path', ''), os.path.join(home, 'Videos')),
         'order': camera.get('directory_order', '0').strip(),
-        'password': camera.get('gallery_password', '').strip(),
+        'password': gallery.get('password', '').strip(),
         '_': translator(locale),
         'lang': str(locale)[:2].lower(),
     }
@@ -291,8 +293,12 @@ h1{font-size:1.2em;margin:0}
 .big form{margin:0}
 form.login{padding:24px 16px}
 input{font-size:1em;padding:8px}
+.folder{display:block;padding:18px 28px 6px}
+.folder svg{width:100%;height:auto;display:block}
 @media print{header,.actions,.warning,.big{display:none}}
 """
+FOLDER = ('<svg viewBox="0 0 64 48"><path d="M2 8a4 4 0 0 1 4-4h16l6 6h30a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4H6'
+          'a4 4 0 0 1-4-4z" fill="#d9a441"/><path d="M2 16h60v26a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#f0c05a"/></svg>')
 
 
 def page(conf, title, body, back=True):
@@ -472,6 +478,11 @@ class Handler(BaseHTTPRequestHandler):
         parts = [urllib.parse.unquote(part) for part in url.path.strip('/').split('/') if part]
         if parts and parts[0] == 'delete' and len(parts) in (2, 3):
             partie = urllib.parse.quote(parts[1], safe='')
+            # The key of a QR code lets see and download, not delete
+            if conf['password'] and not check_password(form.get('password', [''])[0], conf['password']):
+                _ = conf['_']
+                back = f"/p/{partie}" if len(parts) == 3 else '/'
+                return self.send(403, page(conf, _('gallery-wrong'), f'<p class="big"><a href="{back}">&larr; {html.escape(_("gallery-back"))}</a></p>'))
             if len(parts) == 3:
                 found = find(conf, partie, parts[2])
                 if found is not None:
@@ -495,7 +506,7 @@ class Handler(BaseHTTPRequestHandler):
             ident = partie_id(date, game)
             photos = sum(1 for name, _p in files if name.lower().endswith(PHOTOS))
             count = _('gallery-counts').replace('{photos}', str(photos)).replace('{videos}', str(len(files) - photos))
-            cards.append(f'<div class="card"><a href="/p/{ident}"><img loading="lazy" src="/t/{ident}/{urllib.parse.quote(files[0][0])}"></a>'
+            cards.append(f'<div class="card"><a href="/p/{ident}" class="folder">{FOLDER}</a>'
                          f'<div class="name"><b>{html.escape(describe(date, game))}</b><br>{html.escape(count)}</div></div>')
         body = f'<div class="grid">{"".join(cards)}</div>' if cards else f'<p class="big">{html.escape(_("gallery-none"))}</p>'
         self.send(200, page(conf, _('gallery-title'), body, back=False))
@@ -509,6 +520,7 @@ class Handler(BaseHTTPRequestHandler):
         date, game, _path = found
         files = memories(conf, date, game)
         texts = {key: html.escape(_(key)) for key in ('gallery-download', 'gallery-print', 'gallery-delete')}
+        confirm_one, confirm_all = self.confirmation(conf, 'gallery-delete-one'), self.confirmation(conf, 'gallery-delete-all')
         cards = []
         for name, _path in files:
             quoted = urllib.parse.quote(name)
@@ -521,7 +533,7 @@ class Handler(BaseHTTPRequestHandler):
             cards.append(f'<div class="card">{view}'
                          f'<div class="name">{html.escape(os.path.splitext(name)[0])}</div><div class="actions">'
                          f'<a href="/d/{ident}/{quoted}">{texts["gallery-download"]}</a>{printing}'
-                         f'<form method="post" action="/delete/{ident}/{quoted}" onsubmit="return confirm({html.escape(json.dumps(_("gallery-delete-one")))})">'
+                         f'<form method="post" action="/delete/{ident}/{quoted}" onsubmit="{confirm_one}"><input type="hidden" name="password">'
                          f'<button class="delete">{texts["gallery-delete"]}</button></form></div></div>')
         # On a phone : each file downloaded in turn (sharing them all needs HTTPS)
         downloads = json.dumps([f"/d/{ident}/{urllib.parse.quote(name)}" for name, _p in files])
@@ -530,10 +542,21 @@ class Handler(BaseHTTPRequestHandler):
                   f'a.click();a.remove();await new Promise(r=>setTimeout(r,1200));}}}}</script>')
         actions = (f'<div class="big"><button onclick="downloadAll()">{html.escape(_("gallery-download-all"))}</button>'
                    f'<a href="/zip/{ident}">{html.escape(_("gallery-zip"))}</a>'
-                   f'<form method="post" action="/delete/{ident}" onsubmit="return confirm({html.escape(json.dumps(_("gallery-delete-all")))})">'
+                   f'<form method="post" action="/delete/{ident}" onsubmit="{confirm_all}"><input type="hidden" name="password">'
                    f'<button class="delete">{html.escape(_("gallery-delete-game"))}</button></form></div>')
         grid = f'<div class="grid">{"".join(cards)}</div>' if cards else f'<p class="big">{html.escape(_("gallery-empty"))}</p>'
         self.send(200, page(conf, describe(date, game), actions + grid + script))
+
+    def confirmation(self, conf, question):
+        '''
+        Script of a delete button : the password is asked when there is one, else a
+        simple confirmation
+        '''
+        _ = conf['_']
+        if conf['password']:
+            text = json.dumps(f"{_(question)}\n{_('gallery-delete-password')}")
+            return html.escape(f"var p=prompt({text});if(p===null)return false;this.password.value=p;return true;")
+        return html.escape(f"return confirm({json.dumps(_(question))})")
 
     def zip(self, conf, raw):
         found = find(conf, urllib.parse.quote(raw, safe=''))

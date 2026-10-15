@@ -2778,3 +2778,9 @@ msgstr "Enter"
 msgid "gallery-wrong"
 msgstr "Wrong password."
 
+msgid "gallery-delete-password"
+msgstr "Gallery password:"
+
+msgid "gallery-back"
+msgstr "Back"
+

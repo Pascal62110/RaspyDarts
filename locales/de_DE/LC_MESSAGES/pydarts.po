@@ -542,3 +542,9 @@ msgstr "Eintreten"
 msgid "gallery-wrong"
 msgstr "Falsches Passwort."
 
+msgid "gallery-delete-password"
+msgstr "Passwort der Galerie:"
+
+msgid "gallery-back"
+msgstr "Zurück"
+

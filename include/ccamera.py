@@ -50,7 +50,12 @@ LAST_PICTURE_MAX_AGE = 1.0
 # Messages of ffmpeg
 LOG_FILE = os.path.join(cpaths.ROOT_DIR, 'logs', 'camera.log')
 # Tried in this order until ffmpeg keeps running : (sound, live clips encoder)
-LEVELS = ((True, 'h264_v4l2m2m'), (False, 'h264_v4l2m2m'), (False, 'libx264'), (False, None))
+LEVELS = ((True, 'h264_v4l2m2m'), (False, 'h264_v4l2m2m'), (False, 'libx264'), (True, None), (False, None))
+# The H.264 encoder of the Pi stopped answering : recording without live clips from
+# LEVELS[STALLED_LEVEL], clips encoded by the processor (see encode_clip)
+STALLED_LEVEL = 3
+# The last picture is older than this while ffmpeg runs : ffmpeg is stuck
+STALLED_AFTER = 4
 
 
 def _die_with_parent():
@@ -82,10 +87,18 @@ class Recorder:
         self.confirmed = False
         # Increased at each game : a game which ends does not stop the next one
         self.game = 0
+        # The encoder of the Pi stopped answering (its driver crashed) : until a restart
+        self.encoder_stalled = False
+        # Launch to try again : (level, when), failures at the current level, stuck
+        # ffmpeg killed but not gone yet
+        self.retry = None
+        self.attempts = 0
+        self.dying = None
 
     def need(self, user, settings, logs):
         '''
-        settings : (device, width, height, fps, seconds kept, filter of the live clips, flips)
+        settings : (device, width, height, fps, seconds kept, filter of the live clips, flips,
+        live clips wanted)
         '''
         with self.lock:
             self.logs = logs
@@ -104,8 +117,10 @@ class Recorder:
                     self.start(remaining)
 
     def command(self, settings, level):
-        device, width, height, fps, _kept, live_filter, flips = settings
+        device, width, height, fps, _kept, live_filter, flips, live = settings
         sound, live_encoder = LEVELS[level]
+        if not live:
+            live_encoder = None
         command = ['ffmpeg', '-nostdin', '-loglevel', 'error',
                    '-f', 'v4l2', '-input_format', 'mjpeg', '-video_size', f'{width}x{height}',
                    '-framerate', str(fps), '-timestamps', 'mono2abs', '-thread_queue_size', '64',
@@ -162,7 +177,13 @@ class Recorder:
             # Copied under a plain name : the movie filter reads some characters of paths
             shutil.copy(settings[5], f'{RECORD_DIR}/live_filter.png')
         self.settings = settings
-        self.launch(settings, 0)
+        self.retry = None
+        self.attempts = 0
+        if self.dying is not None and self.dying.poll() is None:
+            # A stuck ffmpeg is not gone yet : launched by the supervisor once it is
+            self.process = None
+        else:
+            self.launch(settings, STALLED_LEVEL if self.encoder_stalled else 0)
         if self.cleaner is None:
             # Long lived : ffmpeg dies with the thread which launched it (_die_with_parent)
             self.cleaner = threading.Thread(target=self.clean, daemon=True)
@@ -192,11 +213,13 @@ class Recorder:
 
     def stop(self):
         process, self.process, self.settings = self.process, None, None
+        self.retry = None
         if process is not None:
             # SIGINT : ffmpeg closes its files properly
             process.send_signal(signal.SIGINT)
             try:
-                process.wait(timeout=3)
+                # Time to close the encoder properly : its driver crashed once
+                process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 process.kill()
         # The recording only : the clips being made have their own links (clip_*)
@@ -213,28 +236,69 @@ class Recorder:
 
     def supervise(self):
         '''
-        ffmpeg confirmed after 3 seconds, or launched again with less
+        ffmpeg confirmed after 3 seconds ; launched again when it stops at once (twice at
+        the same level, 3 seconds apart : a webcam being reset, a microphone busy) then
+        with less ; launched again without live clips when it is stuck
         '''
-        process, settings = self.process, self.settings
-        if process is None or settings is None:
+        settings = self.settings
+        if settings is None:
+            return
+        process = self.process
+        if process is None:
+            if self.dying is not None:
+                # The stuck ffmpeg killed holds the webcam until it is really gone (it may
+                # take long, stuck in the crashed driver) : launched again 3 seconds after
+                if self.dying.poll() is None:
+                    return
+                self.dying = None
+                self.retry = (STALLED_LEVEL, time.monotonic() + 3)
+            if self.retry is not None and time.monotonic() >= self.retry[1]:
+                level, self.retry = self.retry[0], None
+                self.launch(settings, level)
             return
         if self.confirmed:
             if process.poll() is not None:
                 # Webcam unplugged... : launched again by the next Camera which needs it
                 self.logs.error(f"Webcam : ffmpeg stopped : {self.last_error() or process.returncode}")
                 self.process = None
+                return
+            try:
+                age = time.time() - os.path.getmtime(f'{RECORD_DIR}/last.jpg')
+            except OSError:
+                age = STALLED_AFTER + 1
+            if age > STALLED_AFTER:
+                # Stuck : the H.264 encoder of the Pi does not answer any more (its driver
+                # crashed after quick restarts). Recorded again without it : photos go on,
+                # clips are encoded by the processor
+                self.logs.error("Webcam : ffmpeg stuck, recorded again without live clips. "
+                                "The H.264 encoder of the Pi does not answer : restart the Pi")
+                self.encoder_stalled = True
+                process.kill()
+                self.process = None
+                self.attempts = 0
+                self.dying = process
             return
         if process.poll() is None:
             if time.monotonic() - self.started >= 3:
                 self.confirmed = True
+                self.attempts = 0
                 self.logs.info(f"Webcam recorded by ffmpeg : {settings[1]}x{settings[2]} {settings[3]} i/s, {self.describe()}")
             return
         self.logs.warning(f"Webcam : ffmpeg stopped ({self.describe()}) : {self.last_error() or process.returncode}")
-        if self.level + 1 < len(LEVELS):
-            self.launch(settings, self.level + 1)
+        self.process = None
+        if self.attempts < 2:
+            self.attempts += 1
+            self.retry = (self.level, time.monotonic() + 3)
+        elif self.level + 1 < len(LEVELS):
+            self.attempts = 0
+            self.retry = (self.level + 1, time.monotonic() + 1)
         else:
-            self.process = None
-            self.logs.error("Webcam : not recorded (Motion-JPEG not available at this size ?)")
+            # Never given up while needed : after a stuck ffmpeg was killed, the webcam took
+            # more than 30 seconds to be usable again (several USB resets)
+            self.logs.error("Webcam : not recorded (Motion-JPEG not available at this size ?), "
+                            "tried again in 30 seconds")
+            self.attempts = 0
+            self.retry = (STALLED_LEVEL if self.encoder_stalled else 0, time.monotonic() + 30)
 
     def clean(self):
         '''
@@ -289,7 +353,10 @@ class Recorder:
         return self.process is not None and self.process.poll() is None
 
     def live(self):
-        return self.running() and LEVELS[self.level][1] is not None
+        '''
+        Live clips being recorded : not in the setup menu, not once the encoder is stuck
+        '''
+        return self.running() and LEVELS[self.level][1] is not None and bool(self.settings and self.settings[7])
 
     def last_picture(self):
         '''
@@ -363,12 +430,20 @@ def encode_clip(segments, start, duration, size, flips, filter_path, target, log
                                       f"[v0][png]overlay,format=yuv420p[v]", '-map', '[v]', '-map', '0:a?']
     else:
         filters = ['-vf', ','.join(video), '-map', '0:v', '-map', '0:a?']
+    encoders = [['-c:v', 'h264_v4l2m2m', '-b:v', '4M'], ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23']]
+    if RECORDER.encoder_stalled:
+        encoders = encoders[1:]
     with ARCHIVING:
-        for encoder in (['-c:v', 'h264_v4l2m2m', '-b:v', '4M'], ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23']):
-            result = subprocess.run(['nice', '-n', '15', 'ffmpeg', '-nostdin', '-loglevel', 'error', '-y']
-                                    + inputs + filters + ['-t', str(duration)] + encoder
-                                    + ['-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', target],
-                                    capture_output=True, text=True)
+        for encoder in encoders:
+            try:
+                # Bounded : a stuck encoder of the Pi would wait for ever
+                result = subprocess.run(['nice', '-n', '15', 'ffmpeg', '-nostdin', '-loglevel', 'error', '-y']
+                                        + inputs + filters + ['-t', str(duration)] + encoder
+                                        + ['-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', target],
+                                        capture_output=True, text=True, timeout=duration * 12 + 30)
+            except subprocess.TimeoutExpired:
+                logs.warning(f"Webcam : clip not encoded by {encoder[1]} in time")
+                continue
             if result.returncode == 0:
                 return True
             logs.warning(f"Webcam : clip not encoded by {encoder[1]} : {result.stderr.strip()[-200:]}")
@@ -440,8 +515,10 @@ class Camera:
         # Photos and clips come from the same recording : the size of the videos (the one
         # the setup menu offers) is used for both
         flips = tuple(f for f, wanted in (('hflip', self.flip_horizontal), ('vflip', self.flip_vertical)) if wanted)
+        # Live clips for the game only : the setup menu records again at each change, and
+        # quick restarts of the encoder of the Pi crashed its driver
         self.record_settings = (f"/dev/video{self.camera_id}", self.vid_res_width, self.vid_res_height,
-                                self.fps, self.video_duration + 3, self.live_filter(), flips)
+                                self.fps, self.video_duration + 3, self.live_filter(), flips, self.user == 'game')
         if RECORDER.users.get(self.user) is not None:
             # Recording (game in progress, setup menu) : new settings applied at once
             if self.user != 'game' or (self.is_connected() and self.choice_of_memories != 0):
@@ -828,7 +905,6 @@ class Camera:
         Here we take a shot in thread mode : the picture of this moment is read now
         '''
         try:
-            self.last_partie = (datetime.datetime.now().strftime("%d_%m_%Y"), game)
             first = self.read_last_picture()
             threading.Thread(target=self.take_a_shot, args=(start_stop, game, picture_name, first), daemon=True).start()
         except Exception as ex:
@@ -913,6 +989,8 @@ class Camera:
                     # save
                     photo = f"{directory_default_name}/{pictureName}.jpg"
                     pygame.image.save(picture_shot, photo)
+                    # Its game is shown by the QR code at the end
+                    self.last_partie = (directory_name, game)
 
                     # Load picture in Google Drive
                     if self._uploadToGoogleDrive is not None:
@@ -1082,7 +1160,7 @@ class Camera:
                     from include import cgallery
                     import qrcode
                     # Hash of the password, set on the gallery screen (see Screen.gallery_menu)
-                    stored = str(self.config.config.get('Camera', {}).get('gallery_password', '')).strip()
+                    stored = str(self.config.config.get('Gallery', {}).get('password', '')).strip()
                     url = cgallery.address(cgallery.local_ip(), cgallery.partie_id(*self.last_partie), stored)
                     picture = qrcode.make(url)
                     self.show_qr_popup(picture.get_image() if hasattr(picture, 'get_image') else picture)

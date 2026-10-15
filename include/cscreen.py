@@ -4168,10 +4168,8 @@ class Screen(pygame.Surface):
             elif ('video_res_height' in conf):
                 resh_vids = menu_config_camera[conf]
                 
-            # gallery_password : set on the gallery screen (see gallery_menu)
             if conf not in ('picture_path', 'video_path', 'picture_res_width', 'picture_res_height',
-                            'video_res_width', 'video_res_height', 'resolutions_available', 'fps', 'duree_ms',
-                            'gallery_password'): 
+                            'video_res_width', 'video_res_height', 'resolutions_available', 'fps', 'duree_ms'): 
                 menu_configuration.append([conf, menu_config_camera[conf], conf_type, max_value, conf_values, min_value, zero])
             
         if None != resw_picts and None != resh_picts:
@@ -6501,8 +6499,8 @@ class Screen(pygame.Surface):
         import qrcode
         selected = 2
         while True:
-            camera = self.config.config.setdefault('Camera', {})
-            stored = str(camera.get('gallery_password', '')).strip()
+            gallery = self.config.config.setdefault('Gallery', {'password': ''})
+            stored = str(gallery.get('password', '')).strip()
             url = cgallery.address(cgallery.local_ip(), stored=stored)
             picture = qrcode.make(url)
             picture = (picture.get_image() if hasattr(picture, 'get_image') else picture).convert('RGB')
@@ -6535,7 +6533,7 @@ class Screen(pygame.Surface):
                 # Empty : no password any more
                 typed = self.input_value_item('string', '', 0, 32, text='gallery_password')
                 if typed != 'escape':
-                    camera['gallery_password'] = cgallery.hash_password(typed) if typed else ''
+                    gallery['password'] = cgallery.hash_password(typed) if typed else ''
                     self.config.write_file()
                     text = 'gallery-password-set' if typed else 'gallery-password-removed'
                     self.message([self.lang.translate(text)], 1500, self.colorset['menu-ok'], 'middle', 'big')

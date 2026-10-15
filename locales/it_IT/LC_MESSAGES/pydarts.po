@@ -3232,3 +3232,9 @@ msgstr "Entra"
 msgid "gallery-wrong"
 msgstr "Password errata."
 
+msgid "gallery-delete-password"
+msgstr "Password della galleria:"
+
+msgid "gallery-back"
+msgstr "Indietro"
+

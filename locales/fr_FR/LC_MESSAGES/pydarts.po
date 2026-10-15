@@ -883,6 +883,12 @@ msgstr "Entrer"
 msgid "gallery-wrong"
 msgstr "Mot de passe incorrect."
 
+msgid "gallery-delete-password"
+msgstr "Mot de passe de la galerie :"
+
+msgid "gallery-back"
+msgstr "Retour"
+
 ######## MESSAGES ########
 
 msgid "Loading logos..."

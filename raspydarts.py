@@ -77,6 +77,7 @@ try:
     config_output = Config.read_file("Raspberry_BoardPinsOuts")
     # Read Config file for camera configuration
     config_camera = Config.read_file("Camera")
+    Config.read_file("Gallery")
 
     ####
     # LOAD colorset
