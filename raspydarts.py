@@ -1371,6 +1371,10 @@ try:
             match_done = True
             set_done = True
 
+        # The webcam is recorded during the game only
+        if not match_done:
+            camera.game_start()
+
         # Main loop (every input runs a loop - a dart, a button or a click)
         while not match_done:
             while not set_done:
@@ -2321,6 +2325,7 @@ try:
                     image_player.set_level(Config.get_value('SectionGlobals', 'videos'))
                   
         camera.close_qr_popup()                    
+        camera.game_end()
         
         display.file_class.reset_theme(Config.get_value('SectionGlobals', 'colorset'))
         display.define_constants(True, Font=config_globals['font'])

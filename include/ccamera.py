@@ -80,6 +80,8 @@ class Recorder:
         self.level = 0
         self.started = 0
         self.confirmed = False
+        # Increased at each game : a game which ends does not stop the next one
+        self.game = 0
 
     def need(self, user, settings, logs):
         '''
@@ -155,7 +157,6 @@ class Recorder:
         stops at once
         '''
         self.stop()
-        shutil.rmtree(RECORD_DIR, ignore_errors=True)
         os.makedirs(RECORD_DIR, exist_ok=True)
         if settings[5] is not None:
             # Copied under a plain name : the movie filter reads some characters of paths
@@ -191,14 +192,19 @@ class Recorder:
 
     def stop(self):
         process, self.process, self.settings = self.process, None, None
-        if process is None:
-            return
-        # SIGINT : ffmpeg closes its files properly
-        process.send_signal(signal.SIGINT)
-        try:
-            process.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            process.kill()
+        if process is not None:
+            # SIGINT : ffmpeg closes its files properly
+            process.send_signal(signal.SIGINT)
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+        # The recording only : the clips being made have their own links (clip_*)
+        for path in glob.glob(f'{RECORD_DIR}/seg_*.mkv') + glob.glob(f'{RECORD_DIR}/live_*.ts')                 + [f'{RECORD_DIR}/last.jpg']:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
     def describe(self):
         sound, live_encoder = LEVELS[self.level]
@@ -433,14 +439,12 @@ class Camera:
         flips = tuple(f for f, wanted in (('hflip', self.flip_horizontal), ('vflip', self.flip_vertical)) if wanted)
         self.record_settings = (f"/dev/video{self.camera_id}", self.vid_res_width, self.vid_res_height,
                                 self.fps, self.video_duration + 3, self.live_filter(), flips)
-        if self.user == 'game':
-            if self.is_connected() and self.choice_of_memories != 0:
+        if RECORDER.users.get(self.user) is not None:
+            # Recording (game in progress, setup menu) : new settings applied at once
+            if self.user != 'game' or (self.is_connected() and self.choice_of_memories != 0):
                 RECORDER.need(self.user, self.record_settings, self.logs)
             else:
                 RECORDER.release(self.user)
-        elif RECORDER.users.get(self.user) is not None:
-            # Setup menu : new settings applied to its preview at once
-            RECORDER.need(self.user, self.record_settings, self.logs)
 
     def init_list_of_filters(self):
         try:
@@ -477,6 +481,30 @@ class Camera:
             return self.camera_id != '-1' and os.path.exists(f"/dev/video{self.camera_id}")
         except Exception as ex:
             self.logs.error(f"Error in ccamera is_connected() : {ex}")
+
+    def game_start(self):
+        '''
+        The webcam is recorded during the games only (its light is off in the menus)
+        '''
+        try:
+            RECORDER.game += 1
+            if self.is_connected() and self.choice_of_memories != 0:
+                RECORDER.need('game', self.record_settings, self.logs)
+        except Exception as ex:
+            self.logs.error(f"Error in ccamera game_start() : {ex}")
+
+    def game_end(self):
+        '''
+        Recording stopped once the clip of the last dart is recorded, unless another
+        game started meanwhile
+        '''
+        game = RECORDER.game
+
+        def later():
+            sleep(self.video_duration + 3)
+            if RECORDER.game == game:
+                RECORDER.release('game')
+        threading.Thread(target=later, daemon=True).start()
 
     def camera_start(self):
         '''
