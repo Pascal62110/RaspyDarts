@@ -2697,3 +2697,15 @@ msgstr "Reboot"
 msgid "news"
 msgstr "News"
 
+msgid "gallery"
+msgstr "Gallery"
+
+msgid "gallery_password"
+msgstr "Gallery password (empty : none)"
+
+msgid "gallery-scan"
+msgstr "Scan to view, download, print or delete the photos and videos of the games"
+
+msgid "gallery-no-password"
+msgstr "No password : anyone on the network can delete the memories"
+

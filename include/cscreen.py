@@ -4139,7 +4139,7 @@ class Screen(pygame.Surface):
             elif ('choice_of_memories' in conf):
                 conf_type = 'dropdown'
                 conf_values = [('0', 'Rien'), ('1', 'QUE Photos'), ('2', 'QUE Videos'), ('3', 'ALEATOIREMENT Photos ou Videos')]
-            elif (conf in ('picture_path', 'video_path', 'events', 'path_google_drive')):
+            elif (conf in ('picture_path', 'video_path', 'events', 'path_google_drive', 'gallery_password')):
                 conf_type = 'string'
                 min_value = 1
                 max_value = 128
@@ -4334,14 +4334,14 @@ class Screen(pygame.Surface):
                     self.camera.init_var(config_camera, show_in_parametrage=True)
                     self.camera.camera_start()
                         
-                elif key_press in ('picture_path', 'video_path', 'events', 'path_google_drive'):
+                elif key_press in ('picture_path', 'video_path', 'events', 'path_google_drive', 'gallery_password'):
                     click_zone = cursor[selected - 1]
                     tmp = self.input_value_item(menu_configuration[selected - 1][2], menu_configuration[selected - 1][1], 
                             menu_configuration[selected - 1][5], menu_configuration[selected - 1][3], 
                             text = menu_configuration[selected - 1][0], zero = menu_configuration[selected - 1][6])
                     if tmp != 'escape':
                         menu_configuration[selected - 1][1] = tmp
-                        if key_press in ('events', 'path_google_drive'):
+                        if key_press in ('events', 'path_google_drive', 'gallery_password'):
                             config_camera[key_press] = tmp
                         else:
                             if not os.path.exists(tmp):
@@ -6361,10 +6361,13 @@ class Screen(pygame.Surface):
         Choose Game Type : Local - Network
         '''
         selected = 1
+        # Gallery of the memories (see cgallery) when a webcam is set up
+        gallery = not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')) and self.camera.camera_id != '-1'
         if bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
             nb_elements = 3
         else:
-            nb_elements = 7
+            nb_elements = 8 if gallery else 7
+        desktop = 7 if gallery else 6
 
         #self.dmd.send_text(self.lang.translate('Welcome') + "!")
         self.dmd.send_text('Raspydarts')
@@ -6405,12 +6408,16 @@ class Screen(pygame.Surface):
                         BTN_CHOICE, None), exit=False)
             ### FIN TROPHEES
 
+            if gallery:
+                click_zones['F6'] = self.menu_item((6, nb_elements, selected), ("F6", "gallery", \
+                        BTN_CHOICE, None), exit=False)
+
             if not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
                 # Back to desktop
-                click_zones['F12'] = self.menu_item((6, nb_elements, selected), ("F12", "back-to-desktop", BTN_CHOICE, None), space=1.5, exit=False)
+                click_zones['F12'] = self.menu_item((desktop, nb_elements, selected), ("F12", "back-to-desktop", BTN_CHOICE, None), space=1.5, exit=False)
 
                 # Exit
-                click_zones['escape'] = self.menu_item((7, nb_elements, selected), ("ESC", "exit", BTN_CHOICE, None), space=2, exit=False)
+                click_zones['escape'] = self.menu_item((desktop + 1, nb_elements, selected), ("ESC", "exit", BTN_CHOICE, None), space=2, exit=False)
 
                 ################
             # Update screen
@@ -6436,9 +6443,11 @@ class Screen(pygame.Surface):
             if key in ENTER_KEYS :    # First position please, because eventually construct F1, F2 or F3
                 if selected == 5:
                     key = 'F5'
-                elif selected == 6:
+                elif gallery and selected == 6:
+                    key = 'F6'
+                elif selected == desktop:
                     key = 'F12'
-                elif selected == 7:
+                elif selected == desktop + 1:
                     key = 'escape'
                 else:
                     key = f'F{selected}'
@@ -6460,6 +6469,9 @@ class Screen(pygame.Surface):
                 return 'trophees'
             #### FIN TROPHEES
 
+            if key == 'F6' and gallery:
+                return 'gallery'
+
             if key == 'F9':
                 return 'infos'
 
@@ -6477,6 +6489,33 @@ class Screen(pygame.Surface):
                 response = self.wait_validation(self.lang.translate('realy-stop'))
                 if response:
                     return 'shutdown'
+
+    def gallery_menu(self):
+        '''
+        QR code of the gallery of the memories (see cgallery). Any key goes back
+        '''
+        from include import cgallery
+        import qrcode
+        # From the configuration : the setup menu of the webcam may just have changed it
+        password = str(self.config.config.get('Camera', {}).get('gallery_password', '')).strip()
+        url = cgallery.address(cgallery.local_ip(), password=password)
+        picture = qrcode.make(url)
+        picture = (picture.get_image() if hasattr(picture, 'get_image') else picture).convert('RGB')
+        side = int(self.res['y'] * 0.55)
+        code = pygame.transform.scale(pygame.image.fromstring(picture.tobytes(), picture.size, 'RGB'), (side, side))
+
+        self.display_background()
+        self.menu_header(self.lang.translate('gallery'), self.lang.translate('gallery-scan'))
+        pos_y = int(self.res['y'] / 5)
+        self.blit(code, (int((self.res['x'] - side) / 2), pos_y))
+        pos_y += side + self.margin * 2
+        line = int(self.res['y'] / 18)
+        self.blit_text(url.split('?')[0], 0, pos_y, self.res['x'], line, self.colorset['menu-text-white'])
+        if not password:
+            self.blit_text(self.lang.translate('gallery-no-password'), 0, pos_y + line, self.res['x'], line, self.colorset['menu-ko'])
+        self.update_screen()
+        self.rpi.listen_inputs(['arrows', 'fx', 'alpha', 'num', 'math'],
+                               ['escape', 'enter', 'space', 'PLAYERBUTTON', 'BACKUPBUTTON', 'GAMEBUTTON', 'single-click'])
 
     def extract_version(self, file_name):
         '''

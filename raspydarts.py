@@ -227,6 +227,7 @@ from include import clocale
 from include import cclient
 from include import cscores
 from include import ccamera
+from include import cgallery
 
 # Create locale instance
 Lang = clocale.Locale(logs, Config)
@@ -295,6 +296,9 @@ if rpi_error is not None:
 
 # Manage Webcam USB
 camera = ccamera.Camera(Config, display, logs)
+# Gallery of the memories on the local network : its own service, kept when the game stops
+if camera.camera_id != '-1':
+    cgallery.ensure_running(logs)
 
 # Client of Master Server
 NetMasterClient = cclient.MasterClient(logs)
@@ -641,6 +645,8 @@ try:
                             
                 elif game_type == 'infos':
                     display.infos_menu(Config)
+                elif game_type == 'gallery':
+                    display.gallery_menu()
                 elif game_type != 'miscellaneous':
                     menu = 'players'
             elif menu == 'gametype' and fast_games_mode :

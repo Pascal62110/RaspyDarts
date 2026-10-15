@@ -223,7 +223,9 @@ DefaultConfig['Camera'] = {
     'upload_cloud': '0',
     'path_google_drive': '',
     'fullscreen_pop': '0',
-    'duree_ms': '5000'
+    'duree_ms': '5000',
+    # Gallery of the memories on the local network (see cgallery) : empty, no password
+    'gallery_password': ''
     }
 # A deplacer dans un fichier yaml
 #

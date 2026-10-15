@@ -388,6 +388,8 @@ class Camera:
         self.theme = str(config.get_value('SectionGlobals', 'colorset'))
         # The game records all along a game ; the setup menu only while it is shown
         self.user = 'setup' if show_in_parametrage else 'game'
+        # (date, game) of the last memory taken : QR code of the gallery at the end
+        self.last_partie = None
         self.preview = None
         self.preview_time = 0
         self.preview_mtime = 0
@@ -434,6 +436,7 @@ class Camera:
         self.upload_cloud = bool(config_camera['upload_cloud'] == '1')
         self.fullscreen = bool(config_camera['fullscreen_pop'] == '1')
         self.duree = int(config_camera['duree_ms'])
+        self.gallery_password = str(config_camera.get('gallery_password', '')).strip()
         # Photos and clips come from the same recording : the size of the videos (the one
         # the setup menu offers) is used for both
         flips = tuple(f for f, wanted in (('hflip', self.flip_horizontal), ('vflip', self.flip_vertical)) if wanted)
@@ -488,6 +491,7 @@ class Camera:
         '''
         try:
             RECORDER.game += 1
+            self.last_partie = None
             if self.is_connected() and self.choice_of_memories != 0:
                 RECORDER.need('game', self.record_settings, self.logs)
         except Exception as ex:
@@ -824,6 +828,7 @@ class Camera:
         Here we take a shot in thread mode : the picture of this moment is read now
         '''
         try:
+            self.last_partie = (datetime.datetime.now().strftime("%d_%m_%Y"), game)
             first = self.read_last_picture()
             threading.Thread(target=self.take_a_shot, args=(start_stop, game, picture_name, first), daemon=True).start()
         except Exception as ex:
@@ -926,6 +931,7 @@ class Camera:
         Here we take a video in thread mode : the moment is the one of the call
         '''
         try:
+            self.last_partie = (datetime.datetime.now().strftime("%d_%m_%Y"), game)
             threading.Thread(target=self.take_a_video, args=(None, False, game, video_name, time.time()), daemon=True).start()
         except Exception as ex:
             self.logs.error(f"Error in ccamera take_video() : {ex}")
@@ -1071,6 +1077,13 @@ class Camera:
                         qrPop = self._uploadToGoogleDrive.get_qrcode_to_new_google_drive_folder()
                         if qrPop is not None:
                             self.show_qr_popup(qrPop)
+                elif self.last_partie is not None:
+                    # The page of this game in the gallery of the borne (see cgallery)
+                    from include import cgallery
+                    import qrcode
+                    url = cgallery.address(cgallery.local_ip(), cgallery.partie_id(*self.last_partie), self.gallery_password)
+                    picture = qrcode.make(url)
+                    self.show_qr_popup(picture.get_image() if hasattr(picture, 'get_image') else picture)
                         
             except Exception as ex:
                 self.logs.error(f"Error in ccamera show_qr_code() : {ex}") 

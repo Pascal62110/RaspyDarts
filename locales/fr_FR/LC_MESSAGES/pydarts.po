@@ -802,6 +802,18 @@ msgstr "Afficher les souvenirs au milieu de l'écran"
 msgid "duree_ms"
 msgstr "Durée de l'affichage des photos"
 
+msgid "gallery"
+msgstr "Galerie"
+
+msgid "gallery_password"
+msgstr "Mot de passe de la galerie (vide : aucun)"
+
+msgid "gallery-scan"
+msgstr "Scannez pour voir, télécharger, imprimer ou supprimer les photos et vidéos des parties"
+
+msgid "gallery-no-password"
+msgstr "Aucun mot de passe : n'importe qui sur le réseau peut supprimer les souvenirs"
+
 ######## MESSAGES ########
 
 msgid "Loading logos..."

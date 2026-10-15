@@ -3151,3 +3151,15 @@ msgstr "Redémarrage du jeu"
 msgid "news"
 msgstr "Nouveautés"
 
+msgid "gallery"
+msgstr "Galleria"
+
+msgid "gallery_password"
+msgstr "Password della galleria (vuota : nessuna)"
+
+msgid "gallery-scan"
+msgstr "Scansiona per vedere, scaricare, stampare o cancellare le foto e i video delle partite"
+
+msgid "gallery-no-password"
+msgstr "Nessuna password : chiunque sulla rete può cancellare i ricordi"
+

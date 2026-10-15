@@ -460,3 +460,16 @@ msgstr "Reached Score"
 
 msgid "Hits"
 msgstr "Hits"
+
+msgid "gallery"
+msgstr "Galerie"
+
+msgid "gallery_password"
+msgstr "Passwort der Galerie (leer : keins)"
+
+msgid "gallery-scan"
+msgstr "Scannen, um die Fotos und Videos der Spiele anzusehen, herunterzuladen, zu drucken oder zu löschen"
+
+msgid "gallery-no-password"
+msgstr "Kein Passwort : jeder im Netzwerk kann die Erinnerungen löschen"
+
