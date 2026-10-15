@@ -33,7 +33,8 @@ AlternateConfig = {}
 #    'solo': 2000,
 DefaultConfig['SectionGlobals'] = {
     'locale': 'fr_FR',
-    'colorset': 'clear',
+    # Theme of the example configuration (~/.raspydarts/themes/remi) ; clear if missing
+    'colorset': 'remi',
     'font': 'Fabrik.ttf',
     'soundvolume': 100,
     'videos': 2,

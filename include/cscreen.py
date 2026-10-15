@@ -891,6 +891,20 @@ class Screen(pygame.Surface):
 
     def get_rpi_config(self):
         '''
+        1st execution : the wizard, on the background of the desktop whatever the theme
+        '''
+        background, bg_global = self.background, self.colorset.get('bg-global')
+        self.background = os.path.join(cpaths.ROOT_DIR, 'images', 'background_clear.png')
+        self.colorset['bg-global'] = None
+        self.reset_background()
+        try:
+            return self.wizard()
+        finally:
+            self.background = background
+            self.colorset['bg-global'] = bg_global
+
+    def wizard(self):
+        '''
         1st execution : get configuration
         '''
         self.logs.info(f"Lauch target's setup wizard")
@@ -9125,6 +9139,22 @@ class Screen(pygame.Surface):
                          f"{self.lang.translate('press-on-parts')} - {self.lang.translate('left')} : {len(segments) - current}")
         self.update_screen()
 
+    def draw_sector(self, angle_index, radius_out, width, color, center=True):
+        '''
+        A ring sector of the target, filled : pygame.draw.arc with a thick width left holes.
+        From radius_out inward on width, as the arcs it replaces
+        '''
+        center_x = self.res['x'] / (2 if center else 4)
+        center_y = self.res['y'] / 2
+        start = math.radians(18 * 6.5 - 18 * (angle_index + 1))
+        end = math.radians(18 * 6.5 - 18 * angle_index)
+        steps = 12
+        angles = [start + (end - start) * step / steps for step in range(steps + 1)]
+        points = [(center_x + radius_out * math.cos(a), center_y - radius_out * math.sin(a)) for a in angles]
+        radius_in = radius_out - width
+        points += [(center_x + radius_in * math.cos(a), center_y - radius_in * math.sin(a)) for a in reversed(angles)]
+        pygame.draw.polygon(self.screen, color, points)
+
     def draw_triple(self, angle_index, color=None, center=True):
         '''
         Draw triples
@@ -9133,16 +9163,7 @@ class Screen(pygame.Surface):
         radius_triple_out = int(min(self.res['y'], self.res['x']) / 5.3)
         width_triple = min(int(self.res['y'] / 38), int(self.res['x'] / 38))
 
-        if center:
-            div = 2
-        else:
-            div = 4
-
-        arc_rect = (self.res['x'] / div - radius_triple_out, self.res['y'] / 2 - radius_triple_out,
-                radius_triple_out * 2, radius_triple_out * 2)
-
-        pygame.draw.arc(self.screen, color, arc_rect, math.radians(18 * 6.5 - 18 * (angle_index + 1)),
-                    math.radians(18 * 6.5 - 18 * angle_index), width_triple)
+        self.draw_sector(angle_index, radius_triple_out, width_triple, color, center)
 
     def draw_missed(self, color=None, center=True):
         '''
@@ -9170,16 +9191,7 @@ class Screen(pygame.Surface):
 
         radius_double_out = int(min(self.res['y'], self.res['x']) / 3.3)
         width_double = min(int(self.res['y'] / 35), int(self.res['x'] / 35))
-        if center:
-            div = 2
-        else:
-            div = 4
-
-        arc_rect = (self.res['x'] / div - radius_double_out, self.res['y'] / 2 - radius_double_out,
-                radius_double_out * 2, radius_double_out * 2)
-
-        pygame.draw.arc(self.screen, color, arc_rect, math.radians(18 * 6.5 - 18 * (angle_index + 1)),
-                        math.radians(18 * 6.5 - 18 * angle_index), width_double)
+        self.draw_sector(angle_index, radius_double_out, width_double, color, center)
 
     def draw_exterior_simple(self, angle_index, color=None, center=True):
         '''
@@ -9191,16 +9203,7 @@ class Screen(pygame.Surface):
         radius_double_in = int(min(self.res['y'], self.res['x']) / 3.65)
         width_simple1 = min(int(self.res['y'] / 12), int(self.res['x'] / 12))
 
-        if center:
-            div = 2
-        else:
-            div = 4
-
-        arc_rect1 = (self.res['x'] / div - radius_double_in, self.res['y'] / 2 - radius_double_in,
-                    radius_double_in * 2, radius_double_in * 2)
-
-        pygame.draw.arc(self.screen, color, arc_rect1, math.radians(18 * 6.5 - 18 * (angle_index + 1)),
-                        math.radians(18 * 6.5 - 18 * angle_index), width_simple1)
+        self.draw_sector(angle_index, radius_double_in, width_simple1, color, center)
 
     def draw_interior_simple(self, angle_index, color=None, center=True):
         '''
@@ -9212,16 +9215,7 @@ class Screen(pygame.Surface):
         radius_triple_in = int(min(self.res['y'], self.res['x']) / 6.2)
         width_simple2 = min(int(self.res['y'] / 8.7), int(self.res['x'] / 8.7))
 
-        if center:
-            div = 2
-        else:
-            div = 4
-
-        arc_rect2 = (self.res['x'] / div - radius_triple_in , self.res['y'] / 2 - radius_triple_in,
-                    radius_triple_in * 2, radius_triple_in * 2)
-
-        pygame.draw.arc(self.screen, color, arc_rect2, math.radians(18 * 6.5 - 18 * (angle_index + 1)),
-                        math.radians(18 * 6.5 - 18 * angle_index), width_simple2)
+        self.draw_sector(angle_index, radius_triple_in, width_simple2, color, center)
 
     def draw_bull(self, simple=False, double=False, color=None, center=True):
         '''
@@ -9248,8 +9242,7 @@ class Screen(pygame.Surface):
             pygame.draw.circle(self.screen, color, (center_x, int(self.res['y'] / 2)), \
                     radius_center_out, width_simple)
         if double:
-            pygame.draw.circle(self.screen, color, (center_x, int(self.res['y'] / 2)), \
-                    radius_center_in, width_double)
+            pygame.draw.circle(self.screen, color, (center_x, int(self.res['y'] / 2)), radius_center_in)
 
     def draw_background(self, center=True):
         '''

@@ -440,6 +440,10 @@ class Craspberry():
         """
         for key in conf_keys:
             self.keys[conf_keys[key]] = key
+        # Saved with the configuration (the calibration of the wizard was lost)
+        if 'SectionKeys' not in self.config.config:
+            self.config.config['SectionKeys'] = self.config.init_section('SectionKeys')
+        self.config.set_config('SectionKeys', conf_keys)
 
     def set_inputs_conf(self, conf_inputs):
         """
