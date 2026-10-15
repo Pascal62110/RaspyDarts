@@ -940,6 +940,10 @@ try:
                         players_bank = bank[::]
                     rpi.light_toys(['LIGHT_PLAYERS'], False)
 
+                elif menu == 'exhibition':
+                    # EXHIBITION MODE : on or off, buttons of the main menu shown
+                    display.exhibition_menu()
+
                 elif menu == 'backups':
                     # BACKUP MENU
                     dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])

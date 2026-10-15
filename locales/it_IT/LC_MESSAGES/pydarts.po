@@ -3244,3 +3244,9 @@ msgstr "Password della galleria:"
 msgid "gallery-back"
 msgstr "Indietro"
 
+msgid "exhibition"
+msgstr "Modalità esposizione"
+
+msgid "exhibition-sub"
+msgstr "Pulsanti del menu principale visibili in modalità esposizione"
+

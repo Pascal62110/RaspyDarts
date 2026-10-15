@@ -2790,3 +2790,9 @@ msgstr "Gallery password:"
 msgid "gallery-back"
 msgstr "Back"
 
+msgid "exhibition"
+msgstr "Exhibition mode"
+
+msgid "exhibition-sub"
+msgstr "Buttons of the main menu shown in exhibition mode"
+

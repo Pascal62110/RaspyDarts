@@ -5148,7 +5148,7 @@ class Screen(pygame.Surface):
         '''
         Miscellaneous
         '''
-        nb_elements = 8
+        nb_elements = 9
         selected = self.selected_menu.get('miscellaneous', 1)
 
         self.dmd.send_text(f"{self.lang.translate('parameters')}")
@@ -5195,6 +5195,9 @@ class Screen(pygame.Surface):
 
             click_zones['F8'] = self.menu_item((8, nb_elements, selected), ("F8", "backups", BTN_CHOICE, None), exit=False)
             shortcuts['F8'] = 'backups'
+
+            click_zones['F9'] = self.menu_item((9, nb_elements, selected), ("F9", "exhibition", BTN_CHOICE, None), exit=False)
+            shortcuts['F9'] = 'exhibition'
 
             # go back and next
             click_zones['escape'] = self.display_button(nb_elements + 1 == selected, 'back', special='escape')
@@ -5889,7 +5892,8 @@ class Screen(pygame.Surface):
             zero = False
 
             if option in ('startpercent', 'nbcol', 'resx', 'resy', 
-                    'masterserver', 'endgamestats', 'videosound_multiplier', 'pnj_time'):
+                    'masterserver', 'endgamestats', 'videosound_multiplier', 'pnj_time',
+                    'exhibition_mode', 'exhibition_items'):
                 avoid.append([option, customization[option], '', 0, []])
                 continue
 
@@ -6337,24 +6341,35 @@ class Screen(pygame.Surface):
             if key is not False:
                 break
 
+    # Buttons of the main menu : (name, shortcut, text, space before). The names are the
+    # ones of exhibition_items, the shortcuts what main_menu returns them as
+    MAIN_MENU = [('local', 'F1', 'game-type-local', 0), ('netjoin', 'F2', 'game-type-master', 0),
+                 ('netcreate', 'F3', 'game-type-manual', 0), ('miscellaneous', 'F4', 'miscellaneous', 0),
+                 ('trophees', 'F5', 'trophees', 0), ('gallery', 'F6', 'gallery', 0),
+                 ('quit', 'F12', 'back-to-desktop', 1.5), ('shutdown', 'escape', 'exit', 2)]
+
+    def main_menu_items(self):
+        '''
+        Buttons shown : all of them, or those chosen for the exhibition mode
+        '''
+        if not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
+            return list(self.MAIN_MENU)
+        chosen = str(self.config.get_value('SectionGlobals', 'exhibition_items', False) or '').split(',')
+        # Nothing chosen : a game can be played all the same
+        return [item for item in self.MAIN_MENU if item[0] in chosen] or self.MAIN_MENU[:1]
+
     def main_menu(self):
         '''
-        Choose Game Type : Local - Network
+        Choose Game Type : Local - Network. The keyboard shortcuts work even for the
+        buttons hidden in exhibition mode (F4 : the settings, to leave this mode)
         '''
         selected = 1
-        # Gallery of the memories (see cgallery) when a webcam is set up
-        # (also before a webcam is set up : it says there are no memories yet)
-        gallery = not bool(self.config.get_value('SectionGlobals', 'exhibition_mode'))
-        if bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
-            nb_elements = 3
-        else:
-            nb_elements = 8 if gallery else 7
-        desktop = 7 if gallery else 6
 
         #self.dmd.send_text(self.lang.translate('Welcome') + "!")
         self.dmd.send_text('Raspydarts')
-        refresh = True
         while True:
+            items = self.main_menu_items()
+            nb_elements = len(items)
 
             if self.rpi.banned_gpio is not None:
                 self.message([f'Button {self.rpi.banned_gpio} (GPIO) is banned.'], color=(189, 108, 109), size='big')
@@ -6368,46 +6383,12 @@ class Screen(pygame.Surface):
             # Titles
             self.menu_header(self.lang.translate('game-type-menu'))
 
-            # Local game type
-            click_zones['F1'] = self.menu_item((1, nb_elements, selected), ("F1", "game-type-local", \
-                    BTN_CHOICE, None), exit=False)
+            for index, (_name, shortcut, text, space) in enumerate(items, 1):
+                label = 'ESC' if shortcut == 'escape' else shortcut
+                click_zones[shortcut] = self.menu_item((index, nb_elements, selected), (label, text, BTN_CHOICE, None),
+                                                       space=space, exit=False)
 
-            # Join network game
-            click_zones['F2'] = self.menu_item((2, nb_elements, selected), ("F2", "game-type-master", \
-                    BTN_CHOICE, None), exit=False)
-
-            # Create network game
-            click_zones['F3'] = self.menu_item((3, nb_elements, selected), ("F3", "game-type-manual", \
-                    BTN_CHOICE, None), exit=False)
-
-            # Preferences menu
-            if not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
-                click_zones['F4'] = self.menu_item((4, nb_elements, selected), ("F4", "miscellaneous", \
-                        BTN_CHOICE, None), exit=False)
-
-            #### AJOUT TROPHEES
-            click_zones['F5'] = self.menu_item((5, nb_elements, selected), ("F5", "trophees", \
-                        BTN_CHOICE, None), exit=False)
-            ### FIN TROPHEES
-
-            if gallery:
-                click_zones['F6'] = self.menu_item((6, nb_elements, selected), ("F6", "gallery", \
-                        BTN_CHOICE, None), exit=False)
-
-            if not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
-                # Back to desktop
-                click_zones['F12'] = self.menu_item((desktop, nb_elements, selected), ("F12", "back-to-desktop", BTN_CHOICE, None), space=1.5, exit=False)
-
-                # Exit
-                click_zones['escape'] = self.menu_item((desktop + 1, nb_elements, selected), ("ESC", "exit", BTN_CHOICE, None), space=2, exit=False)
-
-                ################
-            # Update screen
-            if refresh or True:
-                self.update_screen()
-                refresh = False
-            else:
-                self.update_screen(rect_array=[click_zones[click_zone] for click_zone in click_zones])
+            self.update_screen()
 
             key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha', 'math'],
                ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON',
@@ -6422,17 +6403,8 @@ class Screen(pygame.Surface):
             selected = self.navigate(selected, key, nb_elements, 0, 0)
 
             # Keyboard cases
-            if key in ENTER_KEYS :    # First position please, because eventually construct F1, F2 or F3
-                if selected == 5:
-                    key = 'F5'
-                elif gallery and selected == 6:
-                    key = 'F6'
-                elif selected == desktop:
-                    key = 'F12'
-                elif selected == desktop + 1:
-                    key = 'escape'
-                else:
-                    key = f'F{selected}'
+            if key in ENTER_KEYS and 1 <= selected <= nb_elements:
+                key = items[selected - 1][1]
 
             if key == 'F1':
                 return 'local'
@@ -6445,13 +6417,11 @@ class Screen(pygame.Surface):
 
             if key == 'F4':
                 return 'miscellaneous'
-                
-            ### AJOUT TROPHEES
+
             if key == 'F5':
                 return 'trophees'
-            #### FIN TROPHEES
 
-            if key == 'F6' and gallery:
+            if key == 'F6':
                 return 'gallery'
 
             if key == 'F9':
@@ -6462,7 +6432,7 @@ class Screen(pygame.Surface):
 
             if key == 'F12':
                 return 'quit'
-              
+
             if key in ESCAPE_KEYS :
                 key = 'escape'
 
@@ -6471,6 +6441,54 @@ class Screen(pygame.Surface):
                 response = self.wait_validation(self.lang.translate('realy-stop'))
                 if response:
                     return 'shutdown'
+
+    def exhibition_menu(self):
+        '''
+        Exhibition mode : on or off, and the buttons of the main menu it shows
+        '''
+        globals_ = self.config.config['SectionGlobals']
+        active = bool(self.config.get_value('SectionGlobals', 'exhibition_mode'))
+        chosen = set(str(globals_.get('exhibition_items', '') or '').split(','))
+        rows = [('exhibition_mode', 'exhibition_mode')] + [(name, text) for name, _s, text, _sp in self.MAIN_MENU]
+        nb_elements = len(rows)
+        selected = 1
+        while True:
+            click_zones = {}
+            self.display_background()
+            self.menu_header(self.lang.translate('exhibition'), self.lang.translate('exhibition-sub'))
+            for index, (name, text) in enumerate(rows, 1):
+                value = active if name == 'exhibition_mode' else name in chosen
+                click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), (f'F{index}', text, BTN_CHECK, value),
+                                                          align='Left', exit=False)
+            click_zones['escape'] = self.display_button(nb_elements + 1 == selected, 'back', special='escape')
+            click_zones['save'] = self.display_button(nb_elements + 2 == selected, 'save', special='return')
+            self.update_screen()
+
+            key = self.rpi.listen_inputs(['arrows', 'fx'], ['escape', 'enter', 'space', 'single-click',
+                                                            'PLAYERBUTTON', 'BACKUPBUTTON', 'GAMEBUTTON'])
+            clicked = self.is_clicked(click_zones, key)
+            if clicked:
+                key = clicked
+            selected = self.navigate(selected, key, nb_elements, 1, 2)
+
+            if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
+                return
+            if key in SAVE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 2):
+                globals_['exhibition_mode'] = active
+                globals_['exhibition_items'] = ','.join(name for name, _s, _t, _sp in self.MAIN_MENU if name in chosen)
+                self.config.write_file()
+                return
+            if isinstance(key, str) and key.startswith('F') and key[1:].isdigit() and 1 <= int(key[1:]) <= nb_elements:
+                selected = int(key[1:])
+                key = 'enter'
+            if (key in ENTER_KEYS or key == 'space') and 1 <= selected <= nb_elements:
+                name = rows[selected - 1][0]
+                if name == 'exhibition_mode':
+                    active = not active
+                elif name in chosen:
+                    chosen.discard(name)
+                else:
+                    chosen.add(name)
 
     def gallery_menu(self):
         '''

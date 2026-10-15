@@ -560,3 +560,9 @@ msgstr "Contraseña de la galería:"
 msgid "gallery-back"
 msgstr "Volver"
 
+msgid "exhibition"
+msgstr "Modo exposición"
+
+msgid "exhibition-sub"
+msgstr "Botones del menú principal visibles en modo exposición"
+

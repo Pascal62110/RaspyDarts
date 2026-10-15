@@ -3877,3 +3877,10 @@ msgstr "Conversion du jeu Yahtzee en Yahtzydarts."
 "\n" 
 "Options :\n"
 "- Vidéos : Affiche ou non les vidéos."
+
+msgid "exhibition"
+msgstr "Mode exposition"
+
+msgid "exhibition-sub"
+msgstr "Boutons du menu principal visibles en mode exposition"
+

@@ -58,6 +58,8 @@ DefaultConfig['SectionGlobals'] = {
     'netgamecreator': 'Raspydarts',
     'debuglevel': 0,
     'exhibition_mode': False,
+    # Buttons of the main menu shown in exhibition mode (see Screen.MAIN_MENU)
+    'exhibition_items': 'local,trophees,gallery',
     'competition_mode': False,
     'videosound_multiplier': 1,
     'sound_multiplier': 100, 
@@ -1183,6 +1185,8 @@ class Config:
         self.conf += f"waitevent_time:{Global['waitevent_time']}\n"
         self.conf += "### Exhibition mode\n"
         self.conf += f"exhibition_mode:{Global['exhibition_mode']}\n"
+        self.conf += "### Buttons of the main menu shown in exhibition mode\n"
+        self.conf += f"exhibition_items:{Global.get('exhibition_items', DefaultConfig['SectionGlobals']['exhibition_items'])}\n"
         self.conf += "### Competition mode\n"
         self.conf += f"competition_mode:{Global['competition_mode']}\n"
         self.conf += "### To adjust the volume of videos\n"
