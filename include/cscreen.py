@@ -6312,13 +6312,13 @@ class Screen(pygame.Surface):
     # Places of the buttons at the bottom of the menus (footer : see display_button)
     FOOTERS = {'left': 'escape', 'center': 'refresh', 'right': 'return'}
 
-    def run_menu(self, name, items, everything, hook=None):
+    def run_menu(self, name, items, everything, hook=None, initial=None):
         '''
         A menu of the files, drawn as a list of classic buttons (menu_item) and the buttons
         at its bottom (display_button) : returns the button chosen. items : buttons shown ;
-        everything : all those which have a shortcut (hidden ones too). The background, the
-        title and the informations are drawn once : moving only draws again the buttons
-        whose look changes
+        everything : all those which have a shortcut (hidden ones too) ; initial : id of the
+        button selected first. The background, the title and the informations are drawn
+        once : moving only draws again the buttons whose look changes
         '''
         menus = self.menus()
         menu = menus.menu(name)
@@ -6326,6 +6326,7 @@ class Screen(pygame.Surface):
         show_version = bool(menu.get('show_version'))
         info = [str(value) for value in cmenus.as_list(menu.get('info'))]
         remember = bool(menu.get('remember'))
+        layout = str(menu.get('layout') or 'list')
         keys = {direction: set(menus.keys(direction)) for direction in
                 ('up', 'down', 'left', 'right', 'next', 'previous', 'validate', 'back')}
         listed = [button for button in items if button.get('footer') not in self.FOOTERS]
@@ -6334,8 +6335,11 @@ class Screen(pygame.Surface):
         nb_listed = len(listed)
         nb_shown = len(shown)
         selected = self.selected_menu.get(name, 1) if remember else 1
+        if initial is not None:
+            selected = next((index for index, button in enumerate(shown, 1) if menus.button_id(button) == initial), selected)
         if not 1 <= selected <= nb_shown:
             selected = 1
+        dmd_sent = None
         full = True
         pristine = None
         rects = {}
@@ -6348,7 +6352,7 @@ class Screen(pygame.Surface):
 
         def look(index):
             # Selected or not (with 10 buttons or more, the corners of the neighbours change)
-            if index > nb_listed or nb_listed < 10:
+            if index > nb_listed or nb_listed < 10 or layout != 'list':
                 return index == selected
             return (index, selected)
 
@@ -6356,6 +6360,10 @@ class Screen(pygame.Surface):
             button = shown[index - 1]
             if index > nb_listed:
                 rects[index] = self.display_button(index == selected, self.button_text(button), self.FOOTERS[button['footer']])
+            elif layout == 'tiles':
+                # The tiles of always : the logo of each button, in a row (logo_item)
+                rects[index] = self.logo_item((index, nb_listed, selected), str(button.get('logo') or ''), nb_listed, 'Center',
+                                              limit_height=self.res['y'] / 3, menu=True)
             else:
                 rects[index] = self.menu_item((index, nb_listed, selected), (self.button_label(button), self.button_text(button),
                                               BTN_CHOICE, None), space=spaces[index - 1], exit=False)
@@ -6364,6 +6372,11 @@ class Screen(pygame.Surface):
         while True:
             if hook is not None and hook():
                 full = True
+            # Text of the selected button on the DMD
+            dmd = shown[selected - 1].get('dmd') if 1 <= selected <= nb_shown else None
+            if dmd and dmd != dmd_sent:
+                self.dmd.send_text(self.lang.translate(str(dmd)))
+                dmd_sent = dmd
             if full:
                 # Background, title and informations : drawn once, then kept from one display
                 # to the next (copying the whole screen each time made the return slower)
@@ -6641,91 +6654,18 @@ class Screen(pygame.Surface):
 
     def game_category_menu(self, favorites, category=None, load=False):
         '''
-        Menu which display a table to choose the category of the game
+        Menu which display a table to choose the category of the game : described by the
+        files of menus (menus/defaults.yaml...). Favorites : only if there are favorite games
         '''
-        categories = ['classic', 'fun', 'sport', 'favoris']
-        if category is None:
-            selected = 1
-        else:
-            selected = 1 + categories.index(category)
-
-        shortcuts = []
-        shortcuts.append('F1')
-        shortcuts.append('F2')
-        shortcuts.append('F3')
-        shortcuts.append('F4')
-        if favorites:
-            nb_elements = 4
-        else:
-            nb_elements = 3
-
-        refresh = True
-
-        while True:
-            if selected == 1 and not load:
-                self.dmd.send_text(self.lang.translate('dmd-game-classic'))
-            elif selected == 2 and not load:
-                self.dmd.send_text(self.lang.translate('dmd-game-fun'))
-            elif selected == 3 and not load:
-                self.dmd.send_text(self.lang.translate('dmd-game-sport'))
-            elif favorites and not load:
-                self.dmd.send_text(self.lang.translate('dmd-game-favorites'))
-            click_zones = {}
-            if not load:
-                # Draw background
-                self.display_background()
-
-                # Screen Titles
-                self.menu_header(self.lang.translate('game-cat'))
-
-            click_zones['F1'] = self.logo_item((1, nb_elements, selected), 'menu_classic', nb_elements, 'Center', limit_height=self.res['y'] / 3, menu=True)
-            click_zones['F2'] = self.logo_item((2, nb_elements, selected), 'menu_fun', nb_elements, 'Center', limit_height=self.res['y'] / 3, menu=True)
-            click_zones['F3'] = self.logo_item((3, nb_elements, selected), 'menu_sport', nb_elements, 'Center', limit_height=self.res['y'] / 3, menu=True)
-
-            if load:
-                return
-
-            if favorites:
-                click_zones['F4'] = self.logo_item((4, nb_elements, selected), 'menu_favoris', nb_elements, 'Center', limit_height=self.res['y'] / 3, menu=True)
-
-            # Arrow to go back and next
-            if favorites:
-                click_zones['escape'] = self.display_button(5 == selected, 'back', special='escape')
-            else:
-                click_zones['escape'] = self.display_button(4 == selected, 'back', special='escape')
-
-            # Update screen
-            if refresh:
-                self.update_screen()
-                refresh = False
-            else:
-                self.update_screen(rect_array=[click_zones[click_zone] for click_zone in click_zones])
-
-            key = self.rpi.listen_inputs(
-                    ['arrows', 'fx', 'alpha', 'math'],
-                    ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON',
-                    'single-click', 'double-click', 'resize', 'VOLUME-UP', 'VOLUME-DOWN',
-                    'enter', 'space'],
-                    events=[(self.wait_event_time, 'EVENT', 'wait')])
-
-            # Click cases
-            clicked = self.is_clicked(click_zones, key)
-            if clicked:
-                if clicked in shortcuts:
-                    selected = int(clicked[1::])
-                    key = 'enter'
-                else:
-                    key = clicked
-
-            # Navigation menu
-            selected = self.navigate(selected, key, nb_elements, 1, 1, left_right=True)
-
-            # Keyboard cases
-            if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
-                return 'escape'
-
-            if key in ENTER_KEYS + SAVE_KEYS:
-                return categories[selected - 1]
+        if load:
+            return None
+        menus = self.menus()
+        everything = [button for button in menus.buttons('categories')
+                      if favorites or button.get('requires') != 'favorite_games']
+        buttons = [button for button in everything if button.get('visible', True) is not False]
+        initial = None if category is None else next((menus.button_id(button) for button in buttons
+                                                      if menus.result(button) == category), None)
+        return menus.result(self.run_menu('categories', buttons, everything, initial=initial))
 
     def game_menu(self, category, games_list, favorites, nb_player, selected_game=None, load=False):
         '''

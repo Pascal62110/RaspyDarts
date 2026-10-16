@@ -173,3 +173,34 @@ menus:
         text: back
         shortcut: escape
         footer: left
+
+  categories:
+    title: game-cat
+    layout: tiles
+    buttons:
+      - id: classic
+        action: category:classic
+        logo: menu_classic
+        shortcut: F1
+        dmd: dmd-game-classic
+      - id: fun
+        action: category:fun
+        logo: menu_fun
+        shortcut: F2
+        dmd: dmd-game-fun
+      - id: sport
+        action: category:sport
+        logo: menu_sport
+        shortcut: F3
+        dmd: dmd-game-sport
+      - id: favorites
+        action: category:favorites
+        logo: menu_favoris
+        shortcut: F4
+        dmd: dmd-game-favorites
+        requires: favorite_games
+      - id: back
+        action: back
+        text: back
+        shortcut: escape
+        footer: left

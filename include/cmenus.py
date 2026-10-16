@@ -53,7 +53,9 @@ ACTIONS = {
 }
 # Menus opened by the main loop : what it is given for each of them
 MENU_RESULTS = {'settings': 'setup'}
-ACTION_PREFIXES = ('menu:',)
+ACTION_PREFIXES = ('menu:', 'category:')
+# Categories of games : what the main loop is given (category:<name>)
+CATEGORY_RESULTS = {'favorites': 'favoris'}
 
 # Keys of the file (btn:..., dart:...) : names given by the inputs of the game
 BUTTON_KEYS = {'btn:up': 'BTN_UP', 'btn:down': 'BTN_DOWN', 'btn:left': 'BTN_LEFT', 'btn:right': 'BTN_RIGHT',
@@ -185,6 +187,9 @@ class Menus:
         if action.startswith('menu:'):
             menu = action[5:].split('/')[-1]
             return MENU_RESULTS.get(menu, menu)
+        if action.startswith('category:'):
+            category = action[9:]
+            return CATEGORY_RESULTS.get(category, category)
         return ACTIONS[action]
 
     def keys(self, name):

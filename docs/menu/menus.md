@@ -234,6 +234,9 @@ Propriétés d'un bouton :
 | `confirm` | texte d'une confirmation Oui/Non avant l'action |
 | `place` | placement libre (§7.5) ; sinon placé par la disposition du menu |
 | `footer` | bouton du bas de l'écran : `left`, `center` ou `right` (comme Retour, Enregistrer) |
+| `logo` | image du dossier `images/logos_menu` du thème (disposition `tiles` du style `classic`) ; un dossier de ce nom contenant plusieurs images : l'une d'elles au hasard |
+| `requires` | condition d'affichage : `favorite_games` (seulement s'il existe des jeux favoris) |
+| `dmd` | texte envoyé sur l'afficheur DMD quand le bouton est sélectionné |
 | `order` | rang dans l'ordre logique (§9), par défaut sa place dans la liste |
 | `space_before` | écart au-dessus (dispositions `list` et `grid`) |
 | `style`, et toute propriété de style | aspect de ce bouton seul |
