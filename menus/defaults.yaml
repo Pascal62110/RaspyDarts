@@ -204,3 +204,13 @@ menus:
         text: back
         shortcut: escape
         footer: left
+
+  # Screens which save a favorite (options of a game, button Favori) : their buttons come
+  # from the game (the favorites fav1 to fav9, then how the players are chosen)
+  favorite_save:
+    title: favorite-save
+    subtitle: favorite-save-sub
+
+  favorite_players:
+    title: favorite-players
+    subtitle: favorite-players-sub

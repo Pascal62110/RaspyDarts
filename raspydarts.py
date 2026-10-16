@@ -684,6 +684,45 @@ try:
                     display.menu_target = display.menus().target(start)
 
             ########
+            # FAVORITE (favorite:fav1 in the main menu) : its game at once, with its options and
+            # players (no players, list of games nor options)
+            ########
+            if menu == 'players' and game_type == 'local' and display.menu_target is not None                     and display.menu_target[0] == 'favorite':
+                name = display.menu_target[1]
+                display.menu_target = None
+                launch = display.favorite_launch(name, local_players)
+                menu = 'mainmenu' if skip_main else 'gametype'
+                if launch is not None:
+                    favorite, favorite_players = launch
+                    try:
+                        choosed_game = __import__(f"games.{favorite['category']}.{favorite['game']}", fromlist=["games"])
+                        allowed = getattr(choosed_game, 'check_players_allowed', lambda count: True)
+                        if not allowed(len(favorite_players)):
+                            display.message([f"{Lang.translate('bad-numberofplayers')}"], 2500, 'menu-ko', 'middle', 'big')
+                        else:
+                            Game = favorite['game'].replace('_', ' ')
+                            try:
+                                versionGame = choosed_game.VERSION
+                            except AttributeError:
+                                versionGame = ''
+                            # Options of the game, those of the favorite over them (the ones the
+                            # game does not know any more are left)
+                            game_options = dict(choosed_game.OPTIONS)
+                            game_options.update({option: value for option, value in favorite['options'].items()
+                                                 if option in game_options})
+                            local_players = favorite_players[:]
+                            players_count = len(local_players)
+                            nb_sets = int(Config.get_value('SectionAdvanced', 'nb_sets', False, None))
+                            selected_game = Game
+                            display.selectedgame = Game
+                            display.game_options = game_options
+                            logs.info(f"Favorite {name} : {Game}, players {local_players}")
+                            menu = True
+                    except Exception as error:    # pylint: disable=broad-except
+                        logs.error(f"Favorite {name} not started : {error}")
+                        display.message([Lang.translate('favorite-empty')], 2500, 'menu-ko', 'middle', 'big')
+
+            ########
             # PLAYERS NAMES
             ########
             if menu == 'players':
@@ -1176,7 +1215,8 @@ try:
                 game_options.update(config_game_options)
 
                 dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])
-                game_options = display.options_menu(game_options, Game.replace(' ', '_'), players_count, versionGame)
+                game_options = display.options_menu(game_options, Game.replace(' ', '_'), players_count, versionGame,
+                                                    players=local_players)
                 if game_options == 'escape':
                     # Straight to a game : its list was not shown, back to the players
                     target = display.menu_target if game_type == 'local' else None

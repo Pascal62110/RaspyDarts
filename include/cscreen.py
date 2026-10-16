@@ -42,6 +42,7 @@ from include import cpaths
 from include import ccamera
 from include import cmenus
 from include import cmenustyle
+from include import cfavorites
 
 try:
     from include import cqrcode
@@ -2608,6 +2609,9 @@ class Screen(pygame.Surface):
             pos_x = int(self.res['x'] / 8)
         elif special in ('tab2', 'refresh'):
             pos_x = int(self.res['x'] / 2 - width / 2)
+        elif special == 'favorite':
+            # Between the one of the middle and the one on the right
+            pos_x = int((self.res['x'] / 2 + width / 2 + self.res['x'] * 7 / 8 - width) / 2 - width / 2)
         #elif special == 'return':
         else:
             pos_x = int(self.res['x'] * 7 / 8 - width)
@@ -3467,6 +3471,11 @@ class Screen(pygame.Surface):
             border_size = 0
             padding = 0
             corners = self.compute_corners(item[0], item[1], item[2], collapsed)
+
+        if valid is False and item[0] != item[2]:
+            # Button which does nothing (empty favorite) : greyed
+            text_bg_color = self.colorset['menu-inactive']
+            text_text_color = value_text_color = (150, 150, 150)
 
         if value[2] == BTN_CHECK and value[3]:
             shortcut_bg_color = self.colorset['menu-ok']
@@ -6509,7 +6518,7 @@ class Screen(pygame.Surface):
         everything : all the buttons which can be shown (screen of the exhibition mode)
         '''
         menus = self.menus()
-        buttons = [button for button in menus.buttons('main') if button.get('visible', True) is not False]
+        buttons = [self.favorite_button(button) for button in menus.buttons('main') if button.get('visible', True) is not False]
         if everything or not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
             return buttons
         chosen = [name for name in str(self.config.get_value('SectionGlobals', 'exhibition_items', False) or '').split(',') if name]
@@ -6519,6 +6528,91 @@ class Screen(pygame.Surface):
             shown = [button for button in buttons if button.get('exhibition')]
         # Nothing chosen : a game can be played all the same
         return shown or buttons[:1]
+
+    def favorites(self):
+        '''
+        The favorites fav1, fav2... (section 13)
+        '''
+        if getattr(self, 'favorites_saved', None) is None:
+            self.favorites_saved = cfavorites.Favorites(self.logs)
+        return self.favorites_saved
+
+    def favorite_button(self, button):
+        '''
+        A button of the files : for a favorite (favorite:fav1), the text and the logo of its
+        game by default, unavailable (state disabled : greyed, does nothing) when it is empty
+        '''
+        action = str(button.get('action') or '')
+        if not action.startswith('favorite:'):
+            return button
+        name = action[9:]
+        favorite = self.favorites().get(name)
+        button = dict(button)
+        if favorite is None:
+            # Not 'disabled' : in a file, that is the look of the state disabled (section 7.2)
+            button['unavailable'] = True
+            number = name[3:] if name.startswith('fav') else name
+            button.setdefault('text', f"{self.lang.translate('favorite')} {number} : {self.lang.translate('favorite-empty')}")
+        else:
+            button.setdefault('text', favorite['game'].replace('_', ' '))
+            button.setdefault('logo', favorite['game'])
+            button['game_logo'] = self.file_class.get_full_filename(f"logos_menu/{favorite['game']}", 'images')
+        return button
+
+    def favorite_save(self, game, options, count, players):
+        '''
+        Screen of the options of a game : the game and its options saved as a favorite, with
+        the number of players and how they are chosen (section 13)
+        '''
+        favorites = self.favorites()
+        back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
+        slots = []
+        for number in range(1, cfavorites.SLOTS + 1):
+            name = f'fav{number}'
+            current = favorites.get(name)
+            what = current['game'].replace('_', ' ') if current else self.lang.translate('favorite-empty')
+            slots.append({'id': name, 'action': f'favorite:{name}', 'text': f"{number} : {what}", 'shortcut': f'F{number}'})
+        names = [str(player) for player in players or []]
+        modes = []
+        if names:
+            modes.append({'id': 'choose', 'action': 'favorite:choose', 'shortcut': 'F1',
+                          'text': f"{self.lang.translate('favorite-choose')} : {', '.join(names)}"})
+        modes.append({'id': 'generic', 'action': 'favorite:generic', 'shortcut': f'F{len(modes) + 1}',
+                      'text': self.lang.translate('favorite-generic')})
+        modes.append({'id': 'last', 'action': 'favorite:last', 'shortcut': f'F{len(modes) + 1}',
+                      'text': self.lang.translate('favorite-last')})
+        # Menus of their own (files of menus : favorite_save, favorite_players), not the look
+        # of the screen of the options
+        previous = self.current_look
+        self.current_look = None
+        try:
+            slot = self.run_menu('favorite_save', slots + [back], slots + [back])
+            if slot.get('id') == 'back':
+                return
+            mode = self.run_menu('favorite_players', modes + [back], modes + [back])
+            if mode.get('id') == 'back':
+                return
+            favorites.save(slot['id'], game, options, count, mode['id'], names)
+            self.message([f"{self.lang.translate('favorite-saved')} {slot['id'][3:]}"], 1500, None, 'middle', 'big')
+        except Exception as error:    # pylint: disable=broad-except
+            self.logs.error(f"Favorites : not saved ({error})")
+            self.message([self.lang.translate('favorite-not-saved')], 2500, 'menu-ko', 'middle', 'big')
+        finally:
+            self.current_look = previous
+
+    def favorite_launch(self, name, last_players):
+        '''
+        A favorite chosen in a menu : (favorite, players) to start its game at once, None if
+        it cannot (empty) or if the player gives up (the last players do not match)
+        '''
+        favorite = self.favorites().get(name)
+        if favorite is None:
+            self.message([self.lang.translate('favorite-empty')], 2000, 'menu-ko', 'middle', 'big')
+            return None
+        players, warning = cfavorites.Favorites.players_for(favorite, last_players, self.lang.translate('favorite-player'))
+        if warning and not self.wait_validation(self.lang.translate(f'favorite-{warning}')):
+            return None
+        return favorite, players
 
     def button_text(self, button):
         '''
@@ -6713,8 +6807,10 @@ class Screen(pygame.Surface):
                 rects[index] = self.logo_item((index, nb_listed, selected), str(button.get('logo') or ''), nb_listed, 'Center',
                                               limit_height=self.res['y'] / 3, menu=True)
             else:
+                # More than 8 buttons go up : under a subtitle, one line lower (tabs)
                 rects[index] = self.menu_item((index, nb_listed, selected), (self.button_label(button, menu), self.button_text(button),
-                                              BTN_CHOICE, None), space=spaces[index - 1], exit=False)
+                                              BTN_CHOICE, None), space=spaces[index - 1], exit=False,
+                                              valid=not button.get('unavailable'), tabs=bool(subtitle) and nb_listed > 8)
             drawn[index] = look(index)
 
         while True:
@@ -6790,7 +6886,7 @@ class Screen(pygame.Surface):
                 pressed = 'escape' if key in keys['back'] else key
                 button = next((button for button in everything
                                if pressed in [cmenus.key_name(k) for k in cmenus.as_list(button.get('shortcut'))]), None)
-            if button is None:
+            if button is None or button.get('unavailable'):
                 continue
             # The selection kept is the one of a button of the list (not Back at the bottom)
             if remember and button in listed:
@@ -6959,7 +7055,7 @@ class Screen(pygame.Surface):
         def state(index):
             if index == selected:
                 return 'selected'
-            return 'disabled' if listed[index - 1].get('disabled') else 'normal'
+            return 'disabled' if listed[index - 1].get('unavailable') else 'normal'
 
         def draw(index):
             if index > nb_listed:
@@ -6996,7 +7092,7 @@ class Screen(pygame.Surface):
             patch = pristine.subsurface(target).copy()
             painter.draw_button(patch, rect.move(-target.x, -target.y), styles[index - 1],
                                 self.lang.translate(self.button_text(button)) if button.get('text', True) is not None else '',
-                                button.get('icon') if isinstance(button.get('icon'), str) else None, look, units,
+                                button.get('icon') if isinstance(button.get('icon'), str) else button.get('game_logo'), look, units,
                                 shortcut=self.button_label(button, menu), shortcuts=shortcuts)
             return patch
 
@@ -7067,7 +7163,7 @@ class Screen(pygame.Surface):
                     # of the buttons drawn now, unseen (the first move took up to 240 ms)
                     for index in rects:
                         for look in ('selected', 'normal'):
-                            if not listed[index - 1].get('disabled'):
+                            if not listed[index - 1].get('unavailable'):
                                 composed(index, look)
             else:
                 changed = [index for index in drawn if looks.get(index) != (state(index) if index <= nb_listed else index == selected)]
@@ -7121,7 +7217,7 @@ class Screen(pygame.Surface):
                                if pressed in [cmenus.key_name(k) for k in cmenus.as_list(button.get('shortcut'))]), None)
             if button is None:
                 continue
-            if button in listed and button.get('disabled'):
+            if button.get('unavailable'):
                 continue
             if button in listed and listed.index(button) + 1 in drawn:
                 # Pressed : seen for a moment
@@ -7167,7 +7263,8 @@ class Screen(pygame.Surface):
                 shown = True
             return shown
 
-        button = self.run_menu('main', self.main_menu_items(), menus.buttons('main'), hook=banned)
+        button = self.run_menu('main', self.main_menu_items(), [self.favorite_button(button) for button in menus.buttons('main')],
+                               hook=banned)
         # A button going straight to a game or to the games of a category : a local game,
         # whose players are chosen first
         self.menu_target = menus.target(button.get('action'))
@@ -7870,9 +7967,9 @@ class Screen(pygame.Surface):
         return pygame.Rect(box_pos_x, box_pos_y, box_width, box_height + 1)
 
     @with_look('options')
-    def options_menu(self, game_options, game, number_of_players, versionGame = '', max_players = 12):
+    def options_menu(self, game_options, game, number_of_players, versionGame = '', max_players = 12, players=None):
         '''
-        Game options menu
+        Game options menu. players : those chosen (saved with a favorite)
         '''
         self.logs.debug("Waiting for game options")
 
@@ -7892,7 +7989,8 @@ class Screen(pygame.Surface):
             teaming = True
 
         nb_elements = 0
-        selected = 3
+        # Buttons at the bottom : back, save, favorite, continue (selected first)
+        selected = 4
         for option_name, option_value in game_options.items():
             if (option_name.endswith('Teaming') or option_name.endswith('optionteamscore')) \
                     and not teaming:
@@ -7981,7 +8079,8 @@ class Screen(pygame.Surface):
             # Arrow to go back and next
             click_zones['escape'] = self.display_button(index == selected, 'back', special='escape')
             click_zones['save'] = self.display_button(index + 1 == selected, 'save', special='refresh')
-            click_zones['continue'] = self.display_button(index + 2 == selected, 'continue', special='return')
+            click_zones['favorite'] = self.display_button(index + 2 == selected, 'favorite', special='favorite')
+            click_zones['continue'] = self.display_button(index + 3 == selected, 'continue', special='return')
 
             if selected < nb_elements:
                 selection = click_zones[f'F{selected}']
@@ -7990,6 +8089,8 @@ class Screen(pygame.Surface):
             elif index + 1 == selected:
                 selection = click_zones['save']
             elif index + 2 == selected:
+                selection = click_zones['favorite']
+            elif index + 3 == selected:
                 selection = click_zones['continue']
             else:
                 selection = None
@@ -8016,7 +8117,7 @@ class Screen(pygame.Surface):
                 key = str(key)
 
             # Navigation in menu
-            selected = self.navigate(selected, key, nb_elements, 3, 3)
+            selected = self.navigate(selected, key, nb_elements, 4, 4)
 
             if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
                 self.qrlogo = ''
@@ -8029,9 +8130,14 @@ class Screen(pygame.Surface):
                 refresh = True
                 continue
 
+            if key == 'favorite' or (key in ENTER_KEYS and selected == nb_elements + 3):
+                self.favorite_save(game, game_options, number_of_players, players)
+                refresh = True
+                continue
+
             #if key in SAVE_KEYS + CONTINUE_KEYS or key == 'BTN_NEXTPLAYER' \
             if key in CONTINUE_KEYS and key != 'BTN_NEXTPLAYER' \
-                    or (key in ENTER_KEYS and selected == nb_elements + 3):
+                    or (key in ENTER_KEYS and selected == nb_elements + 4):
                 self.game_options = game_options
                 self.qrlogo = ''
                 return game_options

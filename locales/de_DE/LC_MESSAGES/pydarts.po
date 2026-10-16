@@ -623,6 +623,48 @@ msgstr "OK"
 msgid "vk-cancel"
 msgstr "Abbrechen"
 
+msgid "favorite"
+msgstr "Favorit"
+
+msgid "favorite-empty"
+msgstr "leer"
+
+msgid "favorite-save"
+msgstr "Als Favorit speichern"
+
+msgid "favorite-save-sub"
+msgstr "Nummer wählen (ein gespeicherter Favorit wird ersetzt)"
+
+msgid "favorite-players"
+msgstr "Spieler des Favoriten"
+
+msgid "favorite-players-sub"
+msgstr "Mit welchen Spielern starten?"
+
+msgid "favorite-choose"
+msgstr "Diese Spieler"
+
+msgid "favorite-generic"
+msgstr "Spieler 1, Spieler 2…"
+
+msgid "favorite-last"
+msgstr "Die zuletzt gewählten Spieler"
+
+msgid "favorite-player"
+msgstr "Spieler"
+
+msgid "favorite-saved"
+msgstr "Favorit gespeichert:"
+
+msgid "favorite-not-saved"
+msgstr "Der Favorit konnte nicht gespeichert werden"
+
+msgid "favorite-too-many"
+msgstr "Überzählige Spieler werden entfernt. Weiter?"
+
+msgid "favorite-too-few"
+msgstr "Es fehlen Spieler. Weiter?"
+
 msgid "vk-shift"
 msgstr "Umsch"
 

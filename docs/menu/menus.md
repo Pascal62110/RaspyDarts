@@ -495,16 +495,35 @@ favori n° N ») ; le fichier ne fait que les placer :
         shortcut: [F7, '1']
 ```
 
-Un favori mémorise : le jeu, ses options, le nombre de joueurs prévu et le choix des
-joueurs :
+Dans l'écran des options d'un jeu, le bouton **Favori** (entre Sauvegarder et Continuer)
+demande son numéro (1 à 9 : `fav1` à `fav9` ; un favori déjà enregistré est remplacé), puis
+comment choisir ses joueurs. Un favori mémorise : le jeu, ses options, le nombre de joueurs
+prévu (celui de la partie en cours de préparation) et le choix des joueurs :
 
-- `choose` : les joueurs mémorisés avec le favori ;
+- `choose` : les joueurs de la partie en cours de préparation, mémorisés avec le favori ;
 - `generic` : Joueur 1, Joueur 2… ;
-- `last` : les derniers joueurs, ajustés au nombre prévu, avec un avertissement s'il y en a
-  trop (« les joueurs en trop seront retirés ») ou pas assez (« il manquera des joueurs »),
-  et le choix de continuer.
+- `last` : les derniers joueurs choisis, ajustés au nombre prévu, avec un avertissement
+  s'il y en a trop (« les joueurs en trop seront retirés ») ou pas assez (« il manquera des
+  joueurs » : la partie se joue avec ceux qu'il y a), et le choix de continuer.
 
-Un favori vide affiche son bouton grisé (état `disabled`).
+Un bouton `favorite:` lance la partie aussitôt : ni choix des joueurs, ni liste des jeux, ni
+options. Un favori vide (ou dont le jeu n'existe plus) affiche son bouton grisé (état
+`disabled`), qui ne fait rien. Un favori ne peut pas être le premier écran (`start`) : sa
+partie recommencerait à chaque retour.
+
+Les favoris sont écrits dans `~/.raspydarts/favorites.yaml` (gardé par les mises à jour) :
+
+```yaml
+fav1:
+  game: Cricket
+  options: {max_round: 20, optioncrazy: false}
+  players: 2
+  mode: choose            # choose | generic | last
+  names: [Rémi, Bob]      # choose seulement
+```
+
+Les deux écrans qui l'enregistrent sont des menus du fichier (`favorite_save`,
+`favorite_players` : titre, sous-titre, aspect) dont le jeu fournit les boutons.
 
 ## 14. Exemple complet
 

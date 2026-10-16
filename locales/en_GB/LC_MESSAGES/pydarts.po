@@ -2859,6 +2859,48 @@ msgstr "OK"
 msgid "vk-cancel"
 msgstr "Cancel"
 
+msgid "favorite"
+msgstr "Favorite"
+
+msgid "favorite-empty"
+msgstr "empty"
+
+msgid "favorite-save"
+msgstr "Save as a favorite"
+
+msgid "favorite-save-sub"
+msgstr "Choose its number (a favorite already saved is replaced)"
+
+msgid "favorite-players"
+msgstr "Players of the favorite"
+
+msgid "favorite-players-sub"
+msgstr "With which players should it start?"
+
+msgid "favorite-choose"
+msgstr "These players"
+
+msgid "favorite-generic"
+msgstr "Player 1, Player 2…"
+
+msgid "favorite-last"
+msgstr "The last players chosen"
+
+msgid "favorite-player"
+msgstr "Player"
+
+msgid "favorite-saved"
+msgstr "Favorite saved:"
+
+msgid "favorite-not-saved"
+msgstr "The favorite could not be saved"
+
+msgid "favorite-too-many"
+msgstr "The extra players will be removed. Continue?"
+
+msgid "favorite-too-few"
+msgstr "Some players will be missing. Continue?"
+
 msgid "vk-shift"
 msgstr "Shift"
 

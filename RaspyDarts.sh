@@ -36,6 +36,6 @@ do
 	fi
 	sudo kill -9 `ps -lef | grep 'Server.py' | sed -e 's/  */ /g' | cut -f4 -d' '` 2> /dev/null
 
-	python3 raspydarts.py 2>&1 > logs/raspydarts.log
+	python3 raspydarts.py > logs/raspydarts.log 2>&1
 done
 

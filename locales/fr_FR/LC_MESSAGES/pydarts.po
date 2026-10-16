@@ -3947,6 +3947,48 @@ msgstr "Valider"
 msgid "vk-cancel"
 msgstr "Annuler"
 
+msgid "favorite"
+msgstr "Favori"
+
+msgid "favorite-empty"
+msgstr "vide"
+
+msgid "favorite-save"
+msgstr "Enregistrer comme favori"
+
+msgid "favorite-save-sub"
+msgstr "Choisissez son numéro (un favori déjà enregistré est remplacé)"
+
+msgid "favorite-players"
+msgstr "Joueurs du favori"
+
+msgid "favorite-players-sub"
+msgstr "Avec quels joueurs le lancer ?"
+
+msgid "favorite-choose"
+msgstr "Ces joueurs"
+
+msgid "favorite-generic"
+msgstr "Joueur 1, Joueur 2…"
+
+msgid "favorite-last"
+msgstr "Les derniers joueurs choisis"
+
+msgid "favorite-player"
+msgstr "Joueur"
+
+msgid "favorite-saved"
+msgstr "Favori enregistré :"
+
+msgid "favorite-not-saved"
+msgstr "Le favori n'a pas pu être enregistré"
+
+msgid "favorite-too-many"
+msgstr "Les joueurs en trop seront retirés. Continuer ?"
+
+msgid "favorite-too-few"
+msgstr "Il manquera des joueurs. Continuer ?"
+
 msgid "vk-shift"
 msgstr "Maj"
 

@@ -53,7 +53,7 @@ ACTIONS = {
 }
 # Menus opened by the main loop : what it is given for each of them
 MENU_RESULTS = {'settings': 'setup'}
-ACTION_PREFIXES = ('menu:', 'category:', 'game:')
+ACTION_PREFIXES = ('menu:', 'category:', 'game:', 'favorite:')
 # Categories of games : what the main loop is given (category:<name>)
 CATEGORY_RESULTS = {'favorites': 'favoris'}
 
@@ -212,9 +212,11 @@ class Menus:
     def target(action):
         '''
         Destination of a button skipping screens : ('game', 'classic.Cricket'),
-        ('category', 'favoris') or None
+        ('category', 'favoris'), ('favorite', 'fav1') or None
         '''
         action = str(action or '')
+        if action.startswith('favorite:'):
+            return ('favorite', action[9:])
         if action.startswith('game:'):
             name = action[5:]
             category = game_category(name)
@@ -231,7 +233,8 @@ class Menus:
         or the games of the category)
         '''
         start = str(self.data.get('start') or 'main')
-        if start in ('main', 'local_game') or self.target(start) is not None:
+        # Not a favorite : its game would start again at each return to the first screen
+        if start in ('main', 'local_game') or (self.target(start) is not None and not start.startswith('favorite:')):
             return start
         self.logs.warning(f"Menus : start '{start}' unknown, the main menu is shown")
         return 'main'
