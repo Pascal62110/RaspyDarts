@@ -39,6 +39,7 @@ from include.ColorSets import *
 
 from include import cpaths
 from include import ccamera
+from include import cmenus
 
 try:
     from include import cqrcode
@@ -70,6 +71,8 @@ VOLUME_MUTE = ['BTN_VOLUME_MUTE', 'VOLUME-MUTE', 'S7']
 
 BTN_CHECK = 1
 BTN_CHOICE = 2
+# Menus whose background and title are kept (a screen : 4 to 8 MB)
+MENU_BACKGROUNDS = 4
 BTN_VALUE = 3
 BTN_LOGO = 4
 BTN_DROPDOWN = 5
@@ -212,6 +215,8 @@ class Screen(pygame.Surface):
         self.rects = []
         self.blinktime = int(self.config.get_value('SectionGlobals', 'blinktime'))
         self.selected_menu = {}
+        # Background and title of the menus of the files (see run_menu)
+        self.menu_backgrounds = {}
         self.end_of_game_winner = ''
         if QRCODE:
             self.qrcode = cqrcode.Qrcoder()
@@ -6435,106 +6440,215 @@ class Screen(pygame.Surface):
             if key is not False:
                 break
 
-    # Buttons of the main menu : (name, shortcut, text, space before). The names are the
-    # ones of exhibition_items, the shortcuts what main_menu returns them as
-    MAIN_MENU = [('local', 'F1', 'game-type-local', 0), ('netjoin', 'F2', 'game-type-master', 0),
-                 ('netcreate', 'F3', 'game-type-manual', 0), ('miscellaneous', 'F4', 'miscellaneous', 0),
-                 ('trophees', 'F5', 'trophees', 0), ('gallery', 'F6', 'gallery', 0),
-                 ('quit', 'F12', 'back-to-desktop', 1.5), ('shutdown', 'escape', 'exit', 2)]
+    def menus(self):
+        '''
+        Menus described by the files (see cmenus), read again when the theme changes
+        '''
+        theme_dir = getattr(self.file_class, 'theme_dir', None)
+        if getattr(self, 'menus_read', None) is None or self.menus_theme != theme_dir:
+            self.menus_read = cmenus.Menus(self.logs, theme_dir, cpaths.user_dir())
+            self.menus_theme = theme_dir
+        return self.menus_read
 
-    def main_menu_items(self):
+    def main_menu_items(self, everything=False):
         '''
-        Buttons shown : all of them, or those chosen for the exhibition mode
+        Buttons shown in the main menu : all of them, or those of the exhibition mode. Those
+        chosen in its screen (exhibition_items), else those of the file (exhibition: true).
+        everything : all the buttons which can be shown (screen of the exhibition mode)
         '''
-        if not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
-            return list(self.MAIN_MENU)
-        chosen = str(self.config.get_value('SectionGlobals', 'exhibition_items', False) or '').split(',')
+        menus = self.menus()
+        buttons = [button for button in menus.buttons('main') if button.get('visible', True) is not False]
+        if everything or not bool(self.config.get_value('SectionGlobals', 'exhibition_mode')):
+            return buttons
+        chosen = [name for name in str(self.config.get_value('SectionGlobals', 'exhibition_items', False) or '').split(',') if name]
+        if chosen:
+            shown = [button for button in buttons if menus.button_id(button) in chosen]
+        else:
+            shown = [button for button in buttons if button.get('exhibition')]
         # Nothing chosen : a game can be played all the same
-        return [item for item in self.MAIN_MENU if item[0] in chosen] or self.MAIN_MENU[:1]
+        return shown or buttons[:1]
 
-    def main_menu(self):
+    def button_text(self, button):
         '''
-        Choose Game Type : Local - Network. The keyboard shortcuts work even for the
-        buttons hidden in exhibition mode (F4 : the settings, to leave this mode)
+        Text of a button : a key of translation, a text, or a text per language
         '''
+        text = button.get('text', self.menus().button_id(button))
+        if isinstance(text, dict):
+            language = str(self.config.get_value('SectionGlobals', 'locale', False) or 'en')[:2]
+            text = text.get(language) or text.get('en') or next(iter(text.values()), '')
+        return str(text)
+
+    @staticmethod
+    def button_label(button):
+        '''
+        Shortcut written on a button : its first key (F1, ESC...), None if it has none
+        '''
+        keys = cmenus.as_list(button.get('shortcut'))
+        if not keys or str(keys[0]).lower() == 'none':
+            return None
+        key = str(keys[0])
+        return 'ESC' if key == 'escape' else key
+
+    @staticmethod
+    def move_selection(rects, selected, direction):
+        '''
+        Arrows : the closest button in the direction (docs/menu/menus.md, 9). Score : distance
+        along the axis + 2 x distance across ; none, the button the farthest on the other side
+        with the smallest distance across
+        '''
+        def center(rect):
+            return (rect[0] + rect[2] / 2, rect[1] + rect[3] / 2)
+        axis = {'up': (0, -1), 'down': (0, 1), 'left': (-1, 0), 'right': (1, 0)}[direction]
+        origin = center(rects[selected])
+        best, wrap = None, None
+        for index, rect in rects.items():
+            if index == selected:
+                continue
+            point = center(rect)
+            along = (point[0] - origin[0]) * axis[0] + (point[1] - origin[1]) * axis[1]
+            across = abs((point[0] - origin[0]) * axis[1] + (point[1] - origin[1]) * axis[0])
+            if along > 0:
+                score = (along + 2 * across, index)
+                if best is None or score < best[0]:
+                    best = (score, index)
+            elif along < 0:
+                score = (across, along, index)
+                if wrap is None or score < wrap[0]:
+                    wrap = (score, index)
+        if best is not None:
+            return best[1]
+        return wrap[1] if wrap is not None else selected
+
+    def run_menu(self, name, items, everything, title=None, show_version=False, hook=None):
+        '''
+        A menu of the file, drawn as a list of classic buttons (menu_item) : returns the
+        button chosen. items : buttons shown ; everything : all those which have a shortcut
+        (hidden ones too). The background and the title are drawn once : moving only draws
+        again the buttons whose look changes
+        '''
+        menus = self.menus()
+        keys = {direction: set(menus.keys(direction)) for direction in
+                ('up', 'down', 'left', 'right', 'next', 'previous', 'validate', 'back')}
         selected = 1
+        full = True
+        pristine = None
+        rects = {}
+        drawn = {}
+        nb_elements = len(items)
+        spaces = []
+        space = 0
+        for button in items:
+            space += float(button.get('space_before', 0) or 0)
+            spaces.append(space)
 
-        #self.dmd.send_text(self.lang.translate('Welcome') + "!")
-        self.dmd.send_text('Raspydarts')
+        def draw(index):
+            button = items[index - 1]
+            rects[index] = self.menu_item((index, nb_elements, selected), (self.button_label(button), self.button_text(button),
+                                          BTN_CHOICE, None), space=spaces[index - 1], exit=False)
+            # Look of a button : selected or not (with 10 buttons or more, the corners of
+            # its neighbours change too)
+            drawn[index] = (index == selected) if nb_elements < 10 else (index, selected)
+
         while True:
-            items = self.main_menu_items()
-            nb_elements = len(items)
-
-            if self.rpi.banned_gpio is not None:
-                self.message([f'Button {self.rpi.banned_gpio} (GPIO) is banned.'], color=(189, 108, 109), size='big')
-            if self.rpi.gpio is not None and self.rpi.gpio.banned_button is not None:
-                self.message([f'Button {self.rpi.gpio.banned_button} (MCP) is banned.'], color=(189, 108, 109), size='big')
-            click_zones = {}
-
-            # Draw bg
-            self.display_background(display_version=True)
-
-            # Titles
-            self.menu_header(self.lang.translate('game-type-menu'))
-
-            for index, (_name, shortcut, text, space) in enumerate(items, 1):
-                label = 'ESC' if shortcut == 'escape' else shortcut
-                click_zones[shortcut] = self.menu_item((index, nb_elements, selected), (label, text, BTN_CHOICE, None),
-                                                       space=space, exit=False)
-
-            self.update_screen()
+            if hook is not None and hook():
+                full = True
+            if full:
+                # Background and title : drawn once, then kept from one display to the next
+                # (copying the whole screen each time made the return to the menu slower)
+                cache_key = (name, title, show_version, tuple(self.screen.get_size()),
+                             getattr(self.file_class, 'theme_dir', None), self.background)
+                pristine = self.menu_backgrounds.get(cache_key)
+                if pristine is None:
+                    self.display_background(display_version=show_version)
+                    if title:
+                        self.menu_header(title)
+                    pristine = self.screen.copy()
+                    # A few menus only : one screen is several MB
+                    while len(self.menu_backgrounds) >= MENU_BACKGROUNDS:
+                        self.menu_backgrounds.pop(next(iter(self.menu_backgrounds)))
+                    self.menu_backgrounds[cache_key] = pristine
+                else:
+                    self.screen.blit(pristine, (0, 0))
+                    self.pristine_background = None
+                for index in range(1, nb_elements + 1):
+                    draw(index)
+                self.update_screen()
+                full = False
+            else:
+                changed = [index for index in range(1, nb_elements + 1)
+                           if drawn.get(index) != ((index == selected) if nb_elements < 10 else (index, selected))]
+                for index in changed:
+                    rect = pygame.Rect(rects[index])
+                    self.screen.blit(pristine, rect, rect)
+                    draw(index)
+                if changed:
+                    self.update_screen(rect_array=[pygame.Rect(rects[index]) for index in changed])
 
             key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha', 'math'],
                ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON',
                 'single-click', 'double-click', 'resize', 'VOLUME-UP', 'VOLUME-DOWN', 'enter', 'space'],
                  events=[(self.wait_event_time, 'EVENT', 'wait')])
 
-            # Click cases
-            clicked = self.is_clicked(click_zones, key)
+            if key == 'resize':
+                full = True
+                continue
+            clicked = self.is_clicked({index: pygame.Rect(rect) for index, rect in rects.items()}, key)
             if clicked:
-                key = clicked
+                selected = clicked
+                key = 'enter'
 
-            selected = self.navigate(selected, key, nb_elements, 0, 0)
+            for direction in ('up', 'down', 'left', 'right'):
+                if key in keys[direction] and selected in rects:
+                    selected = self.move_selection(rects, selected, direction)
+            if key in keys['next']:
+                selected = selected % nb_elements + 1
+            elif key in keys['previous']:
+                selected = (selected - 2) % nb_elements + 1
 
-            # Keyboard cases
-            if key in ENTER_KEYS and 1 <= selected <= nb_elements:
-                key = items[selected - 1][1]
+            if key in keys['validate'] and 1 <= selected <= nb_elements:
+                button = items[selected - 1]
+            else:
+                # Shortcuts : all the buttons, hidden ones too. 'escape' : every key back
+                pressed = 'escape' if key in keys['back'] else key
+                button = next((button for button in everything
+                               if pressed in [cmenus.key_name(k) for k in cmenus.as_list(button.get('shortcut'))]), None)
+            if button is None:
+                continue
+            if button.get('confirm'):
+                full = True
+                if not self.wait_validation(self.lang.translate(str(button['confirm']))):
+                    continue
+            return button
 
-            if key == 'F1':
-                return 'local'
+    def main_menu(self):
+        '''
+        Choose Game Type : Local - Network. The menu is described by the files of menus
+        (menus/defaults.yaml...). The shortcuts work even for the buttons hidden in
+        exhibition mode (F4 : the settings, to leave this mode)
+        '''
+        #self.dmd.send_text(self.lang.translate('Welcome') + "!")
+        self.dmd.send_text('Raspydarts')
+        menus = self.menus()
+        menu = menus.menu('main')
+        first = [True]
 
-            if key == 'F2':
-                return 'netjoin'    # netmaster
+        def banned():
+            if first[0]:
+                # Measure of the start : the main menu is ready
+                self.logs.debug("Main menu shown")
+                first[0] = False
+            shown = False
+            if self.rpi.banned_gpio is not None:
+                self.message([f'Button {self.rpi.banned_gpio} (GPIO) is banned.'], color=(189, 108, 109), size='big')
+                shown = True
+            if self.rpi.gpio is not None and self.rpi.gpio.banned_button is not None:
+                self.message([f'Button {self.rpi.gpio.banned_button} (MCP) is banned.'], color=(189, 108, 109), size='big')
+                shown = True
+            return shown
 
-            if key == 'F3':
-                return 'netcreate'    # netmanual
-
-            if key == 'F4':
-                return 'miscellaneous'
-
-            if key == 'F5':
-                return 'trophees'
-
-            if key == 'F6':
-                return 'gallery'
-
-            if key == 'F9':
-                return 'infos'
-
-            if key == 'F11':
-                return 'restart'
-
-            if key == 'F12':
-                return 'quit'
-
-            if key in ESCAPE_KEYS :
-                key = 'escape'
-
-            if key == 'escape':
-                # Properly shutdown Rpi
-                response = self.wait_validation(self.lang.translate('realy-stop'))
-                if response:
-                    return 'shutdown'
+        button = self.run_menu('main', self.main_menu_items(), menus.buttons('main'), title=menu.get('title'),
+                               show_version=bool(menu.get('show_version')), hook=banned)
+        return menus.result(button)
 
     def exhibition_menu(self):
         '''
@@ -6543,7 +6657,11 @@ class Screen(pygame.Surface):
         globals_ = self.config.config['SectionGlobals']
         active = bool(self.config.get_value('SectionGlobals', 'exhibition_mode'))
         chosen = set(str(globals_.get('exhibition_items', '') or '').split(','))
-        rows = [('exhibition_mode', 'exhibition_mode')] + [(name, text) for name, _s, text, _sp in self.MAIN_MENU]
+        buttons = self.main_menu_items(everything=True)
+        if not [name for name in chosen if name]:
+            # Never chosen in this screen : those of the files of menus
+            chosen = {self.menus().button_id(button) for button in buttons if button.get('exhibition')}
+        rows = [('exhibition_mode', 'exhibition_mode')] + [(self.menus().button_id(button), self.button_text(button)) for button in buttons]
         nb_elements = len(rows)
         selected = 1
         while True:
@@ -6569,7 +6687,7 @@ class Screen(pygame.Surface):
                 return
             if key in SAVE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 2):
                 globals_['exhibition_mode'] = active
-                globals_['exhibition_items'] = ','.join(name for name, _s, _t, _sp in self.MAIN_MENU if name in chosen)
+                globals_['exhibition_items'] = ','.join(name for name, _t in rows[1:] if name in chosen)
                 self.config.write_file()
                 return
             if isinstance(key, str) and key.startswith('F') and key[1:].isdigit() and 1 <= int(key[1:]) <= nb_elements:
@@ -8974,6 +9092,13 @@ class Screen(pygame.Surface):
         '''
         Simply update the screen (after multiple updates for example)
         '''
+        # Delay from an input to the screen showing its result : the measure of the
+        # menus (it must not get worse)
+        rpi = getattr(self, 'rpi', None)
+        started = getattr(rpi, 'input_time', None)
+        if started is not None:
+            self.rpi.input_time = None
+            self.logs.debug(f"Input to screen : {(time.perf_counter() - started) * 1000:.0f} ms")
         if rect_array is not None:
             #self.display.update(rect_array)
             for rect in rect_array:

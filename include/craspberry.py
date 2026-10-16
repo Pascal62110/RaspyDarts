@@ -673,7 +673,17 @@ class Craspberry():
         for index in (5, 6, 7):
             pygame.time.set_timer(USEREVENT + index, 0)
 
-    def listen_inputs(self, k_type=['num', 'alpha', 'fx', 'arrows'], 
+    def listen_inputs(self, *args, **kwargs):
+        """
+        Read input (see read_inputs). The time of an input is kept : the screen logs the
+        delay until it shows its result (Screen.update_screen, debug level)
+        """
+        key = self.read_inputs(*args, **kwargs)
+        if key not in (None, False):
+            self.input_time = time.perf_counter()
+        return key
+
+    def read_inputs(self, k_type=['num', 'alpha', 'fx', 'arrows'], 
                       specials=['enter', 'tab', 'backspace', 'left shift', 'escape', 'space', 'double-click', 'single-click', 'resize'],
                       wait_for=None, context='menus', timeout=0, light=None, events=None, 
                       firstname=None, video_process=None, sound_process=None, camera=None):

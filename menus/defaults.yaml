@@ -1,0 +1,78 @@
+# Menus par défaut de RaspyDarts (voir docs/menu/menus.md).
+#
+# Ne pas modifier ce fichier pour personnaliser les menus : il est remplacé à chaque mise à
+# jour. Écrire plutôt ~/.raspydarts/menus.yaml (ou le menus.yaml d'un thème), qui ne
+# contient que ce qui change.
+
+version: 1
+resolution: auto
+
+defaults:
+  style: classic
+  layout: list
+
+styles:
+  # Les boutons de toujours : raccourci à gauche, texte, couleurs du thème (Colorset.cfg)
+  classic: {}
+
+navigation:
+  up: [up, btn:up, dart:S20]
+  down: [down, btn:down, dart:S3]
+  left: [left, btn:left, dart:S11]
+  right: [right, btn:right, dart:S6]
+  next: []
+  previous: []
+  validate: [enter, btn:game, btn:validate, btn:nextplayer, dart:SB, dart:DB]
+  back: [escape, btn:back, btn:cancel]
+
+menus:
+  main:
+    title: game-type-menu
+    show_version: true
+    buttons:
+      - id: local
+        action: local_game
+        text: game-type-local
+        shortcut: F1
+        exhibition: true
+      - id: netjoin
+        action: network_join
+        text: game-type-master
+        shortcut: F2
+      - id: netcreate
+        action: network_create
+        text: game-type-manual
+        shortcut: F3
+      - id: miscellaneous
+        action: menu:miscellaneous
+        text: miscellaneous
+        shortcut: F4
+      - id: trophees
+        action: trophies
+        text: trophees
+        shortcut: F5
+        exhibition: true
+      - id: gallery
+        action: gallery
+        text: gallery
+        shortcut: F6
+        exhibition: true
+      - id: infos
+        action: infos
+        shortcut: F9
+        visible: false
+      - id: restart
+        action: restart
+        shortcut: F11
+        visible: false
+      - id: quit
+        action: desktop
+        text: back-to-desktop
+        shortcut: F12
+        space_before: 1.5
+      - id: shutdown
+        action: shutdown
+        text: exit
+        shortcut: escape
+        space_before: 0.5
+        confirm: realy-stop

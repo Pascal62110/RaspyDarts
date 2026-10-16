@@ -58,8 +58,9 @@ DefaultConfig['SectionGlobals'] = {
     'netgamecreator': 'Raspydarts',
     'debuglevel': 0,
     'exhibition_mode': False,
-    # Buttons of the main menu shown in exhibition mode (see Screen.MAIN_MENU)
-    'exhibition_items': 'local,trophees,gallery',
+    # Buttons of the main menu shown in exhibition mode, chosen in its screen (ids of the
+    # buttons, see menus/defaults.yaml). Empty : those of the files of menus (exhibition: true)
+    'exhibition_items': '',
     'competition_mode': False,
     'videosound_multiplier': 1,
     'sound_multiplier': 100, 

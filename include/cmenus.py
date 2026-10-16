@@ -1,0 +1,172 @@
+"""
+Menus described by files (docs/menu/menus.md) : the defaults of the game, the menus.yaml of
+the theme, then the one of the user. What a menu shows, in which order, with which look,
+which shortcuts, and the action of each button
+"""
+
+import os
+import time
+
+from include import cpaths
+
+try:
+    import yaml
+    LOADER = getattr(yaml, 'CSafeLoader', yaml.SafeLoader)
+except ImportError:    # the menus of the game (defaults.yaml) cannot be read either
+    yaml = None
+    LOADER = None
+
+DEFAULTS_FILE = os.path.join(cpaths.ROOT_DIR, 'menus', 'defaults.yaml')
+FILE_NAME = 'menus.yaml'
+
+# Actions known by the game, and what the menu returns to the main loop for each of them.
+# A file cannot invent an action : an unknown one is ignored
+ACTIONS = {
+    'local_game': 'local',
+    'network_join': 'netjoin',
+    'network_create': 'netcreate',
+    'trophies': 'trophees',
+    'gallery': 'gallery',
+    'infos': 'infos',
+    'restart': 'restart',
+    'desktop': 'quit',
+    'shutdown': 'shutdown',
+}
+ACTION_PREFIXES = ('menu:',)
+
+# Keys of the file (btn:..., dart:...) : names given by the inputs of the game
+BUTTON_KEYS = {'btn:up': 'BTN_UP', 'btn:down': 'BTN_DOWN', 'btn:left': 'BTN_LEFT', 'btn:right': 'BTN_RIGHT',
+               'btn:validate': 'BTN_VALIDATE', 'btn:back': 'BTN_BACK', 'btn:cancel': 'BTN_CANCEL',
+               'btn:plus': 'BTN_PLUS', 'btn:minus': 'BTN_MINUS', 'btn:nextplayer': 'BTN_NEXTPLAYER',
+               'btn:game': 'BTN_GAMEBUTTON'}
+
+
+def merge(base, top):
+    '''
+    The values of top over the ones of base : dictionaries key by key, lists replaced,
+    None removes the value
+    '''
+    if not isinstance(base, dict) or not isinstance(top, dict):
+        return top
+    result = dict(base)
+    for key, value in top.items():
+        if value is None:
+            result.pop(key, None)
+        elif isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def key_name(key):
+    '''
+    A key of the file (F1, enter, btn:up, dart:S20...) as the inputs of the game give it
+    '''
+    key = str(key)
+    if key.startswith('btn:'):
+        return BUTTON_KEYS.get(key.lower())
+    if key.startswith('dart:'):
+        return key[5:]
+    return key
+
+
+def as_list(value):
+    '''
+    One value or a list of values : a list
+    '''
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
+
+
+class Menus:
+    '''
+    The menus of the game : read once, drawn by Screen
+    '''
+
+    def __init__(self, logs, theme_dir, user_dir):
+        self.logs = logs
+        self.errors = []
+        self.data = {}
+        for path in (DEFAULTS_FILE, os.path.join(theme_dir or '', FILE_NAME), os.path.join(user_dir, FILE_NAME)):
+            self.data = self.add_file(self.data, path)
+        self.navigation = {name: [key_name(key) for key in as_list(keys)]
+                           for name, keys in (self.data.get('navigation') or {}).items()}
+
+    def add_file(self, data, path):
+        '''
+        The values of a file over the ones read before. A file which cannot be read is left
+        aside : the menus stay those of the files before
+        '''
+        if not os.path.isfile(path):
+            return data
+        started = time.perf_counter()
+        try:
+            if yaml is None:
+                raise RuntimeError("PyYAML is missing (python3-yaml)")
+            with open(path, encoding='utf-8') as file:
+                content = yaml.load(file, Loader=LOADER) or {}
+            if not isinstance(content, dict):
+                raise ValueError("not a description of menus")
+        except Exception as error:    # pylint: disable=broad-except
+            self.logs.error(f"Menus : {path} ignored ({error})")
+            self.errors.append(path)
+            return data
+        # Changes of a few buttons, without the whole list
+        for name, menu in (content.get('menus') or {}).items():
+            changes = (menu or {}).pop('button_changes', None) if isinstance(menu, dict) else None
+            if changes and 'buttons' not in menu:
+                buttons = [dict(button) for button in (data.get('menus', {}).get(name, {}).get('buttons') or [])]
+                for button in buttons:
+                    change = changes.get(self.button_id(button))
+                    if isinstance(change, dict):
+                        button.update(change)
+                menu['buttons'] = buttons
+        self.logs.debug(f"Menus : {path} read in {(time.perf_counter() - started) * 1000:.0f} ms")
+        return merge(data, content)
+
+    @staticmethod
+    def button_id(button):
+        '''
+        Name of a button in its menu : its id, else its action
+        '''
+        return str(button.get('id') or button.get('action'))
+
+    def menu(self, name):
+        '''
+        Description of a menu, the defaults included
+        '''
+        return merge(self.data.get('defaults') or {}, (self.data.get('menus') or {}).get(name) or {})
+
+    def buttons(self, name):
+        '''
+        Buttons of a menu whose action is known (the others are said in the log once)
+        '''
+        result = []
+        for button in self.menu(name).get('buttons') or []:
+            if not isinstance(button, dict):
+                continue
+            action = str(button.get('action') or '')
+            if action in ACTIONS or action.startswith(ACTION_PREFIXES):
+                result.append(button)
+            elif action not in self.errors:
+                self.errors.append(action)
+                self.logs.warning(f"Menus : unknown action '{action}' in the menu {name}")
+        return result
+
+    @staticmethod
+    def result(button):
+        '''
+        What the menu returns to the main loop for a button
+        '''
+        action = str(button.get('action'))
+        if action.startswith('menu:'):
+            return action[5:].split('/')[-1]
+        return ACTIONS[action]
+
+    def keys(self, name):
+        '''
+        Keys of the navigation (up, down, validate, back...)
+        '''
+        return self.navigation.get(name, [])
