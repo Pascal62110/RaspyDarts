@@ -3326,7 +3326,7 @@ class Screen(pygame.Surface):
 
     # Zone of the tiles of the list of games when the files do not give one : the left of the
     # screen, the description of the game on the right (from 7/16 of the width)
-    GAME_TILES_AREA = {'x': 1 / 32, 'y': 3 / 16, 'width': 0.4, 'height': 10 / 16}
+    GAME_TILES_AREA = {'x': '3.125%', 'y': '18.75%', 'width': '40%', 'height': '62.5%'}
 
     def game_tiles(self, games, columns, own):
         '''
@@ -3357,8 +3357,9 @@ class Screen(pygame.Surface):
                        'gap': {'x': gap_x / width, 'y': gap_y / height},
                        'button_size': {'width': tile_w / column_w, 'height': tile_h / height}}
         rects = cmenustyle.layout(description, [{}] * len(games), (width, height))[0]
-        look = {'icon': {'position': 'top', 'size': 0.72}, 'text': {'size': round(tile_h * 0.13 / height, 4)}} if square else \
-            {'icon': {'position': 'left', 'size': 0.86}, 'text': {'size': round(tile_h * 0.3 / height, 4)}}
+        # Text sizes in percent : parts of the screen, whatever the unit of the file
+        look = {'icon': {'position': 'top', 'size': 0.72}, 'text': {'size': f'{tile_h * 13 / height:.3f}%'}} if square else \
+            {'icon': {'position': 'left', 'size': 0.86}, 'text': {'size': f'{tile_h * 30 / height:.3f}%'}}
         style = cmenustyle.merge(look, self.button_style(menu, {}))
         logos = [self.file_class.get_full_filename(f"logos_menu/{game.replace(' ', '_')}", 'images') for game in games]
         return {'rects': rects, 'style': style, 'logos': logos, 'names': [game.replace('_', ' ') for game in games],
@@ -6744,8 +6745,8 @@ class Screen(pygame.Surface):
         return str(settings.get('format') or '{key}').replace('{key}', key)
 
     # Look of the titles when the files say nothing (section 7.1)
-    TITLE_LOOK = {'size': 0.05, 'color': 'menu-text'}
-    SUBTITLE_LOOK = {'size': 0.035, 'color': 'menu-text', 'position': 'below_title'}
+    TITLE_LOOK = {'size': '5%', 'color': 'menu-text'}
+    SUBTITLE_LOOK = {'size': '3.5%', 'color': 'menu-text', 'position': 'below_title'}
 
     def menu_text_look(self, name, key):
         '''
@@ -7016,7 +7017,7 @@ class Screen(pygame.Surface):
             if not isinstance(place, dict):
                 return default
             return pygame.Rect(int(units.length(place.get('x', 0), 'x')), int(units.length(place.get('y', 0), 'y')),
-                               int(units.length(place.get('width', 1), 'x')), int(units.length(place.get('height', 0.07), 'y')))
+                               int(units.length(place.get('width', '100%'), 'x')), int(units.length(place.get('height', '7%'), 'y')))
 
         def band(text, settings, rect):
             if settings.get('background') is not None:

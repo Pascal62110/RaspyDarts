@@ -3,7 +3,7 @@ const T = {
 fr: {
   'title': 'Installer RaspyDarts', 'prev': 'Précédent', 'next': 'Suivant', 'copy': 'Copier', 'copied': 'Copié', 'close': 'Fermer',
   'next-step': 'Étape suivante',
-  'menu-install': 'Installation', 'menu-custom': 'Personnalisation', 'menu-site': 'Site',
+  'menu-install': 'Installation', 'menu-custom': 'Personnalisation des menus', 'menu-site': 'Site',
   'wip': 'En cours de réalisation',
   'step1': 'Préparer', 'step2': 'Graver', 'step3': 'Configurer', 'step4': 'Déposer', 'step5': 'Démarrer',
   's1-title': 'Ce qu’il faut', 's1-intro': 'Cette page vous guide de la carte SD vierge jusqu’à la première partie.',
@@ -79,7 +79,7 @@ fr: {
 en: {
   'title': 'Install RaspyDarts', 'prev': 'Back', 'next': 'Next', 'copy': 'Copy', 'copied': 'Copied', 'close': 'Close',
   'next-step': 'Next step',
-  'menu-install': 'Installation', 'menu-custom': 'Customisation', 'menu-site': 'Website',
+  'menu-install': 'Installation', 'menu-custom': 'Menu customisation', 'menu-site': 'Website',
   'wip': 'Work in progress',
   'step1': 'Prepare', 'step2': 'Write', 'step3': 'Configure', 'step4': 'Copy', 'step5': 'Start',
   's1-title': 'What you need', 's1-intro': 'This page guides you from a blank SD card to the first game.',
@@ -155,7 +155,7 @@ en: {
 de: {
   'title': 'RaspyDarts installieren', 'prev': 'Zurück', 'next': 'Weiter', 'copy': 'Kopieren', 'copied': 'Kopiert', 'close': 'Schließen',
   'next-step': 'Nächster Schritt',
-  'menu-install': 'Installation', 'menu-custom': 'Anpassung', 'menu-site': 'Website',
+  'menu-install': 'Installation', 'menu-custom': 'Menüs anpassen', 'menu-site': 'Website',
   'wip': 'In Arbeit',
   'step1': 'Vorbereiten', 'step2': 'Schreiben', 'step3': 'Konfigurieren', 'step4': 'Ablegen', 'step5': 'Starten',
   's1-title': 'Was Sie brauchen', 's1-intro': 'Diese Seite führt Sie von der leeren SD-Karte bis zum ersten Spiel.',
@@ -231,7 +231,7 @@ de: {
 es: {
   'title': 'Instalar RaspyDarts', 'prev': 'Anterior', 'next': 'Siguiente', 'copy': 'Copiar', 'copied': 'Copiado', 'close': 'Cerrar',
   'next-step': 'Paso siguiente',
-  'menu-install': 'Instalación', 'menu-custom': 'Personalización', 'menu-site': 'Sitio',
+  'menu-install': 'Instalación', 'menu-custom': 'Personalizar los menús', 'menu-site': 'Sitio',
   'wip': 'En preparación',
   'step1': 'Preparar', 'step2': 'Grabar', 'step3': 'Configurar', 'step4': 'Copiar', 'step5': 'Arrancar',
   's1-title': 'Lo necesario', 's1-intro': 'Esta página le guía desde la tarjeta SD vacía hasta la primera partida.',
@@ -307,7 +307,7 @@ es: {
 it: {
   'title': 'Installare RaspyDarts', 'prev': 'Indietro', 'next': 'Avanti', 'copy': 'Copia', 'copied': 'Copiato', 'close': 'Chiudi',
   'next-step': 'Passo successivo',
-  'menu-install': 'Installazione', 'menu-custom': 'Personalizzazione', 'menu-site': 'Sito',
+  'menu-install': 'Installazione', 'menu-custom': 'Personalizzare i menu', 'menu-site': 'Sito',
   'wip': 'In lavorazione',
   'step1': 'Preparare', 'step2': 'Scrivere', 'step3': 'Configurare', 'step4': 'Copiare', 'step5': 'Avviare',
   's1-title': 'Cosa serve', 's1-intro': 'Questa pagina vi guida dalla scheda SD vuota fino alla prima partita.',

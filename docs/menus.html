@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RaspyDarts · Menus</title>
+<meta name="description" content="Fabriquer le fichier de menus de RaspyDarts (menus.yaml), avec un aperçu de la borne">
+<style>
+:root {
+  --bg: #f4f1ec; --panel: #ffffff; --text: #1d1b19; --muted: #6b645c; --line: #ddd6cc;
+  --accent: #b3261e; --accent-text: #ffffff; --ok: #2e7d32; --warn: #a15c00; --code: #f0ebe3;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161412; --panel: #211e1b; --text: #eee9e2; --muted: #a59d93; --line: #3a352f;
+    --accent: #e0574e; --accent-text: #1a0d0c; --ok: #6cc070; --warn: #e0a040; --code: #2b2723;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161412; --panel: #211e1b; --text: #eee9e2; --muted: #a59d93; --line: #3a352f;
+  --accent: #e0574e; --accent-text: #1a0d0c; --ok: #6cc070; --warn: #e0a040; --code: #2b2723;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header .brand { text-align: center; }
+header h1 { margin: 0 0 6px; font-size: 1.7rem; letter-spacing: .5px; }
+header h1 span { color: var(--accent); }
+nav.menu { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; }
+nav.menu select { padding: 3px 6px; margin-left: 6px; }
+nav.menu a { border: 1px solid transparent; color: var(--text); padding: 4px 12px; border-radius: 999px; text-decoration: none; }
+nav.menu .active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+nav.menu a:hover { border-color: var(--line); }
+main { display: grid; grid-template-columns: minmax(330px, 440px) 1fr; gap: 16px; padding: 16px; max-width: 1700px; margin: 0 auto; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } #preview-pane { position: static !important; } }
+#editor { min-width: 0; }
+#preview-pane { position: sticky; top: 10px; align-self: start; min-width: 0; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; }
+details.panel > summary { cursor: pointer; font-weight: 700; font-size: 1.02rem; }
+details.panel[open] > summary { margin-bottom: 8px; }
+h2 { margin: 0 0 8px; font-size: 1.1rem; }
+label { display: block; font-weight: 600; margin: 9px 0 3px; font-size: .9rem; }
+label.inline { display: flex; gap: 6px; align-items: center; font-weight: 400; margin: 4px 0; }
+.hint { color: var(--muted); font-size: .85rem; margin: 2px 0 6px; }
+.note { border-left: 4px solid var(--accent); background: var(--code); padding: 8px 12px; border-radius: 0 var(--radius) var(--radius) 0; margin: 10px 0; font-size: .9rem; }
+.note.warn { border-color: var(--warn); }
+select, input[type="number"], input[type="text"], textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 4px 7px; max-width: 100%; }
+input[type="color"] { width: 42px; height: 28px; padding: 0 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.grid2 label, .grid4 label { margin: 2px 0; font-weight: 400; font-size: .82rem; }
+.grid2 input, .grid2 select, .grid4 input, .grid4 select { width: 100%; }
+button { font: inherit; cursor: pointer; }
+button.main, a.button { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: 5px 12px; text-decoration: none; display: inline-block; }
+button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; }
+button.tiny { padding: 1px 7px; font-size: .82rem; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+button:disabled { opacity: .45; cursor: default; }
+#screens { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+#screens button { border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 3px 11px; font-size: .88rem; }
+#screens button.active { border-color: var(--accent); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+#canvas-wrap { background: #000; border-radius: 8px; overflow: hidden; line-height: 0; }
+canvas#preview { width: 100%; height: auto; display: block; cursor: default; }
+.bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: .9rem; }
+ul.buttons { list-style: none; padding: 0; margin: 6px 0; }
+ul.buttons li { display: flex; align-items: center; gap: 4px; padding: 3px 5px; border: 1px solid var(--line); border-radius: 7px; margin: 3px 0; background: var(--bg); cursor: pointer; }
+ul.buttons li.active { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+ul.buttons li .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ul.buttons li .tag { font-size: .75rem; color: var(--muted); }
+fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; padding: 2px 10px 10px; }
+legend { font-weight: 700; padding: 0 5px; font-size: .9rem; }
+textarea#yaml { width: 100%; min-height: 220px; font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
+.hidden { display: none !important; }
+.errors { color: var(--accent); font-weight: 600; font-size: .9rem; }
+footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 10px 16px 26px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Raspy<span>Darts</span></h1>
+    <nav class="menu">
+      <a href="index.html" data-t="menu-install"></a>
+      <a class="active" href="menus.html" data-t="menu-custom"></a>
+      <a href="https://raspydarts.wordpress.com/" target="_blank" rel="noopener" data-t="menu-site"></a>
+      <select id="lang" aria-label="Langue">
+        <option value="fr">Français</option><option value="en">English</option><option value="de">Deutsch</option>
+        <option value="es">Español</option><option value="it">Italiano</option>
+      </select>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div id="editor">
+    <div class="panel">
+      <h2 data-t="intro-title"></h2>
+      <p class="hint" data-t="intro"></p>
+      <div class="row">
+        <button class="ghost" id="new-file" data-t="new-file"></button>
+        <label class="ghost" style="display:inline;margin:0"><input type="file" id="open-file" accept=".yaml,.yml" class="hidden"><span class="button ghost" style="border:1px solid var(--line);border-radius:8px;padding:4px 10px;cursor:pointer;display:inline-block;font-weight:400" data-t="open-file"></span></label>
+        <button class="main" id="download" data-t="download"></button>
+      </div>
+      <p class="errors" id="file-errors"></p>
+    </div>
+
+    <details class="panel" open>
+      <summary data-t="screen-title"></summary>
+      <label data-t="resolution-mode"></label>
+      <label class="inline"><input type="radio" name="resmode" value="auto"> <span data-t="res-auto"></span></label>
+      <label class="inline"><input type="radio" name="resmode" value="known"> <span data-t="res-known"></span></label>
+      <div id="res-known-box" class="row hidden">
+        <select id="res-ref"></select>
+        <input type="number" id="res-w" min="320" max="7680" style="width:80px"> × <input type="number" id="res-h" min="240" max="4320" style="width:80px">
+      </div>
+      <p class="hint" id="res-hint"></p>
+      <label for="start" data-t="start"></label>
+      <select id="start"></select>
+      <p class="hint" data-t="start-hint"></p>
+    </details>
+
+    <details class="panel" open>
+      <summary data-t="theme-title"></summary>
+      <select id="theme"></select>
+      <div id="own-theme" class="hidden">
+        <label data-t="own-theme-load"></label>
+        <input type="file" id="theme-folder" webkitdirectory directory multiple>
+        <p class="hint" id="own-theme-info"></p>
+      </div>
+      <div class="note warn" data-t="theme-note"></div>
+    </details>
+
+    <details class="panel" open id="menu-panel">
+      <summary><span data-t="menu-title"></span> : <span id="menu-name"></span></summary>
+      <div id="menu-form"></div>
+    </details>
+
+    <details class="panel" open id="buttons-panel">
+      <summary data-t="buttons-title"></summary>
+      <ul class="buttons" id="buttons"></ul>
+      <div class="row">
+        <button class="tiny" id="btn-add" data-t="btn-add"></button>
+        <button class="tiny" id="btn-up">▲</button>
+        <button class="tiny" id="btn-down">▼</button>
+        <button class="tiny" id="btn-del" data-t="btn-del"></button>
+        <button class="tiny" id="btn-reset" data-t="btn-reset"></button>
+      </div>
+      <div id="button-form"></div>
+    </details>
+
+    <details class="panel" id="styles-panel">
+      <summary data-t="styles-title"></summary>
+      <p class="hint" data-t="styles-hint"></p>
+      <div class="row">
+        <select id="style-name"></select>
+        <button class="tiny" id="style-del" data-t="btn-del"></button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <input type="text" id="style-new" style="width:140px">
+        <button class="tiny" id="style-add" data-t="style-add"></button>
+      </div>
+      <div id="style-form"></div>
+    </details>
+
+    <details class="panel" id="images-panel">
+      <summary data-t="images-title"></summary>
+      <p class="hint" data-t="images-hint"></p>
+      <input type="file" id="images-load" accept="image/*" multiple>
+      <ul class="buttons" id="images"></ul>
+    </details>
+
+    <details class="panel">
+      <summary data-t="yaml-title"></summary>
+      <p class="hint" data-t="yaml-hint"></p>
+      <textarea id="yaml" readonly></textarea>
+    </details>
+  </div>
+
+  <div id="preview-pane">
+    <div id="screens"></div>
+    <div id="canvas-wrap"><canvas id="preview" width="1920" height="1080"></canvas></div>
+    <div class="bar">
+      <span data-t="preview-size"></span> <select id="preview-res"></select>
+      <label class="inline"><input type="checkbox" id="fav-games"> <span data-t="fav-games"></span></label>
+      <span class="hint" data-t="preview-hint" style="margin:0"></span>
+    </div>
+  </div>
+</main>
+<footer data-t="footer"></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script src="menus-data.js"></script>
+<script src="menus-texts.js"></script>
+<script src="menus-layout.js"></script>
+<script src="menus-draw.js"></script>
+<script src="menus-render.js"></script>
+<script src="menus-app.js"></script>
+</body>
+</html>

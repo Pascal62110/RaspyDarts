@@ -13,7 +13,8 @@ import os
 
 from include import cpaths
 
-# Values of a style when nothing is said (section 7.2)
+# Values of a style when nothing is said (section 7.2). Positions and sizes of the defaults in
+# percent : parts of the screen whatever the unit of the file (pixels of a resolution too)
 STYLE_DEFAULTS = {
     'shape': 'rounded',
     'radius': 0.25,
@@ -21,7 +22,7 @@ STYLE_DEFAULTS = {
                    'offset': [0, 0], 'size': [1.0, 1.0], 'opacity': 1.0, 'slice': 12},
     'border': {'width': 0, 'color': 'menu-border'},
     'shadow': False,
-    'text': {'font': None, 'size': 0.045, 'color': 'menu-text', 'align': 'center', 'position': 'center',
+    'text': {'font': None, 'size': '4.5%', 'color': 'menu-text', 'align': 'center', 'position': 'center',
              'offset': [0, 0], 'shadow': False, 'bold': False},
     'icon': {'position': 'left', 'size': 0.7, 'fit': 'contain'},
     'selected': {'background': {'color': 'menu-selected'}, 'text': {'color': 'menu-text-white'}},
@@ -32,14 +33,14 @@ STATES = ('selected', 'disabled', 'pressed')
 
 # Layouts (section 7.4)
 LAYOUT_DEFAULTS = {
-    'list': {'area': {'x': 0.25, 'y': 0.18, 'width': 0.5, 'height': 0.72}, 'columns': 1,
-             'button_size': {'width': 1.0, 'height': 0.09}},
-    'grid': {'area': {'x': 0.1, 'y': 0.18, 'width': 0.8, 'height': 0.72}, 'columns': 3,
-             'button_size': {'width': 1.0, 'height': 0.09}},
-    'tiles': {'area': {'x': 0.1, 'y': 0.18, 'width': 0.8, 'height': 0.72}, 'columns': 3,
+    'list': {'area': {'x': '25%', 'y': '18%', 'width': '50%', 'height': '72%'}, 'columns': 1,
+             'button_size': {'width': 1.0, 'height': '9%'}},
+    'grid': {'area': {'x': '10%', 'y': '18%', 'width': '80%', 'height': '72%'}, 'columns': 3,
+             'button_size': {'width': 1.0, 'height': '9%'}},
+    'tiles': {'area': {'x': '10%', 'y': '18%', 'width': '80%', 'height': '72%'}, 'columns': 3,
               'button_size': {'width': 1.0, 'height': None}},
 }
-GAP_DEFAULT = {'x': 0.02, 'y': 0.015}
+GAP_DEFAULT = {'x': '2%', 'y': '1.5%'}
 ANCHORS = {'top_left': (0, 0), 'top_right': (1, 0), 'bottom_left': (0, 1), 'bottom_right': (1, 1),
            'center': (0.5, 0.5), 'top': (0.5, 0), 'bottom': (0.5, 1), 'left': (0, 0.5), 'right': (1, 0.5)}
 
@@ -176,8 +177,8 @@ def layout(menu, buttons, screen_size, resolution=None, selected=1):
         place = button.get('place')
         if not isinstance(place, dict):
             continue
-        width = units.length(place.get('width', 0.1), 'x')
-        height = units.length(place.get('height', 0.08), 'y')
+        width = units.length(place.get('width', '10%'), 'x')
+        height = units.length(place.get('height', '8%'), 'y')
         anchor = ANCHORS.get(str(place.get('anchor') or 'top_left'), (0, 0))
         pos_x = units.length(place.get('x', 0), 'x') - anchor[0] * width
         pos_y = units.length(place.get('y', 0), 'y') - anchor[1] * height
@@ -396,9 +397,9 @@ class Painter:
         A text in a rectangle of the surface : font, size (reduced if too wide), colour,
         position, offset, shadow, bold. zoom : the size of the button in its state (scale)
         '''
-        if not text or float(settings.get('size') or 0) <= 0:
+        if not text or float(str(settings.get('size') or 0).strip().rstrip('%') or 0) <= 0:
             return
-        size = max(1, int(units.text(settings.get('size') or 0.045) * zoom))
+        size = max(1, int(units.text(settings.get('size') or '4.5%') * zoom))
         path = self.font_path(settings.get('font'))
         color = self.color(settings.get('color'), (0, 0, 0))
         bold = bool(settings.get('bold'))

@@ -1,9 +1,14 @@
 # Fichier de menus de RaspyDarts (`menus.yaml`)
 
-> **Statut : spécification, version 1 (brouillon à valider).** Rien de ceci n'est encore
-> programmé. Ce document décrit ce que le moteur de menus saura lire ; il sert de référence
-> au jeu (Python), au configurateur de la page GitHub (JavaScript) et à ceux qui écrivent
-> leur fichier à la main.
+> **Statut : version 1, programmée dans RaspyDarts 4.6.1.** Ce document décrit ce que le
+> moteur de menus lit ; il sert de référence au jeu (Python : `include/cmenus.py`,
+> `include/cmenustyle.py`), au configurateur de la page GitHub « Personnalisation des menus »
+> (`docs/menus.html`, JavaScript) et à ceux qui écrivent leur fichier à la main.
+>
+> Le configurateur fabrique ce fichier avec un aperçu de la borne : ses règles de placement
+> sont celles du jeu, vérifiées par `python docs/test_placement.py` (identiques au pixel en
+> 1024×600 et en 1920×1080). Ses données et images viennent de `python docs/generer_menus.py`,
+> à relancer quand `menus/defaults.yaml`, un thème ou un logo change.
 
 ## 1. Ce que le fichier décrit, et ce qu'il ne décrit pas
 
@@ -67,6 +72,8 @@ resolution: auto          # ou [1024, 600], [1920, 1080]…
   l'écrivant en pourcentage : `x: 50%`.
 - Les **tailles de texte** sont toujours des fractions de la **hauteur** de l'écran
   (`size: 0.045`) ou, avec une résolution de référence, des pixels de cette hauteur.
+- Les **valeurs par défaut** du jeu (zone des boutons, hauteur des boutons, écarts, tailles
+  de texte, place du titre) sont des parts de l'écran, quelle que soit l'unité du fichier.
 
 Résolutions de référence pour les essais : **1024×600** (Raspberry Pi de développement,
 écran 7") et **1920×1080** (borne).

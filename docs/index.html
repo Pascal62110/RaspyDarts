@@ -111,7 +111,7 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
     <h1>Raspy<span>Darts</span></h1>
     <nav class="menu">
       <a class="active" href="#1" data-t="menu-install"></a>
-      <button type="button" id="menu-custom" data-t="menu-custom"></button>
+      <a href="menus.html" data-t="menu-custom"></a>
       <a href="https://raspydarts.wordpress.com/" target="_blank" rel="noopener" data-t="menu-site"></a>
       <select id="lang" aria-label="Langue">
         <option value="fr">Français</option><option value="en">English</option><option value="de">Deutsch</option>
@@ -121,7 +121,6 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
   </div>
 </header>
 
-<dialog id="wip"><p data-t="wip"></p><button class="main" id="wip-close" data-t="close"></button></dialog>
 
 <main>
   <nav class="steps" id="steps"></nav>
@@ -645,7 +644,6 @@ $('own-save-sd').addEventListener('click', () => {
   if (ownData) saveAs(new Blob([ownData], {type: 'text/plain'}), $('own-status'));
 });
 
-$('menu-custom').addEventListener('click', () => $('wip').showModal());
 
 // Step 2 : one screenshot of Raspberry Pi Imager at a time
 let slide = 0;
@@ -715,7 +713,6 @@ $('own-file').addEventListener('click', () => { ownFile(true); show(4); });
 $('own-file-undo').addEventListener('click', () => ownFile(false));
 $('own-file-undo4').addEventListener('click', () => { ownFile(false); show(3); });
 window.addEventListener('hashchange', () => show(Number(location.hash.slice(1)) || 1));
-$('wip-close').addEventListener('click', () => $('wip').close());
 
 document.querySelectorAll('[data-copy]').forEach((button) => {
   button.addEventListener('click', async () => {

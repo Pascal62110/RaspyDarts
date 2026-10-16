@@ -1,0 +1,1972 @@
+// Genere par docs/generer_menus.py : ne pas modifier a la main
+const MENUS_DATA = {
+ "defaults": {
+  "version": 1,
+  "resolution": "auto",
+  "defaults": {
+   "style": "classic",
+   "layout": "list"
+  },
+  "styles": {
+   "classic": {}
+  },
+  "navigation": {
+   "up": [
+    "up",
+    "btn:up",
+    "dart:S20"
+   ],
+   "down": [
+    "down",
+    "btn:down",
+    "dart:S3"
+   ],
+   "left": [
+    "left",
+    "btn:left",
+    "dart:S11"
+   ],
+   "right": [
+    "right",
+    "btn:right",
+    "dart:S6"
+   ],
+   "next": [],
+   "previous": [],
+   "validate": [
+    "enter",
+    "btn:game",
+    "btn:validate",
+    "btn:nextplayer",
+    "dart:SB",
+    "dart:DB"
+   ],
+   "back": [
+    "escape",
+    "btn:back",
+    "btn:cancel"
+   ]
+  },
+  "menus": {
+   "main": {
+    "title": "game-type-menu",
+    "show_version": true,
+    "buttons": [
+     {
+      "id": "local",
+      "action": "local_game",
+      "text": "game-type-local",
+      "shortcut": "F1",
+      "exhibition": true
+     },
+     {
+      "id": "netjoin",
+      "action": "network_join",
+      "text": "game-type-master",
+      "shortcut": "F2"
+     },
+     {
+      "id": "netcreate",
+      "action": "network_create",
+      "text": "game-type-manual",
+      "shortcut": "F3"
+     },
+     {
+      "id": "miscellaneous",
+      "action": "menu:miscellaneous",
+      "text": "miscellaneous",
+      "shortcut": "F4"
+     },
+     {
+      "id": "trophees",
+      "action": "trophies",
+      "text": "trophees",
+      "shortcut": "F5",
+      "exhibition": true
+     },
+     {
+      "id": "gallery",
+      "action": "gallery",
+      "text": "gallery",
+      "shortcut": "F6",
+      "exhibition": true
+     },
+     {
+      "id": "infos",
+      "action": "infos",
+      "shortcut": "F9",
+      "visible": false
+     },
+     {
+      "id": "restart",
+      "action": "restart",
+      "shortcut": "F11",
+      "visible": false
+     },
+     {
+      "id": "quit",
+      "action": "desktop",
+      "text": "back-to-desktop",
+      "shortcut": "F12",
+      "space_before": 1.5
+     },
+     {
+      "id": "shutdown",
+      "action": "shutdown",
+      "text": "exit",
+      "shortcut": "escape",
+      "space_before": 0.5,
+      "confirm": "realy-stop"
+     }
+    ]
+   },
+   "miscellaneous": {
+    "title": "parameters",
+    "info": [
+     "ips",
+     "rpi_version",
+     "version"
+    ],
+    "remember": true,
+    "buttons": [
+     {
+      "id": "firstnames",
+      "action": "favorite_players",
+      "text": "favorites-players",
+      "shortcut": "F1"
+     },
+     {
+      "id": "games",
+      "action": "favorite_games",
+      "text": "favorites-games",
+      "shortcut": "F2"
+     },
+     {
+      "id": "servers",
+      "action": "favorite_servers",
+      "text": "favorites-servers",
+      "shortcut": "F3"
+     },
+     {
+      "id": "customization",
+      "action": "customization",
+      "text": "customization",
+      "shortcut": "F4"
+     },
+     {
+      "id": "animations",
+      "action": "animations",
+      "text": "animations",
+      "shortcut": "F5"
+     },
+     {
+      "id": "firstname-bank",
+      "action": "players_bank",
+      "text": "players-bank",
+      "shortcut": "F6"
+     },
+     {
+      "id": "setup",
+      "action": "menu:settings",
+      "text": "setup",
+      "shortcut": "F7"
+     },
+     {
+      "id": "backups",
+      "action": "backups",
+      "text": "backups",
+      "shortcut": "F8"
+     },
+     {
+      "id": "exhibition",
+      "action": "exhibition",
+      "text": "exhibition",
+      "shortcut": "F9"
+     },
+     {
+      "id": "back",
+      "action": "back",
+      "text": "back",
+      "shortcut": "escape",
+      "footer": "left"
+     },
+     {
+      "id": "update",
+      "action": "update",
+      "text": "btn_update",
+      "footer": "right"
+     }
+    ]
+   },
+   "settings": {
+    "title": "setup",
+    "remember": true,
+    "buttons": [
+     {
+      "id": "setup-buttons",
+      "action": "setup_buttons",
+      "text": "setup-buttons",
+      "shortcut": "F1"
+     },
+     {
+      "id": "setup-pinleds",
+      "action": "setup_pins_leds",
+      "text": "setup-pinsleds",
+      "shortcut": "F2"
+     },
+     {
+      "id": "setup-leds",
+      "action": "setup_leds",
+      "text": "setup-leds",
+      "shortcut": "F3"
+     },
+     {
+      "id": "setup-couleurs-segments",
+      "action": "setup_segment_colors",
+      "text": "setup-couleurs-segments",
+      "shortcut": "F4"
+     },
+     {
+      "id": "setup-cam",
+      "action": "setup_camera",
+      "text": "setup-cam",
+      "shortcut": "F5"
+     },
+     {
+      "id": "test-buttons",
+      "action": "test_buttons",
+      "text": "test-buttons",
+      "shortcut": "F6"
+     },
+     {
+      "id": "test-target",
+      "action": "test_target",
+      "text": "test-target",
+      "shortcut": "F7"
+     },
+     {
+      "id": "test-toys",
+      "action": "test_toys",
+      "text": "test-toys",
+      "shortcut": "F8"
+     },
+     {
+      "id": "reset",
+      "action": "reset",
+      "text": "reset",
+      "shortcut": "F9"
+     },
+     {
+      "id": "back",
+      "action": "back",
+      "text": "back",
+      "shortcut": "escape",
+      "footer": "left"
+     }
+    ]
+   },
+   "categories": {
+    "title": "game-cat",
+    "layout": "tiles",
+    "buttons": [
+     {
+      "id": "classic",
+      "action": "category:classic",
+      "logo": "menu_classic",
+      "shortcut": "F1",
+      "dmd": "dmd-game-classic"
+     },
+     {
+      "id": "fun",
+      "action": "category:fun",
+      "logo": "menu_fun",
+      "shortcut": "F2",
+      "dmd": "dmd-game-fun"
+     },
+     {
+      "id": "sport",
+      "action": "category:sport",
+      "logo": "menu_sport",
+      "shortcut": "F3",
+      "dmd": "dmd-game-sport"
+     },
+     {
+      "id": "favorites",
+      "action": "category:favorites",
+      "logo": "menu_favoris",
+      "shortcut": "F4",
+      "dmd": "dmd-game-favorites",
+      "requires": "favorite_games"
+     },
+     {
+      "id": "back",
+      "action": "back",
+      "text": "back",
+      "shortcut": "escape",
+      "footer": "left"
+     }
+    ]
+   },
+   "favorite_game": {},
+   "question": {},
+   "favorite_save": {
+    "title": "favorite-save",
+    "subtitle": "favorite-save-sub"
+   },
+   "favorite_players": {
+    "title": "favorite-players",
+    "subtitle": "favorite-players-sub"
+   }
+  }
+ },
+ "actions": [
+  "animations",
+  "back",
+  "backups",
+  "customization",
+  "desktop",
+  "exhibition",
+  "favorite_games",
+  "favorite_players",
+  "favorite_servers",
+  "gallery",
+  "infos",
+  "local_game",
+  "network_create",
+  "network_join",
+  "players_bank",
+  "reset",
+  "restart",
+  "setup_buttons",
+  "setup_camera",
+  "setup_leds",
+  "setup_pins_leds",
+  "setup_segment_colors",
+  "shutdown",
+  "test_buttons",
+  "test_target",
+  "test_toys",
+  "trophies",
+  "update"
+ ],
+ "prefixes": [
+  "menu:",
+  "category:",
+  "game:",
+  "favorite:"
+ ],
+ "games": {
+  "classic": [
+   "321_Zlip",
+   "Batard",
+   "Bermuda_Triangle",
+   "Big6",
+   "Bob27",
+   "By_Fives",
+   "Color",
+   "Cricket",
+   "Duel",
+   "High_Score",
+   "Ho_One",
+   "Kapital",
+   "Killer",
+   "Kinito",
+   "Low_Score",
+   "Mickey",
+   "Practice",
+   "Round_the_clock",
+   "Routine",
+   "Scram_Cricket",
+   "Shanghai",
+   "Shoot-out",
+   "Slider",
+   "Up_Down_Count_Up"
+  ],
+  "fun": [
+   "Bingo",
+   "Bulls",
+   "Castle",
+   "Challenge",
+   "Chaos",
+   "Conquer",
+   "Dragon",
+   "Dungeon",
+   "GameOfGoose",
+   "Hangman",
+   "Incendie",
+   "Morpion",
+   "Othello",
+   "Puissance4",
+   "Pursuit",
+   "Risk",
+   "Robin_Drink",
+   "Robin_Strip",
+   "Sabotage",
+   "Simon",
+   "Switch",
+   "Target",
+   "Tower",
+   "Treasure",
+   "Voleur",
+   "Yahtzydarts"
+  ],
+  "sport": [
+   "Balltrap",
+   "Baseball",
+   "Bowling",
+   "Fighters",
+   "Football",
+   "Golf",
+   "Horse",
+   "Pingpong",
+   "Punch-Out",
+   "Snooker",
+   "Tennis"
+  ]
+ },
+ "themes": {
+  "clear": {
+   "colors": {
+    "border-radius": 10,
+    "button-radius": "max",
+    "border-size": 3,
+    "padding": 2,
+    "color-black": [
+     0,
+     0,
+     0
+    ],
+    "bg-global": false,
+    "bg-round-nb": [
+     255,
+     255,
+     255
+    ],
+    "bg-round-nb-header": [
+     107,
+     134,
+     176
+    ],
+    "bg-LOGO": [
+     0,
+     0,
+     0
+    ],
+    "bg-darts-nb": [
+     255,
+     255,
+     255
+    ],
+    "bg-darts-nb-header": [
+     107,
+     134,
+     176
+    ],
+    "bg-optionslist-header": [
+     107,
+     134,
+     176
+    ],
+    "bg-optionslist": [
+     255,
+     255,
+     255
+    ],
+    "player1": [
+     0,
+     255,
+     0
+    ],
+    "player2": [
+     0,
+     0,
+     255
+    ],
+    "player3": [
+     255,
+     0,
+     0
+    ],
+    "player4": [
+     255,
+     255,
+     0
+    ],
+    "player5": [
+     255,
+     0,
+     255
+    ],
+    "player6": [
+     0,
+     255,
+     255
+    ],
+    "player7": [
+     255,
+     0,
+     128
+    ],
+    "player8": [
+     0,
+     255,
+     128
+    ],
+    "player9": [
+     0,
+     128,
+     255
+    ],
+    "player10": [
+     255,
+     128,
+     0
+    ],
+    "player11": [
+     128,
+     255,
+     0
+    ],
+    "player12": [
+     128,
+     0,
+     255
+    ],
+    "menu-header": [
+     255,
+     255,
+     255
+    ],
+    "menu-text": [
+     0,
+     0,
+     0
+    ],
+    "menu-selected": [
+     112,
+     156,
+     118
+    ],
+    "menu-shortcut": [
+     224,
+     196,
+     119
+    ],
+    "menu-alternate": [
+     107,
+     134,
+     176
+    ],
+    "menu-ok": [
+     112,
+     156,
+     118
+    ],
+    "menu-warning": [
+     205,
+     144,
+     110
+    ],
+    "menu-ko": [
+     189,
+     108,
+     109
+    ],
+    "menu-item-white": [
+     255,
+     255,
+     255
+    ],
+    "menu-item-black": [
+     0,
+     0,
+     0
+    ],
+    "menu-text-black": [
+     0,
+     0,
+     0
+    ],
+    "menu-text-white": [
+     255,
+     255,
+     255
+    ],
+    "menu-buttons": [
+     232,
+     232,
+     232
+    ],
+    "menu-favorite": [
+     255,
+     215,
+     0
+    ],
+    "menu-border": [
+     0,
+     0,
+     0
+    ],
+    "menu-inactive": [
+     128,
+     128,
+     128
+    ],
+    "description-bg": [
+     213,
+     206,
+     186
+    ],
+    "description-text": [
+     0,
+     0,
+     0
+    ],
+    "description-game": [
+     0,
+     0,
+     0
+    ],
+    "game-bg": [
+     0,
+     0,
+     0
+    ],
+    "game-score": [
+     255,
+     255,
+     255
+    ],
+    "game-headers": [
+     255,
+     255,
+     255
+    ],
+    "game-player": [
+     119,
+     119,
+     118
+    ],
+    "game-player-name": [
+     255,
+     255,
+     255
+    ],
+    "game-alt-headers": [
+     48,
+     48,
+     48
+    ],
+    "game-round": [
+     107,
+     134,
+     176
+    ],
+    "game-title1": [
+     48,
+     48,
+     48
+    ],
+    "game-title2": [
+     255,
+     255,
+     255
+    ],
+    "game-type": [
+     255,
+     0,
+     0
+    ],
+    "game-table": [
+     160,
+     160,
+     160
+    ],
+    "game-text": [
+     255,
+     255,
+     255
+    ],
+    "game-option": [
+     255,
+     215,
+     0
+    ],
+    "game-darts": [
+     160,
+     160,
+     160
+    ],
+    "game-inactive": [
+     119,
+     119,
+     118
+    ],
+    "game-dead": [
+     48,
+     48,
+     48
+    ],
+    "game-grey": [
+     213,
+     206,
+     186
+    ],
+    "game-grey2": [
+     74,
+     74,
+     74
+    ],
+    "game-purple": [
+     140,
+     108,
+     161
+    ],
+    "game-red": [
+     255,
+     0,
+     0
+    ],
+    "game-green": [
+     0,
+     255,
+     0
+    ],
+    "game-blue": [
+     0,
+     0,
+     255
+    ],
+    "game-gold": [
+     255,
+     215,
+     0
+    ],
+    "game-silver": [
+     192,
+     192,
+     192
+    ],
+    "game-bronze": [
+     205,
+     127,
+     50
+    ],
+    "message-bg": [
+     255,
+     255,
+     255
+    ],
+    "message-text": [
+     0,
+     0,
+     0
+    ],
+    "target-sb": [
+     189,
+     108,
+     109
+    ],
+    "target-db": [
+     107,
+     134,
+     176
+    ],
+    "target-double1": [
+     255,
+     255,
+     255
+    ],
+    "target-double2": [
+     255,
+     0,
+     0
+    ],
+    "target-triple1": [
+     255,
+     255,
+     255
+    ],
+    "target-triple2": [
+     255,
+     0,
+     0
+    ],
+    "target-simple1": [
+     0,
+     0,
+     255
+    ],
+    "target-simple2": [
+     255,
+     255,
+     255
+    ],
+    "bob27-bg": [
+     45,
+     78,
+     99
+    ],
+    "bob27-blue": [
+     46,
+     64,
+     76
+    ],
+    "bob27-green": [
+     45,
+     108,
+     85
+    ],
+    "bob27-red": [
+     124,
+     84,
+     87
+    ],
+    "bob27-hit": [
+     57,
+     209,
+     129
+    ],
+    "bob27-miss": [
+     232,
+     21,
+     37
+    ],
+    "bob27-text": [
+     255,
+     255,
+     255
+    ],
+    "fighters-medic": [
+     0,
+     240,
+     0
+    ],
+    "fighters-actual-player": [
+     255,
+     255,
+     255
+    ],
+    "fighters-alive-player": [
+     150,
+     0,
+     0
+    ],
+    "fighters-dead-player": [
+     255,
+     255,
+     255
+    ],
+    "fighters-targets": [
+     255,
+     255,
+     255
+    ],
+    "fighters-scores": [
+     255,
+     255,
+     255
+    ],
+    "fighters-round": [
+     255,
+     255,
+     255
+    ],
+    "fighters-darts": [
+     255,
+     255,
+     255
+    ],
+    "suggestion-color-allplayer": null,
+    "main-sub-menu-shortcuts": "",
+    "main-sub-menu-text-align": "Left",
+    "parametrage-menu-shortcuts": "",
+    "parametrage-menu-text-align": "Left",
+    "players-menu-shortcuts": "",
+    "players-menu-text-align": "Left",
+    "game-options-menu-shortcuts": "",
+    "game-options-menu-text-align": "Left"
+   },
+   "font": "MaPolice.ttf",
+   "background": "images/background.png"
+  },
+  "remi": {
+   "colors": {
+    "border-radius": 10,
+    "button-radius": "max",
+    "border-size": 0,
+    "padding": 2,
+    "color-black": [
+     0,
+     0,
+     0
+    ],
+    "bg-global": false,
+    "bg-round-nb": [
+     0,
+     0,
+     0
+    ],
+    "bg-round-nb-header": [
+     51,
+     81,
+     127
+    ],
+    "bg-LOGO": [
+     0,
+     0,
+     0
+    ],
+    "bg-darts-nb": [
+     0,
+     0,
+     0
+    ],
+    "bg-darts-nb-header": [
+     51,
+     81,
+     127
+    ],
+    "bg-optionslist-header": [
+     51,
+     81,
+     127
+    ],
+    "bg-optionslist": [
+     0,
+     0,
+     0
+    ],
+    "player1": [
+     255,
+     0,
+     0
+    ],
+    "player2": [
+     0,
+     255,
+     0
+    ],
+    "player3": [
+     0,
+     0,
+     255
+    ],
+    "player4": [
+     255,
+     255,
+     0
+    ],
+    "player5": [
+     255,
+     0,
+     255
+    ],
+    "player6": [
+     0,
+     255,
+     255
+    ],
+    "player7": [
+     128,
+     255,
+     0
+    ],
+    "player8": [
+     128,
+     0,
+     255
+    ],
+    "player9": [
+     0,
+     128,
+     255
+    ],
+    "player10": [
+     255,
+     128,
+     0
+    ],
+    "player11": [
+     255,
+     0,
+     128
+    ],
+    "player12": [
+     0,
+     255,
+     128
+    ],
+    "menu-header": [
+     255,
+     255,
+     255
+    ],
+    "menu-text": [
+     0,
+     0,
+     0
+    ],
+    "menu-selected": [
+     193,
+     193,
+     193
+    ],
+    "menu-shortcut": [
+     194,
+     1,
+     1
+    ],
+    "menu-alternate": [
+     194,
+     1,
+     1
+    ],
+    "menu-ok": [
+     112,
+     156,
+     118
+    ],
+    "menu-warning": [
+     205,
+     144,
+     110
+    ],
+    "menu-ko": [
+     189,
+     108,
+     109
+    ],
+    "menu-item-white": [
+     0,
+     0,
+     0
+    ],
+    "menu-item-black": [
+     0,
+     0,
+     0
+    ],
+    "menu-text-black": [
+     255,
+     255,
+     255
+    ],
+    "menu-text-white": [
+     255,
+     255,
+     255
+    ],
+    "menu-buttons": [
+     100,
+     100,
+     100
+    ],
+    "menu-favorite": [
+     255,
+     215,
+     0
+    ],
+    "menu-border": [
+     255,
+     255,
+     255
+    ],
+    "menu-inactive": [
+     128,
+     128,
+     128
+    ],
+    "description-bg": [
+     213,
+     206,
+     186
+    ],
+    "description-text": [
+     0,
+     0,
+     0
+    ],
+    "description-game": [
+     0,
+     0,
+     0
+    ],
+    "game-bg": [
+     0,
+     0,
+     0
+    ],
+    "game-score": [
+     255,
+     255,
+     255
+    ],
+    "game-headers": [
+     255,
+     255,
+     255
+    ],
+    "game-player": [
+     119,
+     119,
+     118
+    ],
+    "game-player-name": [
+     255,
+     255,
+     255
+    ],
+    "game-alt-headers": [
+     48,
+     48,
+     48
+    ],
+    "game-round": [
+     107,
+     134,
+     176
+    ],
+    "game-title1": [
+     48,
+     48,
+     48
+    ],
+    "game-title2": [
+     255,
+     255,
+     255
+    ],
+    "game-type": [
+     255,
+     0,
+     0
+    ],
+    "game-table": [
+     160,
+     160,
+     160
+    ],
+    "game-text": [
+     255,
+     255,
+     255
+    ],
+    "game-option": [
+     255,
+     215,
+     0
+    ],
+    "game-darts": [
+     160,
+     160,
+     160
+    ],
+    "game-inactive": [
+     119,
+     119,
+     118
+    ],
+    "game-dead": [
+     48,
+     48,
+     48
+    ],
+    "game-grey": [
+     213,
+     206,
+     186
+    ],
+    "game-grey2": [
+     74,
+     74,
+     74
+    ],
+    "game-purple": [
+     140,
+     108,
+     161
+    ],
+    "game-red": [
+     255,
+     0,
+     0
+    ],
+    "game-green": [
+     0,
+     255,
+     0
+    ],
+    "game-blue": [
+     0,
+     0,
+     255
+    ],
+    "game-gold": [
+     255,
+     215,
+     0
+    ],
+    "game-silver": [
+     192,
+     192,
+     192
+    ],
+    "game-bronze": [
+     205,
+     127,
+     50
+    ],
+    "message-bg": [
+     255,
+     255,
+     255
+    ],
+    "message-text": [
+     0,
+     0,
+     0
+    ],
+    "target-sb": [
+     255,
+     0,
+     0
+    ],
+    "target-db": [
+     255,
+     0,
+     0
+    ],
+    "target-double1": [
+     0,
+     0,
+     255
+    ],
+    "target-double2": [
+     255,
+     0,
+     0
+    ],
+    "target-triple1": [
+     0,
+     0,
+     255
+    ],
+    "target-triple2": [
+     255,
+     0,
+     0
+    ],
+    "target-simple1": [
+     255,
+     255,
+     255
+    ],
+    "target-simple2": [
+     255,
+     255,
+     255
+    ],
+    "bob27-bg": [
+     45,
+     78,
+     99
+    ],
+    "bob27-blue": [
+     46,
+     64,
+     76
+    ],
+    "bob27-green": [
+     45,
+     108,
+     85
+    ],
+    "bob27-red": [
+     124,
+     84,
+     87
+    ],
+    "bob27-hit": [
+     57,
+     209,
+     129
+    ],
+    "bob27-miss": [
+     232,
+     21,
+     37
+    ],
+    "bob27-text": [
+     255,
+     255,
+     255
+    ],
+    "fighters-medic": [
+     0,
+     240,
+     0
+    ],
+    "fighters-actual-player": [
+     255,
+     255,
+     255
+    ],
+    "fighters-alive-player": [
+     150,
+     0,
+     0
+    ],
+    "fighters-dead-player": [
+     255,
+     255,
+     255
+    ],
+    "fighters-targets": [
+     255,
+     255,
+     255
+    ],
+    "fighters-scores": [
+     255,
+     255,
+     255
+    ],
+    "fighters-round": [
+     255,
+     255,
+     255
+    ],
+    "fighters-darts": [
+     255,
+     255,
+     255
+    ],
+    "suggestion-color-allplayer": null,
+    "main-sub-menu-shortcuts": null,
+    "main-sub-menu-text-align": "Center",
+    "parametrage-menu-shortcuts": null,
+    "parametrage-menu-text-align": "Center",
+    "players-menu-shortcuts": null,
+    "players-menu-text-align": "Center",
+    "game-options-menu-shortcuts": null,
+    "game-options-menu-text-align": "Center",
+    "target-bgcolor1": [
+     0,
+     255,
+     0
+    ],
+    "target-bgcolor2": [
+     255,
+     0,
+     0
+    ],
+    "target-bgcolor3": [
+     255,
+     255,
+     255
+    ]
+   },
+   "font": "CompactaBT.ttf",
+   "background": "images/background/background.png"
+  }
+ },
+ "images": {
+  "official": {
+   "images/logos_menu/321_Zlip.png": "assets/img/official/images/logos_menu/321_Zlip.webp",
+   "images/logos_menu/Balltrap.png": "assets/img/official/images/logos_menu/Balltrap.webp",
+   "images/logos_menu/Baseball.png": "assets/img/official/images/logos_menu/Baseball.webp",
+   "images/logos_menu/Batard.png": "assets/img/official/images/logos_menu/Batard.webp",
+   "images/logos_menu/Bermuda_Triangle.png": "assets/img/official/images/logos_menu/Bermuda_Triangle.webp",
+   "images/logos_menu/Big6.png": "assets/img/official/images/logos_menu/Big6.webp",
+   "images/logos_menu/Bingo.png": "assets/img/official/images/logos_menu/Bingo.webp",
+   "images/logos_menu/Bob27.png": "assets/img/official/images/logos_menu/Bob27.webp",
+   "images/logos_menu/Bowling.png": "assets/img/official/images/logos_menu/Bowling.webp",
+   "images/logos_menu/Bulls.png": "assets/img/official/images/logos_menu/Bulls.webp",
+   "images/logos_menu/By_Fives.png": "assets/img/official/images/logos_menu/By_Fives.webp",
+   "images/logos_menu/Castle.png": "assets/img/official/images/logos_menu/Castle.webp",
+   "images/logos_menu/Challenge.png": "assets/img/official/images/logos_menu/Challenge.webp",
+   "images/logos_menu/Chaos.png": "assets/img/official/images/logos_menu/Chaos.webp",
+   "images/logos_menu/Color.png": "assets/img/official/images/logos_menu/Color.webp",
+   "images/logos_menu/Conquer.png": "assets/img/official/images/logos_menu/Conquer.webp",
+   "images/logos_menu/Cricket.png": "assets/img/official/images/logos_menu/Cricket.webp",
+   "images/logos_menu/Cul_de_chouette.png": "assets/img/official/images/logos_menu/Cul_de_chouette.webp",
+   "images/logos_menu/Dragon.png": "assets/img/official/images/logos_menu/Dragon.webp",
+   "images/logos_menu/Duel.png": "assets/img/official/images/logos_menu/Duel.webp",
+   "images/logos_menu/Dungeon.png": "assets/img/official/images/logos_menu/Dungeon.webp",
+   "images/logos_menu/Fighters.png": "assets/img/official/images/logos_menu/Fighters.webp",
+   "images/logos_menu/Football.png": "assets/img/official/images/logos_menu/Football.webp",
+   "images/logos_menu/GameOfGoose.png": "assets/img/official/images/logos_menu/GameOfGoose.webp",
+   "images/logos_menu/GameOfGoose_0.png": "assets/img/official/images/logos_menu/GameOfGoose_0.webp",
+   "images/logos_menu/Golf.png": "assets/img/official/images/logos_menu/Golf.webp",
+   "images/logos_menu/Hangman.png": "assets/img/official/images/logos_menu/Hangman.webp",
+   "images/logos_menu/High_Score.png": "assets/img/official/images/logos_menu/High_Score.webp",
+   "images/logos_menu/Ho_One.png": "assets/img/official/images/logos_menu/Ho_One.webp",
+   "images/logos_menu/Horse.png": "assets/img/official/images/logos_menu/Horse.webp",
+   "images/logos_menu/Incendie.png": "assets/img/official/images/logos_menu/Incendie.webp",
+   "images/logos_menu/Kapital.png": "assets/img/official/images/logos_menu/Kapital.webp",
+   "images/logos_menu/Killer.png": "assets/img/official/images/logos_menu/Killer.webp",
+   "images/logos_menu/Kinito.png": "assets/img/official/images/logos_menu/Kinito.webp",
+   "images/logos_menu/Low_Score.png": "assets/img/official/images/logos_menu/Low_Score.webp",
+   "images/logos_menu/Mickey.png": "assets/img/official/images/logos_menu/Mickey.webp",
+   "images/logos_menu/Morpion.png": "assets/img/official/images/logos_menu/Morpion.webp",
+   "images/logos_menu/Othello.png": "assets/img/official/images/logos_menu/Othello.webp",
+   "images/logos_menu/Pingpong.png": "assets/img/official/images/logos_menu/Pingpong.webp",
+   "images/logos_menu/Practice.png": "assets/img/official/images/logos_menu/Practice.webp",
+   "images/logos_menu/Puissance4.png": "assets/img/official/images/logos_menu/Puissance4.webp",
+   "images/logos_menu/Punch-Out.png": "assets/img/official/images/logos_menu/Punch-Out.webp",
+   "images/logos_menu/Pursuit.png": "assets/img/official/images/logos_menu/Pursuit.webp",
+   "images/logos_menu/Risk.png": "assets/img/official/images/logos_menu/Risk.webp",
+   "images/logos_menu/Robin_Drink.png": "assets/img/official/images/logos_menu/Robin_Drink.webp",
+   "images/logos_menu/Robin_Strip.png": "assets/img/official/images/logos_menu/Robin_Strip.webp",
+   "images/logos_menu/Round_the_clock.png": "assets/img/official/images/logos_menu/Round_the_clock.webp",
+   "images/logos_menu/Routine.png": "assets/img/official/images/logos_menu/Routine.webp",
+   "images/logos_menu/Sabotage.png": "assets/img/official/images/logos_menu/Sabotage.webp",
+   "images/logos_menu/Scram_Cricket.png": "assets/img/official/images/logos_menu/Scram_Cricket.webp",
+   "images/logos_menu/Shanghai.png": "assets/img/official/images/logos_menu/Shanghai.webp",
+   "images/logos_menu/Shoot-out.png": "assets/img/official/images/logos_menu/Shoot-out.webp",
+   "images/logos_menu/Simon.png": "assets/img/official/images/logos_menu/Simon.webp",
+   "images/logos_menu/Slider.png": "assets/img/official/images/logos_menu/Slider.webp",
+   "images/logos_menu/Snooker.png": "assets/img/official/images/logos_menu/Snooker.webp",
+   "images/logos_menu/Switch.png": "assets/img/official/images/logos_menu/Switch.webp",
+   "images/logos_menu/Target.png": "assets/img/official/images/logos_menu/Target.webp",
+   "images/logos_menu/Tennis.png": "assets/img/official/images/logos_menu/Tennis.webp",
+   "images/logos_menu/Tower.png": "assets/img/official/images/logos_menu/Tower.webp",
+   "images/logos_menu/Treasure.png": "assets/img/official/images/logos_menu/Treasure.webp",
+   "images/logos_menu/Up_Down_Count_Up.png": "assets/img/official/images/logos_menu/Up_Down_Count_Up.webp",
+   "images/logos_menu/Voleur.png": "assets/img/official/images/logos_menu/Voleur.webp",
+   "images/logos_menu/Yahtzydarts.png": "assets/img/official/images/logos_menu/Yahtzydarts.webp",
+   "images/logos_menu/menu_classic/classic_1.png": "assets/img/official/images/logos_menu/menu_classic/classic_1.webp",
+   "images/logos_menu/menu_classic/classic_2.png": "assets/img/official/images/logos_menu/menu_classic/classic_2.webp",
+   "images/logos_menu/menu_classic/classics.png": "assets/img/official/images/logos_menu/menu_classic/classics.webp",
+   "images/logos_menu/menu_classic/classics_2.png": "assets/img/official/images/logos_menu/menu_classic/classics_2.webp",
+   "images/logos_menu/menu_favoris/favoris.png": "assets/img/official/images/logos_menu/menu_favoris/favoris.webp",
+   "images/logos_menu/menu_favoris/favoris_2.png": "assets/img/official/images/logos_menu/menu_favoris/favoris_2.webp",
+   "images/logos_menu/menu_fun/fun.png": "assets/img/official/images/logos_menu/menu_fun/fun.webp",
+   "images/logos_menu/menu_fun/fun_1.png": "assets/img/official/images/logos_menu/menu_fun/fun_1.webp",
+   "images/logos_menu/menu_fun/fun_2.png": "assets/img/official/images/logos_menu/menu_fun/fun_2.webp",
+   "images/logos_menu/menu_sport/sport_1.png": "assets/img/official/images/logos_menu/menu_sport/sport_1.webp",
+   "images/logos_menu/menu_sport/sport_2.png": "assets/img/official/images/logos_menu/menu_sport/sport_2.webp",
+   "images/logos_menu/menu_sport/sports.png": "assets/img/official/images/logos_menu/menu_sport/sports.webp",
+   "images/logos_menu/menu_sport/sports_2.png": "assets/img/official/images/logos_menu/menu_sport/sports_2.webp",
+   "images/background.png": "assets/img/official/images/background.jpg",
+   "images/background_clear.png": "assets/img/official/images/background_clear.jpg"
+  },
+  "clear": {},
+  "remi": {
+   "images/background/background.png": "assets/img/remi/images/background/background.jpg",
+   "images/logos_menu/321_Zlip.png": "assets/img/remi/images/logos_menu/321_Zlip.webp",
+   "images/logos_menu/Balltrap.png": "assets/img/remi/images/logos_menu/Balltrap.webp",
+   "images/logos_menu/Baseball.png": "assets/img/remi/images/logos_menu/Baseball.webp",
+   "images/logos_menu/Batard.png": "assets/img/remi/images/logos_menu/Batard.webp",
+   "images/logos_menu/Bermuda_Triangle.png": "assets/img/remi/images/logos_menu/Bermuda_Triangle.webp",
+   "images/logos_menu/Big6.png": "assets/img/remi/images/logos_menu/Big6.webp",
+   "images/logos_menu/Bingo.png": "assets/img/remi/images/logos_menu/Bingo.webp",
+   "images/logos_menu/Bob27.png": "assets/img/remi/images/logos_menu/Bob27.webp",
+   "images/logos_menu/Bowling.png": "assets/img/remi/images/logos_menu/Bowling.webp",
+   "images/logos_menu/Bulls.png": "assets/img/remi/images/logos_menu/Bulls.webp",
+   "images/logos_menu/By_Fives.png": "assets/img/remi/images/logos_menu/By_Fives.webp",
+   "images/logos_menu/Castle.png": "assets/img/remi/images/logos_menu/Castle.webp",
+   "images/logos_menu/Challenge.png": "assets/img/remi/images/logos_menu/Challenge.webp",
+   "images/logos_menu/Chaos.png": "assets/img/remi/images/logos_menu/Chaos.webp",
+   "images/logos_menu/Color.png": "assets/img/remi/images/logos_menu/Color.webp",
+   "images/logos_menu/Conquer.png": "assets/img/remi/images/logos_menu/Conquer.webp",
+   "images/logos_menu/Cricket.png": "assets/img/remi/images/logos_menu/Cricket.webp",
+   "images/logos_menu/Cul_de_chouette.png": "assets/img/remi/images/logos_menu/Cul_de_chouette.webp",
+   "images/logos_menu/Dragon.png": "assets/img/remi/images/logos_menu/Dragon.webp",
+   "images/logos_menu/Fighters.png": "assets/img/remi/images/logos_menu/Fighters.webp",
+   "images/logos_menu/Football.png": "assets/img/remi/images/logos_menu/Football.webp",
+   "images/logos_menu/GameOfGoose.png": "assets/img/remi/images/logos_menu/GameOfGoose.webp",
+   "images/logos_menu/Golf.png": "assets/img/remi/images/logos_menu/Golf.webp",
+   "images/logos_menu/Hangman.png": "assets/img/remi/images/logos_menu/Hangman.webp",
+   "images/logos_menu/High_Score.png": "assets/img/remi/images/logos_menu/High_Score.webp",
+   "images/logos_menu/Ho_One.png": "assets/img/remi/images/logos_menu/Ho_One.webp",
+   "images/logos_menu/Horse.png": "assets/img/remi/images/logos_menu/Horse.webp",
+   "images/logos_menu/Kapital.png": "assets/img/remi/images/logos_menu/Kapital.webp",
+   "images/logos_menu/Killer.png": "assets/img/remi/images/logos_menu/Killer.webp",
+   "images/logos_menu/Kinito.png": "assets/img/remi/images/logos_menu/Kinito.webp",
+   "images/logos_menu/Low_Score.png": "assets/img/remi/images/logos_menu/Low_Score.webp",
+   "images/logos_menu/Mickey.png": "assets/img/remi/images/logos_menu/Mickey.webp",
+   "images/logos_menu/Morpion.png": "assets/img/remi/images/logos_menu/Morpion.webp",
+   "images/logos_menu/Othello.png": "assets/img/remi/images/logos_menu/Othello.webp",
+   "images/logos_menu/Pingpong.png": "assets/img/remi/images/logos_menu/Pingpong.webp",
+   "images/logos_menu/Practice.png": "assets/img/remi/images/logos_menu/Practice.webp",
+   "images/logos_menu/Puissance4.png": "assets/img/remi/images/logos_menu/Puissance4.webp",
+   "images/logos_menu/Punch-Out.png": "assets/img/remi/images/logos_menu/Punch-Out.webp",
+   "images/logos_menu/Pursuit.png": "assets/img/remi/images/logos_menu/Pursuit.webp",
+   "images/logos_menu/Risk.png": "assets/img/remi/images/logos_menu/Risk.webp",
+   "images/logos_menu/Robin_Drink.png": "assets/img/remi/images/logos_menu/Robin_Drink.webp",
+   "images/logos_menu/Robin_Strip.png": "assets/img/remi/images/logos_menu/Robin_Strip.webp",
+   "images/logos_menu/Round_the_clock.png": "assets/img/remi/images/logos_menu/Round_the_clock.webp",
+   "images/logos_menu/Sabotage.png": "assets/img/remi/images/logos_menu/Sabotage.webp",
+   "images/logos_menu/Scram_Cricket.png": "assets/img/remi/images/logos_menu/Scram_Cricket.webp",
+   "images/logos_menu/Shanghai.png": "assets/img/remi/images/logos_menu/Shanghai.webp",
+   "images/logos_menu/Simon.png": "assets/img/remi/images/logos_menu/Simon.webp",
+   "images/logos_menu/Slider.png": "assets/img/remi/images/logos_menu/Slider.webp",
+   "images/logos_menu/Snooker.png": "assets/img/remi/images/logos_menu/Snooker.webp",
+   "images/logos_menu/Switch.png": "assets/img/remi/images/logos_menu/Switch.webp",
+   "images/logos_menu/Target.png": "assets/img/remi/images/logos_menu/Target.webp",
+   "images/logos_menu/Tennis.png": "assets/img/remi/images/logos_menu/Tennis.webp",
+   "images/logos_menu/Tower.png": "assets/img/remi/images/logos_menu/Tower.webp",
+   "images/logos_menu/Treasure.png": "assets/img/remi/images/logos_menu/Treasure.webp",
+   "images/logos_menu/Up_Down_Count_Up.png": "assets/img/remi/images/logos_menu/Up_Down_Count_Up.webp",
+   "images/logos_menu/Voleur.png": "assets/img/remi/images/logos_menu/Voleur.webp",
+   "images/logos_menu/Yahtzydarts.png": "assets/img/remi/images/logos_menu/Yahtzydarts.webp",
+   "images/logos_menu/menu_classic/classic_1.png": "assets/img/remi/images/logos_menu/menu_classic/classic_1.webp",
+   "images/logos_menu/menu_classic/classic_2.png": "assets/img/remi/images/logos_menu/menu_classic/classic_2.webp",
+   "images/logos_menu/menu_favoris/favoris_1.png": "assets/img/remi/images/logos_menu/menu_favoris/favoris_1.webp",
+   "images/logos_menu/menu_favoris/favoris_2.png": "assets/img/remi/images/logos_menu/menu_favoris/favoris_2.webp",
+   "images/logos_menu/menu_fun/fun_1.png": "assets/img/remi/images/logos_menu/menu_fun/fun_1.webp",
+   "images/logos_menu/menu_fun/fun_2.png": "assets/img/remi/images/logos_menu/menu_fun/fun_2.webp",
+   "images/logos_menu/menu_sport/sport_1.png": "assets/img/remi/images/logos_menu/menu_sport/sport_1.webp",
+   "images/logos_menu/menu_sport/sport_2.png": "assets/img/remi/images/logos_menu/menu_sport/sport_2.webp"
+  }
+ },
+ "fonts": {
+  "Baldur.ttf": "assets/fonts/Baldur.ttf",
+  "Becker.ttf": "assets/fonts/Becker.ttf",
+  "Blackwood.ttf": "assets/fonts/Blackwood.ttf",
+  "Campfire.ttf": "assets/fonts/Campfire.ttf",
+  "CarbonBlock.ttf": "assets/fonts/CarbonBlock.ttf",
+  "Chizz.ttf": "assets/fonts/Chizz.ttf",
+  "Digital.ttf": "assets/fonts/Digital.ttf",
+  "Erika.ttf": "assets/fonts/Erika.ttf",
+  "Fabrik.ttf": "assets/fonts/Fabrik.ttf",
+  "FreeSansBold.ttf": "assets/fonts/FreeSansBold.ttf",
+  "Impact.ttf": "assets/fonts/Impact.ttf",
+  "Kamikzon.ttf": "assets/fonts/Kamikzon.ttf",
+  "MaPolice.ttf": "assets/fonts/MaPolice.ttf",
+  "MagicSchool.ttf": "assets/fonts/MagicSchool.ttf",
+  "Magnetob.ttf": "assets/fonts/Magnetob.ttf",
+  "Moderna.ttf": "assets/fonts/Moderna.ttf",
+  "Monoglyceride.ttf": "assets/fonts/Monoglyceride.ttf",
+  "MorrisRoman.ttf": "assets/fonts/MorrisRoman.ttf",
+  "PirataOne.ttf": "assets/fonts/PirataOne.ttf",
+  "Purisa.ttf": "assets/fonts/Purisa.ttf",
+  "SonOfTmU.ttf": "assets/fonts/SonOfTmU.ttf",
+  "Unispace.ttf": "assets/fonts/Unispace.ttf",
+  "comic-sans-ms.ttf": "assets/fonts/comic-sans-ms.ttf",
+  "unicode.compacta.ttf": "assets/fonts/unicode.compacta.ttf",
+  "CompactaBT.ttf": "assets/fonts/CompactaBT.ttf"
+ },
+ "texts": {
+  "fr": {
+   "animations": "Animations Leds",
+   "back": "Retour",
+   "back-to-desktop": "Revenir sur le bureau",
+   "backups": "Gestion des sauvegardes",
+   "btn_update": "Vérifier les mises à jour",
+   "continue": "Continuer",
+   "customization": "Personnalisation du jeu",
+   "dmd-backup-menu": "Sauvegardes",
+   "dmd-bestwin": "Que le meilleur gagne !",
+   "dmd-game-choice": "Choix du jeu",
+   "dmd-game-classic": "Jeux classiques",
+   "dmd-game-favorites": "Jeux favoris",
+   "dmd-game-fun": "Jeux fun",
+   "dmd-game-sport": "Jeux de sport",
+   "dmd-player-bank": "Banque de joueurs",
+   "dmd-player-choice": "Choix des joueurs",
+   "dmd-player-favorites": "Joueurs favoris",
+   "dmd-server-favorites": "Serveurs favoris",
+   "down": "Bas",
+   "exhibition": "Mode exposition",
+   "exit": "Quitter",
+   "favorite": "Favori",
+   "favorite-ask": "Les choisir au lancement",
+   "favorite-choose": "Ces joueurs",
+   "favorite-define-options": "définir ses options ?",
+   "favorite-edit-options": "Modifier les options",
+   "favorite-empty": "vide",
+   "favorite-generic": "Joueur 1, Joueur 2…",
+   "favorite-last": "Les derniers joueurs choisis",
+   "favorite-not-saved": "Le favori n'a pas pu être enregistré",
+   "favorite-numbered": "L'enregistrer aussi comme favori numéroté ?",
+   "favorite-numbered-sub": "Favori 1 à 9 : il ne sera dans le menu principal que si le fichier de menus lui donne un bouton (favorite:fav1…)",
+   "favorite-options-legend": "Opt. : options définies, sans écran d'options",
+   "favorite-options-mark": "Opt.",
+   "favorite-place-button": "Le placer aussi sur un bouton du menu principal ?",
+   "favorite-player": "Joueur",
+   "favorite-players": "Joueurs du favori",
+   "favorite-players-sub": "Avec quels joueurs le lancer ?",
+   "favorite-remove": "Retirer des favoris",
+   "favorite-save": "Enregistrer comme favori",
+   "favorite-save-sub": "Choisissez son numéro (un favori déjà enregistré est remplacé)",
+   "favorite-saved": "Favori enregistré :",
+   "favorite-too-few": "Il manquera des joueurs. Continuer ?",
+   "favorite-too-many": "Les joueurs en trop seront retirés. Continuer ?",
+   "favorites-games": "Jeux favoris",
+   "favorites-players": "Joueurs favoris",
+   "favorites-servers": "Serveurs favoris",
+   "gallery": "Galerie",
+   "game-cat": "Catégorie du jeu",
+   "game-list": "Choix du jeu",
+   "game-options": "Options du jeu",
+   "game-type": "Jeu",
+   "game-type-local": "Partie simple",
+   "game-type-manual": "Créer une partie en réseau",
+   "game-type-master": "Rejoindre une partie en réseau",
+   "game-type-menu": "Raspydarts",
+   "left": "Reste",
+   "miscellaneous": "Divers (Favoris, paramétrage,...)",
+   "no": "Non",
+   "parameters": "Paramètres",
+   "players-bank": "Banque de prénoms",
+   "players-names": "Nom des joueurs",
+   "players-names-subtitle": "Appuyez sur + pour ajouter, - pour supprimer, / pour joueur ordinateur, * pour la couleur du joueur, <Tab> pour mélanger",
+   "realy-stop": "Voulez-vous vraiment quitter ?",
+   "reset": "Réinitialiser",
+   "restart": "Rejouer",
+   "right": "Droite",
+   "save": "Sauvegarder",
+   "setup": "Paramétrage",
+   "setup-buttons": "Paramétrage des boutons et toys",
+   "setup-cam": "Paramétrage de la caméra",
+   "setup-couleurs-segments": "Paramétrage couleur segment d'origine",
+   "setup-leds": "Affectation des leds",
+   "setup-pinsleds": "Paramétrage des leds",
+   "test-buttons": "Test des boutons",
+   "test-target": "Test de la cible",
+   "test-toys": "Test des toys",
+   "trophees": "Trophées et progression",
+   "up": "Haut",
+   "yes": "Oui"
+  },
+  "en": {
+   "animations": "Animations Leds",
+   "back": "Back",
+   "back-to-desktop": "Back to desktop",
+   "backups": "Gestion des sauvegardes",
+   "continue": "Continue",
+   "customization": "Personnalisation du jeu",
+   "dmd-backup-menu": "Backup",
+   "dmd-bestwin": "May the best win !",
+   "dmd-game-choice": "Choose your game",
+   "dmd-game-classic": "Classic games",
+   "dmd-game-favorites": "Favorite games",
+   "dmd-game-fun": "Fun games",
+   "dmd-player-bank": "Player database",
+   "dmd-player-choice": "Choose opponents",
+   "dmd-player-favorites": "Favorite players",
+   "dmd-server-favorites": "Favorite servers",
+   "down": "Down",
+   "exhibition": "Exhibition mode",
+   "exit": "Exit",
+   "favorite": "Favorite",
+   "favorite-ask": "Choose them at the start",
+   "favorite-choose": "These players",
+   "favorite-define-options": "define its options?",
+   "favorite-edit-options": "Change the options",
+   "favorite-empty": "empty",
+   "favorite-generic": "Player 1, Player 2…",
+   "favorite-last": "The last players chosen",
+   "favorite-not-saved": "The favorite could not be saved",
+   "favorite-numbered": "Also save it as a numbered favorite?",
+   "favorite-numbered-sub": "Favorite 1 to 9: it is in the main menu only if the file of menus gives it a button (favorite:fav1…)",
+   "favorite-options-legend": "Opt.: options defined, no screen of options",
+   "favorite-options-mark": "Opt.",
+   "favorite-place-button": "Also place it on a button of the main menu?",
+   "favorite-player": "Player",
+   "favorite-players": "Players of the favorite",
+   "favorite-players-sub": "With which players should it start?",
+   "favorite-remove": "Remove from the favorites",
+   "favorite-save": "Save as a favorite",
+   "favorite-save-sub": "Choose its number (a favorite already saved is replaced)",
+   "favorite-saved": "Favorite saved:",
+   "favorite-too-few": "Some players will be missing. Continue?",
+   "favorite-too-many": "The extra players will be removed. Continue?",
+   "favorites-games": "Favortie games",
+   "favorites-players": "Joueurs favoris",
+   "favorites-servers": "Serveurs favoris",
+   "gallery": "Gallery",
+   "game-cat": "Game category",
+   "game-list": "Game choice",
+   "game-options": "Game's options",
+   "game-type": "Jeu",
+   "game-type-local": "Local game",
+   "game-type-manual": "Create an online game",
+   "game-type-master": "Join an online game",
+   "game-type-menu": "Raspydarts",
+   "left": "Left",
+   "miscellaneous": "Miscellaneous",
+   "no": "No",
+   "parameters": "Paramètres",
+   "players-bank": "Players database",
+   "players-names": "Players' name",
+   "players-names-subtitle": "Appuyez sur + pour ajouter, - pour supprimer, / pour joueur ordinateur, <Tab> pour mélanger",
+   "realy-stop": "Really quit ?",
+   "reset": "Reset",
+   "restart": "Restart",
+   "right": "Right",
+   "save": "Save",
+   "setup": "Paramétrage",
+   "setup-buttons": "Paramétrage des boutons et toys",
+   "setup-leds": "Paramétrage des leds de la cible",
+   "setup-pinsleds": "Paramétrage des leds",
+   "test-buttons": "Test des boutons",
+   "test-target": "Test de la cible",
+   "test-toys": "Test des toys",
+   "up": "Up",
+   "yes": "Yes"
+  },
+  "de": {
+   "exhibition": "Ausstellungsmodus",
+   "exit": "Ausgang",
+   "favorite": "Favorit",
+   "favorite-ask": "Beim Start wählen",
+   "favorite-choose": "Diese Spieler",
+   "favorite-define-options": "Optionen festlegen?",
+   "favorite-edit-options": "Optionen ändern",
+   "favorite-empty": "leer",
+   "favorite-generic": "Spieler 1, Spieler 2…",
+   "favorite-last": "Die zuletzt gewählten Spieler",
+   "favorite-not-saved": "Der Favorit konnte nicht gespeichert werden",
+   "favorite-numbered": "Auch als nummerierten Favoriten speichern?",
+   "favorite-numbered-sub": "Favorit 1 bis 9: im Hauptmenü nur, wenn die Menüdatei ihm eine Taste gibt (favorite:fav1…)",
+   "favorite-options-legend": "Opt.: Optionen festgelegt, ohne Optionsseite",
+   "favorite-options-mark": "Opt.",
+   "favorite-place-button": "Auch auf eine Taste des Hauptmenüs legen?",
+   "favorite-player": "Spieler",
+   "favorite-players": "Spieler des Favoriten",
+   "favorite-players-sub": "Mit welchen Spielern starten?",
+   "favorite-remove": "Aus den Favoriten entfernen",
+   "favorite-save": "Als Favorit speichern",
+   "favorite-save-sub": "Nummer wählen (ein gespeicherter Favorit wird ersetzt)",
+   "favorite-saved": "Favorit gespeichert:",
+   "favorite-too-few": "Es fehlen Spieler. Weiter?",
+   "favorite-too-many": "Überzählige Spieler werden entfernt. Weiter?",
+   "gallery": "Galerie",
+   "game-list": "Waehle dein Spiel",
+   "game-options": "Spieloptionen",
+   "game-type": "Willkommen! Bitte Spielart wählen",
+   "game-type-local": "Lokales Spiel",
+   "game-type-manual": "Netzwerk Spiel erstellen (oder manuell beitreten)",
+   "game-type-master": "Netzwerk Spiel beitreten",
+   "left": "Übrig",
+   "players-names": "Bitte gebe den Spielern Namen",
+   "players-names-subtitle": "Druecke + fuer hinzuzufuegen, - zum entfernen, <Tab> für zufaellig"
+  },
+  "es": {
+   "exhibition": "Modo exposición",
+   "exit": "Salir",
+   "favorite": "Favorito",
+   "favorite-ask": "Elegirlos al empezar",
+   "favorite-choose": "Estos jugadores",
+   "favorite-define-options": "¿definir sus opciones?",
+   "favorite-edit-options": "Cambiar las opciones",
+   "favorite-empty": "vacío",
+   "favorite-generic": "Jugador 1, Jugador 2…",
+   "favorite-last": "Los últimos jugadores elegidos",
+   "favorite-not-saved": "No se pudo guardar el favorito",
+   "favorite-numbered": "¿Guardarlo también como favorito numerado?",
+   "favorite-numbered-sub": "Favorito 1 a 9: solo estará en el menú principal si el archivo de menús le da un botón (favorite:fav1…)",
+   "favorite-options-legend": "Opc.: opciones definidas, sin pantalla de opciones",
+   "favorite-options-mark": "Opc.",
+   "favorite-place-button": "¿Ponerlo también en un botón del menú principal?",
+   "favorite-player": "Jugador",
+   "favorite-players": "Jugadores del favorito",
+   "favorite-players-sub": "¿Con qué jugadores empezar?",
+   "favorite-remove": "Quitar de los favoritos",
+   "favorite-save": "Guardar como favorito",
+   "favorite-save-sub": "Elija su número (un favorito ya guardado se reemplaza)",
+   "favorite-saved": "Favorito guardado:",
+   "favorite-too-few": "Faltarán jugadores. ¿Continuar?",
+   "favorite-too-many": "Los jugadores de más se quitarán. ¿Continuar?",
+   "gallery": "Galería",
+   "game-list": "Por favor seleccione un juego de la lista",
+   "game-options": "Opciones de Juego",
+   "game-type": "¡Bienvenid@! Por favor, seleccione el tipo de juego que desee",
+   "game-type-local": "Juego local",
+   "game-type-manual": "Crear o conectarse manualmente a una partida online",
+   "game-type-master": "Unirse a partida online",
+   "left": "Faltan",
+   "players-names": "Por favor escriba el nombre de los juegadores:",
+   "players-names-subtitle": "Presione tecla + para añadir, - para eliminar, <Tab> aleatorio."
+  },
+  "it": {
+   "animations": "Animations Leds",
+   "back": "Indietro",
+   "back-to-desktop": "Torna al desktop",
+   "backups": "Gestion des sauvegardes",
+   "continue": "Continua",
+   "customization": "Personnalisation du jeu",
+   "dmd-backup-menu": "Sauvegardes",
+   "dmd-bestwin": "Que le meilleur gagne !",
+   "dmd-game-choice": "Choix du jeu",
+   "dmd-game-classic": "Jeux classiques",
+   "dmd-game-favorites": "Jeux favoris",
+   "dmd-game-fun": "Jeux fun",
+   "dmd-game-sport": "Jeux de sport",
+   "dmd-player-bank": "Banque de joueurs",
+   "dmd-player-choice": "Choix des joueurs",
+   "dmd-player-favorites": "Joueurs favoris",
+   "dmd-server-favorites": "Serveurs favoris",
+   "down": "Giù",
+   "exhibition": "Modalità esposizione",
+   "exit": "Esci",
+   "favorite": "Preferito",
+   "favorite-ask": "Sceglierli all'avvio",
+   "favorite-choose": "Questi giocatori",
+   "favorite-define-options": "definire le sue opzioni?",
+   "favorite-edit-options": "Modifica le opzioni",
+   "favorite-empty": "vuoto",
+   "favorite-generic": "Giocatore 1, Giocatore 2…",
+   "favorite-last": "Gli ultimi giocatori scelti",
+   "favorite-not-saved": "Impossibile salvare il preferito",
+   "favorite-numbered": "Salvarlo anche come preferito numerato?",
+   "favorite-numbered-sub": "Preferito da 1 a 9: sarà nel menu principale solo se il file dei menu gli dà un pulsante (favorite:fav1…)",
+   "favorite-options-legend": "Opz.: opzioni definite, senza schermata delle opzioni",
+   "favorite-options-mark": "Opz.",
+   "favorite-place-button": "Metterlo anche su un pulsante del menu principale?",
+   "favorite-player": "Giocatore",
+   "favorite-players": "Giocatori del preferito",
+   "favorite-players-sub": "Con quali giocatori avviarlo?",
+   "favorite-remove": "Togli dai preferiti",
+   "favorite-save": "Salva come preferito",
+   "favorite-save-sub": "Scegli il numero (un preferito già salvato viene sostituito)",
+   "favorite-saved": "Preferito salvato:",
+   "favorite-too-few": "Mancheranno dei giocatori. Continuare?",
+   "favorite-too-many": "I giocatori in più saranno tolti. Continuare?",
+   "favorites-games": "Giochi preferiti",
+   "favorites-players": "Joueurs favoris",
+   "favorites-servers": "Serveurs favoris",
+   "gallery": "Galleria",
+   "game-cat": "Catégorie du jeu",
+   "game-list": "Choix du jeu",
+   "game-options": "Options du jeu",
+   "game-type": "Jeu",
+   "game-type-local": "Partie simple",
+   "game-type-manual": "Créer une partie en réseau",
+   "game-type-master": "Rejoindre une partie en réseau",
+   "game-type-menu": "Raspydarts",
+   "left": "Resta",
+   "miscellaneous": "Divers (Favoris, paramétrage,...)",
+   "no": "No",
+   "parameters": "Paramètres",
+   "players-bank": "Banque de prénoms",
+   "players-names": "Nomi dei Giocatori",
+   "players-names-subtitle": "Appuyez sur + pour ajouter, - pour supprimer, / pour joueur ordinateur, <Tab> pour mélanger",
+   "realy-stop": "Voulez-vous vraiment quitter ?",
+   "reset": "Ripristina",
+   "restart": "Rejouer",
+   "right": "Destra",
+   "save": "Salva",
+   "setup": "Paramétrage",
+   "setup-buttons": "Paramétrage des boutons et toys",
+   "setup-leds": "Affectation des leds",
+   "setup-pinsleds": "Paramétrage des leds",
+   "test-buttons": "Test des boutons",
+   "test-target": "Test de la cible",
+   "test-toys": "Test des toys",
+   "up": "Su",
+   "yes": "Si"
+  }
+ },
+ "styleDefaults": {
+  "shape": "rounded",
+  "radius": 0.25,
+  "background": {
+   "color": "menu-buttons",
+   "image": null,
+   "fit": "stretch",
+   "position": "center",
+   "offset": [
+    0,
+    0
+   ],
+   "size": [
+    1.0,
+    1.0
+   ],
+   "opacity": 1.0,
+   "slice": 12
+  },
+  "border": {
+   "width": 0,
+   "color": "menu-border"
+  },
+  "shadow": false,
+  "text": {
+   "font": null,
+   "size": "4.5%",
+   "color": "menu-text",
+   "align": "center",
+   "position": "center",
+   "offset": [
+    0,
+    0
+   ],
+   "shadow": false,
+   "bold": false
+  },
+  "icon": {
+   "position": "left",
+   "size": 0.7,
+   "fit": "contain"
+  },
+  "selected": {
+   "background": {
+    "color": "menu-selected"
+   },
+   "text": {
+    "color": "menu-text-white"
+   }
+  },
+  "disabled": {
+   "background": {
+    "color": "#808080"
+   },
+   "text": {
+    "color": "#C0C0C0"
+   }
+  },
+  "pressed": {
+   "scale": 0.96
+  }
+ },
+ "layoutDefaults": {
+  "list": {
+   "area": {
+    "x": "25%",
+    "y": "18%",
+    "width": "50%",
+    "height": "72%"
+   },
+   "columns": 1,
+   "button_size": {
+    "width": 1.0,
+    "height": "9%"
+   }
+  },
+  "grid": {
+   "area": {
+    "x": "10%",
+    "y": "18%",
+    "width": "80%",
+    "height": "72%"
+   },
+   "columns": 3,
+   "button_size": {
+    "width": 1.0,
+    "height": "9%"
+   }
+  },
+  "tiles": {
+   "area": {
+    "x": "10%",
+    "y": "18%",
+    "width": "80%",
+    "height": "72%"
+   },
+   "columns": 3,
+   "button_size": {
+    "width": 1.0,
+    "height": null
+   }
+  }
+ },
+ "gapDefault": {
+  "x": "2%",
+  "y": "1.5%"
+ }
+};
