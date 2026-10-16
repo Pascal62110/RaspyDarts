@@ -5245,142 +5245,47 @@ class Screen(pygame.Surface):
 
     def miscellaneous(self, update):
         '''
-        Miscellaneous
+        Miscellaneous : described by the files of menus (menus/defaults.yaml...). The check
+        of the updates stays here : the menu gives the hand back for its button
         '''
-        nb_elements = 9
-        selected = self.selected_menu.get('miscellaneous', 1)
-
         self.dmd.send_text(f"{self.lang.translate('parameters')}")
-
-        old_selection = None
-        refresh = True
+        menus = self.menus()
         while True:
+            buttons = [button for button in menus.buttons('miscellaneous') if button.get('visible', True) is not False]
+            button = self.run_menu('miscellaneous', buttons, menus.buttons('miscellaneous'))
+            if button.get('action') != 'update':
+                return menus.result(button)
 
-            click_zones = {}
-            shortcuts = {}
+            version = update[0].get_version(self.logs)
+            try:
+                self.update_screen(self.message(['update-check'], 0, None, 'middle'))
+                last = update[0].get_last(self.logs, version)
 
-            # Draw bg
-            self.display_background()
-            # Titles
-            self.menu_header(f"{self.lang.translate('parameters')}")
-            # Ip address
-            self.display_ips()
-            # Version of rpi
-            self.display_rpi_version()
-            # Pydarts' version
-            self.display_version()
+                if last is None:
+                    self.update_screen(self.message(['no-update-available'], 1500, None, 'middle'))
+                else:
+                    response = self.wait_validation("update-available")
+                    if response:
+                        self.update_screen(self.message(['update-download'], 0, None, 'middle'))
+                        new_version = None
+                        if update[0].download_update(self.logs, last):
+                            self.update_screen(self.message(['updating'], 0, None, 'middle'))
+                            new_version = update[0].apply_update(self.logs, last)
 
-            # Menu
-            click_zones['F1'] = self.menu_item((1, nb_elements, selected), ("F1", "favorites-players", BTN_CHOICE, None), exit=False)
-            shortcuts['F1'] = 'firstnames'
+                        if new_version is None:
+                            self.update_screen(self.message(['update-failed'], 1500, None, 'middle'))
+                        else:
+                            self.update_screen(self.message([f'Version {new_version} installée', 'restarting'], \
+                                    1000,  'middle', bg_color='menu-ok'))
+                            version = new_version
 
-            click_zones['F2'] = self.menu_item((2, nb_elements, selected), ("F2", "favorites-games", BTN_CHOICE, None), exit=False)
-            shortcuts['F2'] = 'games'
-
-            click_zones['F3'] = self.menu_item((3, nb_elements, selected), ("F3", "favorites-servers", BTN_CHOICE, None), exit=False)
-            shortcuts['F3'] = 'servers'
-
-            click_zones['F4'] = self.menu_item((4, nb_elements, selected), ("F4", "customization", BTN_CHOICE, None), exit=False)
-            shortcuts['F4'] = 'customization'
-
-            click_zones['F5'] = self.menu_item((5, nb_elements, selected), ("F5", "animations", BTN_CHOICE, None), exit=False)
-            shortcuts['F5'] = 'animations'
-
-            click_zones['F6'] = self.menu_item((6, nb_elements, selected), ("F6", "players-bank", BTN_CHOICE, None), exit=False)
-            shortcuts['F6'] = 'firstname-bank'
-
-            click_zones['F7'] = self.menu_item((7, nb_elements, selected), ("F7", "setup", BTN_CHOICE, None), exit=False)
-            shortcuts['F7'] = 'setup'
-
-            click_zones['F8'] = self.menu_item((8, nb_elements, selected), ("F8", "backups", BTN_CHOICE, None), exit=False)
-            shortcuts['F8'] = 'backups'
-
-            click_zones['F9'] = self.menu_item((9, nb_elements, selected), ("F9", "exhibition", BTN_CHOICE, None), exit=False)
-            shortcuts['F9'] = 'exhibition'
-
-            # go back and next
-            click_zones['escape'] = self.display_button(nb_elements + 1 == selected, 'back', special='escape')
-            click_zones['update'] = self.display_button(nb_elements + 2 == selected, 'btn_update', special='return')
-
-            if selected <= nb_elements:
-                selection = click_zones[f'F{selected}']
-            elif nb_elements + 1 == selected:
-                selection = click_zones['escape']
-            elif nb_elements + 2 == selected:
-                selection = click_zones['update']
-            else:
-                selection = None
-
-            ################
-            # Update screen
-            if refresh:
-                self.update_screen()
-                refresh = False
-            elif old_selection is None or selection is None:
-                self.update_screen(rect_array=[old_selection, selection])
-            else:
-                self.update_screen(rect_array=[click_zones[cz] for cz in click_zones])
-
-            key = self.rpi.listen_inputs(['arrows', 'fx'], 
-                                         ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON', 'single-click', 'enter', 'space'],
-                                         events=[(self.wait_event_time, 'EVENT', 'wait')])
-
-            # Click cases
-            clicked = self.is_clicked(click_zones, key)
-            if clicked:
-                key = clicked
-
-            # Navigation
-            selected = self.navigate(selected, key, nb_elements, 2, 2)
-
-            # Shortcuts
-            if key in shortcuts:
-                selected = int(key.replace('F', ''))
-                self.selected_menu['miscellaneous'] = selected
-                key = 'enter'
-
-            if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
-                return 'escape'
-            
-            if 'update' in key or (key in ENTER_KEYS and selected == nb_elements + 2):
-                version = update[0].get_version(self.logs)
-                try:
-                    self.update_screen(self.message(['update-check'], 0, None, 'middle'))
-                    last = update[0].get_last(self.logs, version)
-
-                    if last is None:
-                        self.update_screen(self.message(['no-update-available'], 1500, None, 'middle'))
-                    else:
-                        response = self.wait_validation("update-available")
-                        if response:
-                            self.update_screen(self.message(['update-download'], 0, None, 'middle'))
-                            new_version = None
-                            if update[0].download_update(self.logs, last):
-                                self.update_screen(self.message(['updating'], 0, None, 'middle'))
-                                new_version = update[0].apply_update(self.logs, last)
-
-                            if new_version is None:
-                                self.update_screen(self.message(['update-failed'], 1500, None, 'middle'))
-                            else:
-                                self.update_screen(self.message([f'Version {new_version} installée', 'restarting'], \
-                                        1000,  'middle', bg_color='menu-ok'))
-                                version = new_version
-
-                                response = self.wait_validation("Voulez-vous redémarrer?")
-                                if response:
-                                    return 'restart'
-                except Exception as exception:
-                    self.logs.debug("[WARNING] Unable to check/get updates.")
-                    self.logs.debug(f"[WARNING] Error was {exception}")
-                    self.logs.debug(f"version is {version}")
-                key = 'update'
-                refresh = True
-
-            if key in ENTER_KEYS :
-                self.selected_menu['miscellaneous'] = selected
-                return shortcuts[f'F{selected}']
-
-            old_selection = selection
+                            response = self.wait_validation("Voulez-vous redémarrer?")
+                            if response:
+                                return 'restart'
+            except Exception as exception:
+                self.logs.debug("[WARNING] Unable to check/get updates.")
+                self.logs.debug(f"[WARNING] Error was {exception}")
+                self.logs.debug(f"version is {version}")
 
     def border_color(self, selected, pos_x, pos_y):
         '''
@@ -6519,49 +6424,77 @@ class Screen(pygame.Surface):
             return best[1]
         return wrap[1] if wrap is not None else selected
 
-    def run_menu(self, name, items, everything, title=None, show_version=False, hook=None):
+    # Places of the buttons at the bottom of the menus (footer : see display_button)
+    FOOTERS = {'left': 'escape', 'center': 'refresh', 'right': 'return'}
+
+    def run_menu(self, name, items, everything, hook=None):
         '''
-        A menu of the file, drawn as a list of classic buttons (menu_item) : returns the
-        button chosen. items : buttons shown ; everything : all those which have a shortcut
-        (hidden ones too). The background and the title are drawn once : moving only draws
-        again the buttons whose look changes
+        A menu of the files, drawn as a list of classic buttons (menu_item) and the buttons
+        at its bottom (display_button) : returns the button chosen. items : buttons shown ;
+        everything : all those which have a shortcut (hidden ones too). The background, the
+        title and the informations are drawn once : moving only draws again the buttons
+        whose look changes
         '''
         menus = self.menus()
+        menu = menus.menu(name)
+        title = menu.get('title')
+        show_version = bool(menu.get('show_version'))
+        info = [str(value) for value in cmenus.as_list(menu.get('info'))]
+        remember = bool(menu.get('remember'))
         keys = {direction: set(menus.keys(direction)) for direction in
                 ('up', 'down', 'left', 'right', 'next', 'previous', 'validate', 'back')}
-        selected = 1
+        listed = [button for button in items if button.get('footer') not in self.FOOTERS]
+        footers = [button for button in items if button.get('footer') in self.FOOTERS]
+        shown = listed + footers
+        nb_listed = len(listed)
+        nb_shown = len(shown)
+        selected = self.selected_menu.get(name, 1) if remember else 1
+        if not 1 <= selected <= nb_shown:
+            selected = 1
         full = True
         pristine = None
         rects = {}
         drawn = {}
-        nb_elements = len(items)
         spaces = []
         space = 0
-        for button in items:
+        for button in listed:
             space += float(button.get('space_before', 0) or 0)
             spaces.append(space)
 
+        def look(index):
+            # Selected or not (with 10 buttons or more, the corners of the neighbours change)
+            if index > nb_listed or nb_listed < 10:
+                return index == selected
+            return (index, selected)
+
         def draw(index):
-            button = items[index - 1]
-            rects[index] = self.menu_item((index, nb_elements, selected), (self.button_label(button), self.button_text(button),
-                                          BTN_CHOICE, None), space=spaces[index - 1], exit=False)
-            # Look of a button : selected or not (with 10 buttons or more, the corners of
-            # its neighbours change too)
-            drawn[index] = (index == selected) if nb_elements < 10 else (index, selected)
+            button = shown[index - 1]
+            if index > nb_listed:
+                rects[index] = self.display_button(index == selected, self.button_text(button), self.FOOTERS[button['footer']])
+            else:
+                rects[index] = self.menu_item((index, nb_listed, selected), (self.button_label(button), self.button_text(button),
+                                              BTN_CHOICE, None), space=spaces[index - 1], exit=False)
+            drawn[index] = look(index)
 
         while True:
             if hook is not None and hook():
                 full = True
             if full:
-                # Background and title : drawn once, then kept from one display to the next
-                # (copying the whole screen each time made the return to the menu slower)
-                cache_key = (name, title, show_version, tuple(self.screen.get_size()),
+                # Background, title and informations : drawn once, then kept from one display
+                # to the next (copying the whole screen each time made the return slower)
+                cache_key = (name, title, show_version, tuple(info), tuple(self.screen.get_size()),
                              getattr(self.file_class, 'theme_dir', None), self.background)
                 pristine = self.menu_backgrounds.get(cache_key)
                 if pristine is None:
                     self.display_background(display_version=show_version)
                     if title:
                         self.menu_header(title)
+                    if 'ips' in info:
+                        self.display_ips()
+                    if 'rpi_version' in info:
+                        self.display_rpi_version()
+                    if 'version' in info:
+                        self.display_version()
                     pristine = self.screen.copy()
                     # A few menus only : one screen is several MB
                     while len(self.menu_backgrounds) >= MENU_BACKGROUNDS:
@@ -6570,13 +6503,12 @@ class Screen(pygame.Surface):
                 else:
                     self.screen.blit(pristine, (0, 0))
                     self.pristine_background = None
-                for index in range(1, nb_elements + 1):
+                for index in range(1, nb_shown + 1):
                     draw(index)
                 self.update_screen()
                 full = False
             else:
-                changed = [index for index in range(1, nb_elements + 1)
-                           if drawn.get(index) != ((index == selected) if nb_elements < 10 else (index, selected))]
+                changed = [index for index in range(1, nb_shown + 1) if drawn.get(index) != look(index)]
                 for index in changed:
                     rect = pygame.Rect(rects[index])
                     self.screen.blit(pristine, rect, rect)
@@ -6601,12 +6533,12 @@ class Screen(pygame.Surface):
                 if key in keys[direction] and selected in rects:
                     selected = self.move_selection(rects, selected, direction)
             if key in keys['next']:
-                selected = selected % nb_elements + 1
+                selected = selected % nb_shown + 1
             elif key in keys['previous']:
-                selected = (selected - 2) % nb_elements + 1
+                selected = (selected - 2) % nb_shown + 1
 
-            if key in keys['validate'] and 1 <= selected <= nb_elements:
-                button = items[selected - 1]
+            if key in keys['validate'] and 1 <= selected <= nb_shown:
+                button = shown[selected - 1]
             else:
                 # Shortcuts : all the buttons, hidden ones too. 'escape' : every key back
                 pressed = 'escape' if key in keys['back'] else key
@@ -6614,6 +6546,9 @@ class Screen(pygame.Surface):
                                if pressed in [cmenus.key_name(k) for k in cmenus.as_list(button.get('shortcut'))]), None)
             if button is None:
                 continue
+            # The selection kept is the one of a button of the list (not Back at the bottom)
+            if remember and button in listed:
+                self.selected_menu[name] = listed.index(button) + 1
             if button.get('confirm'):
                 full = True
                 if not self.wait_validation(self.lang.translate(str(button['confirm']))):
@@ -6629,7 +6564,6 @@ class Screen(pygame.Surface):
         #self.dmd.send_text(self.lang.translate('Welcome') + "!")
         self.dmd.send_text('Raspydarts')
         menus = self.menus()
-        menu = menus.menu('main')
         first = [True]
 
         def banned():
@@ -6646,8 +6580,7 @@ class Screen(pygame.Surface):
                 shown = True
             return shown
 
-        button = self.run_menu('main', self.main_menu_items(), menus.buttons('main'), title=menu.get('title'),
-                               show_version=bool(menu.get('show_version')), hook=banned)
+        button = self.run_menu('main', self.main_menu_items(), menus.buttons('main'), hook=banned)
         return menus.result(button)
 
     def exhibition_menu(self):

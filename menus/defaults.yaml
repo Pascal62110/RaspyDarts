@@ -76,3 +76,54 @@ menus:
         shortcut: escape
         space_before: 0.5
         confirm: realy-stop
+
+  miscellaneous:
+    title: parameters
+    info: [ips, rpi_version, version]
+    remember: true
+    buttons:
+      - id: firstnames
+        action: favorite_players
+        text: favorites-players
+        shortcut: F1
+      - id: games
+        action: favorite_games
+        text: favorites-games
+        shortcut: F2
+      - id: servers
+        action: favorite_servers
+        text: favorites-servers
+        shortcut: F3
+      - id: customization
+        action: customization
+        text: customization
+        shortcut: F4
+      - id: animations
+        action: animations
+        text: animations
+        shortcut: F5
+      - id: firstname-bank
+        action: players_bank
+        text: players-bank
+        shortcut: F6
+      - id: setup
+        action: menu:settings
+        text: setup
+        shortcut: F7
+      - id: backups
+        action: backups
+        text: backups
+        shortcut: F8
+      - id: exhibition
+        action: exhibition
+        text: exhibition
+        shortcut: F9
+      - id: back
+        action: back
+        text: back
+        shortcut: escape
+        footer: left
+      - id: update
+        action: update
+        text: btn_update
+        footer: right

@@ -87,8 +87,10 @@ Résolutions de référence pour les essais : **1024×600** (Raspberry Pi de dé
     jeu, sinon `en`, sinon la première donnée).
 - **Touche** (raccourcis, navigation) : `F1`…`F12`, une lettre ou un chiffre (`'l'`,
   `'1'`), `enter`, `space`, `escape`, `backspace`, `tab`, `up`, `down`, `left`, `right`, ou
-  un bouton de la borne : `btn:validate`, `btn:back`, `btn:up`, `btn:down`, `btn:left`,
-  `btn:right`, `btn:plus`, `btn:minus`, `btn:nextplayer`, `btn:game`. `none` : aucun.
+  un bouton de la borne : `btn:validate`, `btn:back`, `btn:cancel`, `btn:up`, `btn:down`,
+  `btn:left`, `btn:right`, `btn:plus`, `btn:minus`, `btn:nextplayer`, `btn:game`, ou une
+  fléchette : `dart:S20`, `dart:SB`, `dart:DB`… `none` : aucun. Comme raccourci, `escape`
+  désigne toutes les touches `back` (§9).
 
 ## 6. Structure générale
 
@@ -215,6 +217,10 @@ menus:
         space_before: 1.5            # écart au-dessus, en hauteurs de bouton (dispositions auto)
 ```
 
+Propriétés d'un menu, en plus de l'aspect : `title`, `subtitle`, `show_version` (version
+en bas à droite du fond), `info` (informations écrites sur le fond : `ips`, `rpi_version`,
+`version`), `remember` (`true` : le menu rouvre sur le dernier bouton choisi de sa liste).
+
 Propriétés d'un bouton :
 
 | Clé | Rôle |
@@ -227,6 +233,7 @@ Propriétés d'un bouton :
 | `visible` | `false` le cache (il reste joignable par son raccourci) |
 | `confirm` | texte d'une confirmation Oui/Non avant l'action |
 | `place` | placement libre (§7.5) ; sinon placé par la disposition du menu |
+| `footer` | bouton du bas de l'écran : `left`, `center` ou `right` (comme Retour, Enregistrer) |
 | `order` | rang dans l'ordre logique (§9), par défaut sa place dans la liste |
 | `space_before` | écart au-dessus (dispositions `list` et `grid`) |
 | `style`, et toute propriété de style | aspect de ce bouton seul |

@@ -31,7 +31,19 @@ ACTIONS = {
     'restart': 'restart',
     'desktop': 'quit',
     'shutdown': 'shutdown',
+    'favorite_players': 'firstnames',
+    'favorite_games': 'games',
+    'favorite_servers': 'servers',
+    'customization': 'customization',
+    'animations': 'animations',
+    'players_bank': 'firstname-bank',
+    'backups': 'backups',
+    'exhibition': 'exhibition',
+    'update': 'update',
+    'back': 'escape',
 }
+# Menus opened by the main loop : what it is given for each of them
+MENU_RESULTS = {'settings': 'setup'}
 ACTION_PREFIXES = ('menu:',)
 
 # Keys of the file (btn:..., dart:...) : names given by the inputs of the game
@@ -162,7 +174,8 @@ class Menus:
         '''
         action = str(button.get('action'))
         if action.startswith('menu:'):
-            return action[5:].split('/')[-1]
+            menu = action[5:].split('/')[-1]
+            return MENU_RESULTS.get(menu, menu)
         return ACTIONS[action]
 
     def keys(self, name):
