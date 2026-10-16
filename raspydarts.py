@@ -1429,6 +1429,8 @@ try:
         # The webcam is recorded during the game only
         if not match_done:
             camera.game_start()
+            # The sound of the first next player : chosen and decoded during the first turn
+            display.prepare_sound('next_player')
 
         # Main loop (every input runs a loop - a dart, a button or a click)
         while not match_done:

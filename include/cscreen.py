@@ -216,6 +216,8 @@ class Screen(pygame.Surface):
         self.rects = []
         self.blinktime = int(self.config.get_value('SectionGlobals', 'blinktime'))
         self.selected_menu = {}
+        # Sounds chosen and decoded before they are played (see prepare_sound)
+        self.prepared_sounds = {}
         # Background and title of the menus of the files (see run_menu)
         self.menu_backgrounds = {}
         # Buttons of the styles over their piece of background (see run_styled_menu)
@@ -9260,6 +9262,28 @@ class Screen(pygame.Surface):
         else:
             sound.fadeout(duration)
 
+    # Sounds of a folder played at each turn : the next one is chosen and decoded while the
+    # player throws (decoding the sound of the next player took 0.3 s, the game waited)
+    PREPARED_SOUNDS = ('next_player',)
+
+    def prepare_sound(self, filename):
+        '''
+        Choose the next sound of this name and decode it in the background
+        '''
+        if self.hidden or self.audio_deferred or not pygame.mixer.get_init():
+            return
+
+        def decode():
+            sound_file = self.file_class.get_full_filename(filename, 'sounds')
+            if sound_file is None:
+                return
+            try:
+                self.prepared_sounds[filename] = (sound_file, pygame.mixer.Sound(sound_file))
+            except Exception as error:    # pylint: disable=broad-except
+                self.logs.warning(f"Sound {sound_file} not prepared : {error}")
+
+        threading.Thread(target=decode, daemon=True).start()
+
     def play_sound(self, filename='beep1', wait_finish=False, duration=0):
         '''
         Play given sound. Search first in the home folder, then play default sound, or beep1 if not found.
@@ -9270,11 +9294,14 @@ class Screen(pygame.Surface):
         if self.hidden or self.audio_deferred:
             # The intro video is playing : opening the audio output would chop its sound
             return
-        sound_file = self.file_class.get_full_filename(filename, 'sounds')
+        prepared = self.prepared_sounds.pop(filename, None)
+        sound_file = prepared[0] if prepared else self.file_class.get_full_filename(filename, 'sounds')
         if sound_file is not None:
             try:
                 pygame.mixer.init(22050, -16, 2, MIXER_BUFFER)
-                sound = pygame.mixer.Sound(sound_file)
+                sound = prepared[1] if prepared else pygame.mixer.Sound(sound_file)
+                if filename in self.PREPARED_SOUNDS:
+                    self.prepare_sound(filename)
                 # Play only if sound is set
                 if sound:
                     # Set volume to defined setting and play
@@ -9283,10 +9310,10 @@ class Screen(pygame.Surface):
                     self.logs.info(f"Play {sound_file} at volume {volume}")
                     play_sound = sound.play()
 
-                    # if crop duration is requested, new thread to fadeout the sound
+                    # if crop duration is requested, new thread to fadeout the sound (its
+                    # 100 ms of delay in the thread : the game waited them)
                     if duration > 0:
-                        pygame.time.wait(100)
-                        x = threading.Thread(target = self.fade_out, args = (sound, duration, 2000))
+                        x = threading.Thread(target = self.fade_out, args = (sound, duration + 100, 2000))
                         x.start()
 
                     # if requested, we block the process until the sound is running

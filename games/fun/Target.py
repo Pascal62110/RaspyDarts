@@ -368,28 +368,26 @@ class Game(cgame.Game):
             player.stats['Points Per Round'] = player.avg(actual_round)
             player.stats['Points Per Dart'] = player.show_ppd()
             
-    def search_possibilities(self, score, player_launch):        
-        return_value = []
+    def search_possibilities(self, score, player_launch):
+        '''
+        The same suggestions as always, in the same order : the dart reaching the score is
+        looked up in a table (all the turns of 3 darts were tried : 0.2 s on a Pi 3)
+        '''
+        first_hit = {}
         for hit, key in self.score_map.items():
-            if ((score == key)):
+            first_hit.setdefault(key, hit)
+        for hit, key in self.score_map.items():
+            if score == key:
                 return [hit.upper()]
-               
+        finishes = [(hit, key) for hit, key in self.score_map.items() if score > key and hit[:1] in ('D', 'T')]
         if player_launch in (1, 2):
-            for hit, key in self.score_map.items():
-                if ((score > key and hit[:1] in ('D', 'T'))):
-                    firstrest = score - key
-                    for hit2, key in self.score_map.items():
-                        if firstrest == key:
-                            return [hit2.upper(), hit.upper()]
-
+            for hit, key in finishes:
+                if score - key in first_hit:
+                    return [first_hit[score - key].upper(), hit.upper()]
         if player_launch == 1:
-            for hit, key in self.score_map.items():
-                if ((score > key and hit[:1] in ('D', 'T'))):
-                    firstrest = score - key
-                    for hit3, key3 in self.score_map.items():
-                        if firstrest > key3:
-                            secondrest = firstrest - key3
-                            for hit4, key4 in self.score_map.items():
-                                if secondrest == key4:
-                                    return [hit3.upper(), hit4.upper(), hit.upper()]
-        return return_value
+            for hit, key in finishes:
+                firstrest = score - key
+                for hit3, key3 in self.score_map.items():
+                    if firstrest > key3 and firstrest - key3 in first_hit:
+                        return [hit3.upper(), first_hit[firstrest - key3].upper(), hit.upper()]
+        return []

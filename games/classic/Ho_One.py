@@ -666,43 +666,35 @@ class Game(cgame.Game):
 
     def search_possibilities(self, score, player_launch):
         '''
-        Used to help drunken player
+        Used to help drunken player. The same suggestions as always, found in the same order :
+        the dart reaching the score is looked up in a table (all the turns of 3 darts were
+        tried, 240 000 of them when no finish exists : 0.2 s on a Pi 3 at each new turn)
         '''
         #/!\return value must be iterable and must have at least 3 values
-        return_value = []
+        def allowed(hit):
+            return ((not self.double_out and not self.master_out) or (hit[:1] == 'D' and self.double_out)
+                    or (hit[:1] in ('D', 'T') and self.master_out))
+        first_hit = {}
+        for hit, key in self.score_map.items():
+            first_hit.setdefault(key, hit)
         # 1 dart possibility
         for hit, key in self.score_map.items():
-            if ((score == key and not self.double_out and not self.master_out)
-                or (score == key and hit[:1] == 'D' and self.double_out)
-                or (score == key and hit[:1] in ('D', 'T') and self.master_out)
-                ):
+            if score == key and allowed(hit):
                 return [hit.upper()]
+        finishes = [(hit, key) for hit, key in self.score_map.items() if score > key and allowed(hit)]
         # 2 darts possibilities - Player must have at least two darts left
         if player_launch in (1, 2):
-            for hit, key in self.score_map.items():
-                if ((score > key and not self.double_out and not self.master_out)
-                    or (score > key and hit[:1] == 'D' and self.double_out)
-                    or (score > key and hit[:1] in ('D', 'T') and self.master_out)
-                    ):
-                    firstrest = score - key
-                    for hit2, key in self.score_map.items():
-                        if firstrest == key:
-                            return [hit2.upper(), hit.upper()]
+            for hit, key in finishes:
+                if score - key in first_hit:
+                    return [first_hit[score - key].upper(), hit.upper()]
         # 3 darts possibilities - Player must have at least 3 darts left
         if player_launch == 1:
-            for hit, key in self.score_map.items():
-                if ((score > key and not self.double_out and not self.master_out)
-                    or (score > key and hit[:1] == 'D' and self.double_out)
-                    or (score > key and hit[:1] in ('D', 'T') and self.master_out)
-                    ):
-                    firstrest = score - key
-                    for hit3, key3 in self.score_map.items():
-                        if firstrest > key3:
-                            secondrest = firstrest - key3
-                            for hit4, key4 in self.score_map.items():
-                                if secondrest == key4:
-                                    return [hit3.upper(), hit4.upper(), hit.upper()]
-        return return_value
+            for hit, key in finishes:
+                firstrest = score - key
+                for hit3, key3 in self.score_map.items():
+                    if firstrest > key3 and firstrest - key3 in first_hit:
+                        return [hit3.upper(), first_hit[firstrest - key3].upper(), hit.upper()]
+        return []
 
     def refresh_stats(self, players, actual_round):
         '''
