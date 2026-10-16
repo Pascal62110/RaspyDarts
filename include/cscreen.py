@@ -3733,7 +3733,7 @@ class Screen(pygame.Surface):
         if options is None:
             return
         pending[game] = options
-        if self.ask_yes_no(self.lang.translate('favorite-place-button')):
+        if self.ask_yes_no(self.lang.translate('favorite-numbered'), self.lang.translate('favorite-numbered-sub')):
             names = self.favorite_players()
             self.favorite_save(game, options, len(names) or 1, names)
 
@@ -6595,9 +6595,10 @@ class Screen(pygame.Surface):
             button['game_logo'] = self.file_class.get_full_filename(f"logos_menu/{favorite['game']}", 'images')
         return button
 
-    def ask_yes_no(self, question):
+    def ask_yes_no(self, question, explanation=None):
         '''
-        A question answered by Yes or No (menu question of the files : its look), back : No
+        A question answered by Yes or No (menu question of the files : its look), back : No.
+        explanation : under the question (subtitle)
         '''
         items = [{'id': 'yes', 'action': 'yes', 'text': 'yes', 'shortcut': 'F1'},
                  {'id': 'no', 'action': 'no', 'text': 'no', 'shortcut': 'F2'}]
@@ -6605,7 +6606,8 @@ class Screen(pygame.Surface):
         previous = self.current_look
         self.current_look = None
         try:
-            return self.run_menu('question', items, items + [escape], title=question).get('id') == 'yes'
+            return self.run_menu('question', items, items + [escape], title=question,
+                                 subtitle=explanation).get('id') == 'yes'
         finally:
             self.current_look = previous
 
@@ -6658,6 +6660,8 @@ class Screen(pygame.Surface):
                       'text': self.lang.translate('favorite-generic')})
         modes.append({'id': 'last', 'action': 'favorite:last', 'shortcut': f'F{len(modes) + 1}',
                       'text': self.lang.translate('favorite-last')})
+        modes.append({'id': 'ask', 'action': 'favorite:ask', 'shortcut': f'F{len(modes) + 1}',
+                      'text': self.lang.translate('favorite-ask')})
         # Menus of their own (files of menus : favorite_save, favorite_players), not the look
         # of the screen of the options
         previous = self.current_look
@@ -6679,8 +6683,9 @@ class Screen(pygame.Surface):
 
     def favorite_launch(self, name, last_players):
         '''
-        A favorite chosen in a menu : (favorite, players) to start its game at once, None if
-        it cannot (empty) or if the player gives up (the last players do not match)
+        A favorite chosen in a menu : (favorite, players) to start its game at once (players
+        None : chosen first in the screen of the players), None if it cannot (empty) or if the
+        player gives up (the last players do not match)
         '''
         favorite = self.favorites().get(name)
         if favorite is None:

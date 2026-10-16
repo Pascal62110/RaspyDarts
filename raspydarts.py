@@ -495,6 +495,7 @@ if game_type != 'restart':
 local_players = Config.get_value('Favorites', 'firstnames', False, None, split=',')
 players_bank = Config.get_value('SectionAdvanced', 'localplayers', False, split=',')         # Local players
 selected_game = Config.get_value('SectionAdvanced', 'selectedgame', False, 'None')            # Selected game
+favorite_options = None    # Options of a favorite whose players are chosen at its launch
 if selected_game is not None and local_players is not None:
     direct_play = Config.get_value('SectionAdvanced', 'directplay', False, False)            # By-passs menus, use dirstnames and selected_game parameters
 else:
@@ -649,6 +650,8 @@ try:
                 rpi.light_toys(['LIGHT_NAVIGATE', 'LIGHT_VALIDATE'])
                 rpi.light_toys(['LIGHT_BACK'], False)
                 dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER', 'LIGHT', 'STROBE'])
+                # Options of a favorite whose players are chosen at its launch (see FAVORITE)
+                favorite_options = None
                 game_type = display.main_menu()
                 if game_type in ('restart', 'quit', 'shutdown'):
                     rpi.light_toys(['LIGHT_VALIDATE'], False)
@@ -692,7 +695,13 @@ try:
                 display.menu_target = None
                 launch = display.favorite_launch(name, local_players)
                 menu = 'mainmenu' if skip_main else 'gametype'
-                if launch is not None:
+                if launch is not None and launch[1] is None:
+                    # Its players chosen first : then its game with its options at once
+                    favorite = launch[0]
+                    display.menu_target = ('game', f"{favorite['category']}.{favorite['game'].replace('_', ' ')}")
+                    favorite_options = favorite['options']
+                    menu = 'players'
+                elif launch is not None:
                     favorite, favorite_players = launch
                     try:
                         choosed_game = __import__(f"games.{favorite['category']}.{favorite['game']}", fromlist=["games"])
@@ -1219,6 +1228,10 @@ try:
                 # of options, those options
                 favorite_games = [name.strip() for name in str(config_favorites.get('games') or '').split(',')]
                 preset = display.favorites().game_options(Game) if Game in favorite_games else None
+                if favorite_options is not None:
+                    # A favorite whose players were chosen at its launch : its options
+                    preset, favorite_options = favorite_options, None
+                    display.menu_target = None
                 if preset is not None:
                     game_options.update({option: value for option, value in preset.items() if option in game_options})
                     display.game_options = game_options

@@ -24,8 +24,8 @@ FILE_NAME = 'favorites.yaml'
 SLOTS = 9
 # Key of the file holding the options of the favorite games (not a button fav1...)
 GAMES = 'games'
-# How the players of a favorite are chosen
-MODES = ('choose', 'generic', 'last')
+# How the players of a favorite are chosen (ask : in the screen of the players, at its launch)
+MODES = ('choose', 'generic', 'last', 'ask')
 
 
 class Favorites:
@@ -122,9 +122,12 @@ class Favorites:
     def players_for(favorite, last_players, generic_name):
         '''
         Players of a favorite : (players, warning) ; warning : 'too-many' or 'too-few' when
-        the last players do not match the number planned (mode last)
+        the last players do not match the number planned (mode last). Players None : chosen
+        in the screen of the players (mode ask)
         '''
         count = favorite['players']
+        if favorite['mode'] == 'ask':
+            return None, None
         if favorite['mode'] == 'choose' and favorite['names']:
             return favorite['names'][:], None
         if favorite['mode'] == 'generic' or not last_players:

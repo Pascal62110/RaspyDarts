@@ -3367,6 +3367,15 @@ msgstr "Togli dai preferiti"
 msgid "favorite-place-button"
 msgstr "Metterlo anche su un pulsante del menu principale?"
 
+msgid "favorite-ask"
+msgstr "Sceglierli all'avvio"
+
+msgid "favorite-numbered"
+msgstr "Salvarlo anche come preferito numerato?"
+
+msgid "favorite-numbered-sub"
+msgstr "Preferito da 1 a 9: sarà nel menu principale solo se il file dei menu gli dà un pulsante (favorite:fav1…)"
+
 msgid "vk-shift"
 msgstr "Maiusc"
 

@@ -677,6 +677,15 @@ msgstr "Aus den Favoriten entfernen"
 msgid "favorite-place-button"
 msgstr "Auch auf eine Taste des Hauptmenüs legen?"
 
+msgid "favorite-ask"
+msgstr "Beim Start wählen"
+
+msgid "favorite-numbered"
+msgstr "Auch als nummerierten Favoriten speichern?"
+
+msgid "favorite-numbered-sub"
+msgstr "Favorit 1 bis 9: im Hauptmenü nur, wenn die Menüdatei ihm eine Taste gibt (favorite:fav1…)"
+
 msgid "vk-shift"
 msgstr "Umsch"
 

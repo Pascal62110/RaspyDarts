@@ -493,25 +493,28 @@ coche les jeux favoris) :
 - **cocher un jeu** demande « définir ses options ? » (Oui / Non) :
   - **Oui** ouvre l'écran des options du jeu (boutons Retour et Sauvegarder) ; le jeu
     favori démarrera ensuite **sans écran d'options**, avec celles-ci, quel que soit le
-    chemin (liste d'une catégorie, catégorie Favoris…). Puis : « le placer aussi sur un
-    bouton du menu principal ? » (ci-dessous) ;
+    chemin (liste d'une catégorie, catégorie Favoris…). Puis : « l'enregistrer aussi comme
+    favori numéroté ? » (ci-dessous) ; **Retour** dans les options : comme Non ;
   - **Non** : jeu favori sans options fixées, demandées au moment de jouer ;
 - **choisir un jeu déjà favori** propose « Modifier les options » ou « Retirer des
   favoris ».
 
 Comme les jeux cochés, les options ne sont enregistrées qu'avec **Sauvegarder**.
 
-### Boutons `fav1`, `fav2`… du menu principal
+### Favoris numérotés `fav1`, `fav2`… (boutons du menu principal)
 
-Un jeu favori dont les options sont définies peut aussi être placé sur un bouton du menu
-principal : son numéro (1 à 9 : `fav1` à `fav9` ; un favori déjà enregistré est remplacé),
-puis comment choisir ses joueurs :
+Un jeu favori dont les options sont définies peut aussi être enregistré comme **favori
+numéroté** : son numéro (1 à 9 : `fav1` à `fav9` ; un favori déjà enregistré est remplacé),
+puis comment choisir ses joueurs. Il n'apparaît dans le menu principal que si le fichier de
+menus lui donne un bouton (`favorite:fav1`, ci-dessous) ; la question le dit. Joueurs :
 
 - `choose` : les **joueurs favoris** (Divers > Joueurs favoris), mémorisés avec le favori ;
 - `generic` : Joueur 1, Joueur 2… ;
 - `last` : les derniers joueurs choisis, ajustés au nombre prévu, avec un avertissement
   s'il y en a trop (« les joueurs en trop seront retirés ») ou pas assez (« il manquera des
-  joueurs » : la partie se joue avec ceux qu'il y a), et le choix de continuer.
+  joueurs » : la partie se joue avec ceux qu'il y a), et le choix de continuer ;
+- `ask` : choisis au lancement, dans l'écran des joueurs, puis la partie démarre avec les
+  options du favori (ni liste des jeux, ni options).
 
 Le fichier de menus ne fait que placer ces boutons :
 
@@ -520,8 +523,8 @@ Le fichier de menus ne fait que placer ces boutons :
         shortcut: [F7, '1']
 ```
 
-Un bouton `favorite:` lance la partie aussitôt : ni choix des joueurs, ni liste des jeux, ni
-options. Un favori vide (ou dont le jeu n'existe plus) affiche son bouton grisé (état
+Un bouton `favorite:` lance la partie aussitôt : ni choix des joueurs (sauf `ask`), ni liste
+des jeux, ni options. Un favori vide (ou dont le jeu n'existe plus) affiche son bouton grisé (état
 `disabled`), qui ne fait rien. Un favori ne peut pas être le premier écran (`start`) : sa
 partie recommencerait à chaque retour.
 
@@ -536,7 +539,7 @@ fav1:                     # bouton fav1 du menu principal
   game: Cricket
   options: {max_round: 20, optioncrazy: false}
   players: 2
-  mode: choose            # choose | generic | last
+  mode: choose            # choose | generic | last | ask
   names: [Rémi, Bob]      # choose seulement
 ```
 

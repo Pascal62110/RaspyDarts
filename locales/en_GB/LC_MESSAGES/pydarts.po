@@ -2913,6 +2913,15 @@ msgstr "Remove from the favorites"
 msgid "favorite-place-button"
 msgstr "Also place it on a button of the main menu?"
 
+msgid "favorite-ask"
+msgstr "Choose them at the start"
+
+msgid "favorite-numbered"
+msgstr "Also save it as a numbered favorite?"
+
+msgid "favorite-numbered-sub"
+msgstr "Favorite 1 to 9: it is in the main menu only if the file of menus gives it a button (favorite:fav1…)"
+
 msgid "vk-shift"
 msgstr "Shift"
 

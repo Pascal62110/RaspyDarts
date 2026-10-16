@@ -4001,6 +4001,15 @@ msgstr "Retirer des favoris"
 msgid "favorite-place-button"
 msgstr "Le placer aussi sur un bouton du menu principal ?"
 
+msgid "favorite-ask"
+msgstr "Les choisir au lancement"
+
+msgid "favorite-numbered"
+msgstr "L'enregistrer aussi comme favori numéroté ?"
+
+msgid "favorite-numbered-sub"
+msgstr "Favori 1 à 9 : il ne sera dans le menu principal que si le fichier de menus lui donne un bouton (favorite:fav1…)"
+
 msgid "vk-shift"
 msgstr "Maj"
 
