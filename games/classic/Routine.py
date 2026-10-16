@@ -746,10 +746,10 @@ class Game(cgame.Game):
         if game_background is not None:
             self.display.display_background(image=game_background)
             self.display.save_background()
+            self.display.blit_rect(0, 0, self.display.res['x'], self.display.res['y'], self.display.colorset['game-bg'])
         else:
-            self.display.display_background()
-
-        self.display.blit_rect(0, 0, self.display.res['x'], self.display.res['y'], self.display.colorset['game-bg'])
+            # The background under its veil : copied from the cache after the first time
+            self.display.display_background(veil=self.display.colorset['game-bg'])
 
         title_h = int(self.display.res['y'] * 0.07)
         title_w = int(self.display.res['x'] * 0.4)
@@ -912,7 +912,7 @@ class Game(cgame.Game):
 
 
         if self.teste or self.max_retries > 0:
-            font = pygame.font.Font(None, 32)
+            font = self.display.font(None, 32)
             text_parts = []
             
             if self.teste:
@@ -929,8 +929,8 @@ class Game(cgame.Game):
                 
                 offset_x = 310 if self.teste else 180
                 
+                # Shown with the rest by update_screen below (the screen was sent twice, 18 ms)
                 self.display.screen.blit(text_surface, (screen_width - offset_x, screen_height - 40))
-                pygame.display.update()
  
         click = None
         if not end_of_game:

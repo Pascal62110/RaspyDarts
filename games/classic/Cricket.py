@@ -1018,10 +1018,10 @@ class Game(cgame.Game):
             if game_background is not None:
                 self.display.display_background(image=game_background)
                 self.display.save_background()
+                self.display.blit_rect(0, 0, self.display.res_x, self.display.res_y, self.display.colorset['game-bg'])
             else:
-                self.display.display_background()
-
-            self.display.blit_rect(0, 0, self.display.res_x, self.display.res_y, self.display.colorset['game-bg'])
+                # The background under its veil : copied from the cache after the first time
+                self.display.display_background(veil=self.display.colorset['game-bg'])
 
             # --- AFFICHAGE DU TITRE DU JEU EN HAUT ---
             title_h = int(self.display.res_y * 0.08)

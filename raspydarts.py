@@ -694,6 +694,9 @@ try:
                 nb_sets = int(Config.get_value('SectionAdvanced', 'nb_sets', False, None))
                 # Get players favorite color
                 players_favorite_color = Config.get_players_color()
+                # The sound of the start of the game : chosen and decoded while the players are chosen
+                if 'game_start' not in display.prepared_sounds:
+                    display.prepare_sound('game_start')
 
                 if game_type in ('netjoin', 'netcreate'):
                     nb_sets, players_list, competition_mode, players_favorite_color = \
@@ -1100,8 +1103,10 @@ try:
 
                 target = display.menu_target if game_type == 'local' else None
                 if target is not None and target[0] == 'game':
-                    # Button going straight to a game : no list of games
+                    # Button going straight to a game : no list of games (which tells the
+                    # screen the game chosen : its options are translated with its name)
                     Game = target[1]
+                    display.selectedgame = Game.split('.', 1)[1]
                 elif category == 'favoris' and len(games) == 0 and only_favorites_games_mode:
                     display.update_screen(display.message(["no-favs-games"], wait=3000, size='big', refresh=True))
                     Game = 'escape'
@@ -1429,8 +1434,9 @@ try:
         # The webcam is recorded during the game only
         if not match_done:
             camera.game_start()
-            # The sound of the first next player : chosen and decoded during the first turn
-            display.prepare_sound('next_player')
+            # The sound of the first next player : chosen and decoded during the first turn, with
+            # the ones of the end of the game (a second at least to decode, before the winner)
+            display.prepare_sound('next_player', 'winneris', 'winnerare', 'victory', 'set_victory')
 
         # Main loop (every input runs a loop - a dart, a button or a click)
         while not match_done:
@@ -1864,6 +1870,10 @@ try:
                                 game.backup_round(players, player_launch)
                             except:
                                 pass
+                            # Once the backups reach this dart, the next calls only copy the same
+                            # players again at the same place (99 darts in Routine : 0.4 s of copies)
+                            if len(getattr(game, 'backups', ())) >= player_launch:
+                                break
 
                         if early_player_button != 0 and post_dart != 3:
                             if releasedartstime == 0:

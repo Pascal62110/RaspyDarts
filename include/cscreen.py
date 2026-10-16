@@ -31,6 +31,7 @@ from netifaces import AF_INET
 #from PIL import Image
 from threading import Thread
 from functools import lru_cache
+from collections import OrderedDict
 from itertools import chain
 
 import pygame
@@ -209,6 +210,8 @@ class Screen(pygame.Surface):
         self.game_options = []
 
         self.game_background = None
+        # The surface game_background is copied in (see save_background)
+        self.background_buffer = None
 
         self.wait_event_time = wait_event_time
         self.t_event = t_event
@@ -218,6 +221,9 @@ class Screen(pygame.Surface):
         self.selected_menu = {}
         # Sounds chosen and decoded before they are played (see prepare_sound)
         self.prepared_sounds = {}
+        # Sounds decoded once (see decoded_sound)
+        self.kept_sounds = OrderedDict()
+        self.kept_sounds_lock = threading.Lock()
         # Background and title of the menus of the files (see run_menu)
         self.menu_backgrounds = {}
         # Buttons of the styles over their piece of background (see run_styled_menu)
@@ -268,8 +274,12 @@ class Screen(pygame.Surface):
         '''
         To use the game's screen instead of classic background
         '''
-        # Grab screen (a copy : blending it took 18 ms on a Pi 3 at each dart)
-        self.game_background = self.screen.copy()
+        # Grab screen (a copy : blending it took 18 ms on a Pi 3 at each dart). Copied in the
+        # same surface each time : creating a new one (screen.copy()) took 22 ms, 9 ms like this
+        if self.background_buffer is None or self.background_buffer.get_size() != self.screen.get_size():
+            self.background_buffer = pygame.Surface(self.screen.get_size(), 0, self.screen)
+        self.background_buffer.blit(self.screen, (0, 0))
+        self.game_background = self.background_buffer
 
     def restore_background(self, refresh=True):
         '''
@@ -544,9 +554,7 @@ class Screen(pygame.Surface):
                 self.pristine_background = None
                 return
 
-        surface = pygame.Surface((int(width), int(height)))    # the size of your rect
-        surface.set_alpha(Alpha)    # alpha level
-        surface.fill(color)    # this fills the entire surface
+        surface = self.filled_rect(int(width), int(height), tuple(color), Alpha)
         self.blit(surface, (int(pos_x), int(pos_y)))    # (0, 0) are the top-left coordinates
         if border:
             pygame.draw.rect(self.screen, border_color, (int(pos_x), int(pos_y), int(width), int(height)), border)
@@ -630,12 +638,10 @@ class Screen(pygame.Surface):
 
         # Display Text
         scaled_text = self.scale_text(text, width - 2 * text_margin, height - 2 * text_margin, divider=divider, dafont=dafont)
-        if dafont is None:
-            font = self.font(f'{self.defaultfontpath}', scaled_text[0])
-        else:
-            font = self.font(self.file_class.get_full_filename(dafont, 'fonts'), scaled_text[0])
-        # Render text
-        text = font.render(text, True, color)
+        font_path = dafont if dafont == self.defaultfontpath else self.file_class.get_full_filename(dafont, 'fonts')
+        if image is None:
+            # Render text (the same texts at each dart : rendered once)
+            text = self.rendered_text(font_path, scaled_text[0], text, tuple(color), Alpha)
         # Calculate place of text
         if align == 'Center':
             text_x = int(pos_x + (width - scaled_text[3] + text_margin) / 2)
@@ -655,8 +661,16 @@ class Screen(pygame.Surface):
             self.blit(img, [text_x, text_y])
         else:
             # Display text
-            text.set_alpha(Alpha)
             self.blit(text, [text_x, text_y])
+
+    @lru_cache(maxsize=128)
+    def rendered_text(self, font_path, size, text, color, alpha):
+        '''
+        Text rendered (never drawn on : shared)
+        '''
+        surface = self.font(font_path, size).render(text, True, color)
+        surface.set_alpha(alpha)
+        return surface
 
     def menu_header(self, text, subtxt=None, centertxt=None):
         '''
@@ -2096,17 +2110,14 @@ class Screen(pygame.Surface):
         if corners in ('Bottom', 'BottomRight', 'Right', 'All', 'NotTopLeft', 'NotTopRight', 'NotBottomLeft'):
             bottom_right = border_radius
 
+        corners = (top_left, top_right, bottom_left, bottom_right)
         if padding == 'max' and border_color is not None:
-            surface = pygame.Surface((rectangle.width, rectangle.height), pygame.SRCALPHA)
-            self.rect(surface, border_color, surface.get_rect(), border_size, top_left=top_left, top_right=top_right, bottom_left=bottom_left, bottom_right=bottom_right)
-            self.blit(surface, rectangle)
+            self.blit(self.rounded_box(rectangle.width, rectangle.height, tuple(border_color), border_size, corners), rectangle)
 
         elif padding + border_size > 0:
             if border_color is not None:
                 # Draw border
-                surface = pygame.Surface((rectangle.width, rectangle.height), pygame.SRCALPHA)
-                self.rect(surface, border_color, surface.get_rect(), border_size, top_left=top_left, top_right=top_right, bottom_left=bottom_left, bottom_right=bottom_right)
-                self.blit(surface, rectangle)
+                self.blit(self.rounded_box(rectangle.width, rectangle.height, tuple(border_color), border_size, corners), rectangle)
             # Draw rectangle
             inside_rectangle = rectangle.copy()
             inside_rectangle.x += border_size + padding
@@ -2114,15 +2125,63 @@ class Screen(pygame.Surface):
             inside_rectangle.width -= 2 * (border_size + padding)
             inside_rectangle.height -= 2 * (border_size + padding)
 
-            surface = pygame.Surface((inside_rectangle.width, inside_rectangle.height), pygame.SRCALPHA)
-
-            self.rect(surface, color, surface.get_rect(), 0, top_left=top_left, top_right=top_right, bottom_left=bottom_left, bottom_right=bottom_right)
-            self.blit(surface, inside_rectangle)
+            self.blit(self.rounded_box(inside_rectangle.width, inside_rectangle.height, color, 0, corners), inside_rectangle)
 
         else:
-            surface = pygame.Surface((abs(rectangle.width), abs(rectangle.height)), pygame.SRCALPHA)
-            self.rect(surface, color, surface.get_rect(), border_size, top_left=top_left, top_right=top_right, bottom_left=bottom_left, bottom_right=bottom_right)
-            self.blit(surface, rectangle)
+            self.blit(self.rounded_box(abs(rectangle.width), abs(rectangle.height), color, border_size, corners), rectangle)
+
+    # Boxes kept : up to 150 000 pixels (600 kB), 64 at most (the cells of the game screens)
+    ROUNDED_BOX_KEPT = 150000
+
+    def filled_rect(self, width, height, color, alpha):
+        '''
+        Rectangle of a color with a transparency (never drawn on : shared). The cells of the
+        game screens are the same at each dart : created once
+        '''
+        if width * height > self.ROUNDED_BOX_KEPT:
+            return self.new_filled_rect(width, height, color, alpha)
+        return self.kept_filled_rect(width, height, color, alpha)
+
+    @lru_cache(maxsize=64)
+    def kept_filled_rect(self, width, height, color, alpha):
+        '''
+        filled_rect kept
+        '''
+        return self.new_filled_rect(width, height, color, alpha)
+
+    @staticmethod
+    def new_filled_rect(width, height, color, alpha):
+        '''
+        filled_rect created
+        '''
+        surface = pygame.Surface((width, height))
+        surface.set_alpha(alpha)
+        surface.fill(color)
+        return surface
+
+    def rounded_box(self, width, height, color, border_size, corners):
+        '''
+        Rectangle with rounded corners on a transparent surface (never drawn on : shared). The
+        same boxes are displayed at each dart : created once
+        '''
+        if width * height > self.ROUNDED_BOX_KEPT:
+            return self.new_rounded_box(width, height, color, border_size, corners)
+        return self.kept_rounded_box(width, height, color, border_size, corners)
+
+    @lru_cache(maxsize=64)
+    def kept_rounded_box(self, width, height, color, border_size, corners):
+        '''
+        rounded_box kept
+        '''
+        return self.new_rounded_box(width, height, color, border_size, corners)
+
+    def new_rounded_box(self, width, height, color, border_size, corners):
+        '''
+        rounded_box created
+        '''
+        surface = pygame.Surface((width, height), pygame.SRCALPHA)
+        self.rect(surface, color, surface.get_rect(), border_size, top_left=corners[0], top_right=corners[1], bottom_left=corners[2], bottom_right=corners[3])
+        return surface
 
 
     def rect(self, surface, color, rect, border_size=0, top_left=None, top_right=None, bottom_left=None, bottom_right=None):
@@ -8085,13 +8144,7 @@ class Screen(pygame.Surface):
 
         game_background = f"background_{logo.replace(' ', '_').split('.')[0]}"
         game_background = self.file_class.get_full_filename(game_background, 'images')
-        if game_background is not None:
-            self.display_background(image=game_background)
-        else:
-            self.display_background()
-
-        if self.colorset['game-bg'] is not None:
-            self.blit_rect(0, 0, self.res_x, self.res_y, self.colorset['game-bg'])
+        self.display_background(image=game_background, veil=self.colorset['game-bg'])
         if self.game_type == 'online' and self.t_event is not None:
             self.create_thread(rect_array=[(int(self.res_x / 2 - 110), self.margin + int(self.res_y / 5), int(self.res_y / 36), int(self.res_y / 36))])
 
@@ -8417,14 +8470,31 @@ class Screen(pygame.Surface):
         if wait:
             pygame.time.wait(wait)    # Wait if requested
 
-    def display_background(self, image=None, rect=None, display_version=False):
+    def display_background(self, image=None, rect=None, display_version=False, veil=None):
         '''
-        Display background
+        Display background, under a veil of this color if given (game screens)
         '''
         if image is True:
             image = self.background
         elif image is not None:
             image = self.file_class.get_full_filename(image, 'images')
+
+        # Background already displayed under this veil : copied as it was, without drawing the
+        # background first (a full screen blit, 9 to 16 ms on a Pi 3, covered right after)
+        if veil and rect is None and not display_version:
+            if self.game_background is not None and image is None:
+                shown = None
+            elif self.colorset['bg-global']:
+                shown = ('fill', tuple(self.colorset['bg-global']))
+            elif image is not None or self.background is not None:
+                shown = ('image', image if image is not None else self.background)
+            else:
+                shown = None
+            tinted = self.tinted_backgrounds.get((shown, tuple(veil), self.alpha))
+            if shown is not None and tinted is not None:
+                self.screen.blit(tinted, (0, 0))
+                self.pristine_background = None
+                return
 
         # The background alone is on the screen (see blit_rect) : said at the end
         pristine = None
@@ -8441,10 +8511,10 @@ class Screen(pygame.Surface):
                 image = self.background
 
             if rect is None:
-                self.display_image(image, 0, 0, self.res['x'], self.res['y'], Scale=True)
+                self.display_image(image, 0, 0, self.res['x'], self.res['y'], Scale=True, Opaque=True)
                 pristine = None if display_version else ('image', image)
             else:
-                self.display_image(image, 0, 0, self.res['x'], self.res['y'], Scale=True, rect=rect)
+                self.display_image(image, 0, 0, self.res['x'], self.res['y'], Scale=True, rect=rect, Opaque=True)
 
             if display_version :
                 width = self.res_x_16
@@ -8457,6 +8527,8 @@ class Screen(pygame.Surface):
                         dafont=self.file_class.get_full_filename('Impact', 'fonts'))
 
         self.pristine_background = pristine
+        if veil:
+            self.blit_rect(0, 0, self.res_x, self.res_y, veil)
 
     def scale_image(self, image, scale=True, width=0, height=0):
         '''
@@ -8496,16 +8568,16 @@ class Screen(pygame.Surface):
         return image
 
     #@debug
-    def display_image(self, imagepath, pos_x, pos_y, width=0, height=0, Scale=False, center_x=False, center_y=False, rect=None, Screen=None, change_colors=None, enabledImage=True, UseCache=True):
+    def display_image(self, imagepath, pos_x, pos_y, width=0, height=0, Scale=False, center_x=False, center_y=False, rect=None, Screen=None, change_colors=None, enabledImage=True, UseCache=True, Opaque=False):
         '''
-        Scale and display an image
+        Scale and display an image (Opaque : its transparent pixels on black, for the backgrounds)
         '''
         if imagepath is None:
             return
 
         # Cache is cleaned when resolution changed
         # Store in cache for Scate True/False and width/height (surface size to blit
-        image_cache = f'{imagepath}-{Scale}-{width}-{height}-{enabledImage}-{change_colors}'
+        image_cache = f'{imagepath}-{Scale}-{width}-{height}-{enabledImage}-{change_colors}-{Opaque}'
 
         if image_cache not in self.imagecache or UseCache is False:
             try:
@@ -8529,7 +8601,15 @@ class Screen(pygame.Surface):
         
                 # Scale
                 scaled = self.scale_image(loaded_image, scale=Scale, width=int(width), height=int(height))
-                scaled = (self.opaque_to_screen_format(scaled[0]), scaled[1])
+                if Opaque:
+                    # Nothing to see under a background : a few transparent pixels (2 in a
+                    # theme's background) made it blended at each display, 16 ms instead of 9
+                    flat = pygame.Surface(scaled[0].get_size(), 0, self.screen)
+                    flat.fill((0, 0, 0))
+                    flat.blit(scaled[0], (0, 0))
+                    scaled = (flat, scaled[1])
+                else:
+                    scaled = (self.opaque_to_screen_format(scaled[0]), scaled[1])
                 # then store image + size
                 if UseCache:
                     self.imagecache[image_cache] = scaled
@@ -8906,7 +8986,8 @@ class Screen(pygame.Surface):
                     self.blit_text(f'{txt_option}', pos_x, pos_y, width, height, color=self.colorset['game-option'], dafont='Impact', align='Right', margin=False)
                 else:
                     self.blit_text(f'{txt_option} : {value}', pos_x, pos_y, width, height, color=self.colorset['game-option'], dafont='Impact', align='Right', margin=False)
-            pos_y += height + self.margin
+                # One option under the other (they were all written at the same place)
+                pos_y += height + self.margin
 
     def display_rem_darts(self, remaining, nb_darts, dartimage='target'):
         '''
@@ -9252,35 +9333,71 @@ class Screen(pygame.Surface):
             self.logs.warning(f"Problem trying to use espeak : {e}")
             return False
 
-    def fade_out(self, sound, duration, fade_time):
+    def fade_out(self, sound, duration, fade_time, channel=None):
         '''
-        Crop and fadeout the sound
+        Crop and fadeout the sound (on its channel if given : the same sound, kept, can be
+        played again meanwhile)
         '''
         if duration > fade_time:
             pygame.time.wait(duration - fade_time)
-            sound.fadeout(fade_time)
         else:
-            sound.fadeout(duration)
+            fade_time = duration
+        if channel is None:
+            sound.fadeout(fade_time)
+        elif channel.get_sound() is sound:
+            channel.fadeout(fade_time)
 
     # Sounds of a folder played at each turn : the next one is chosen and decoded while the
     # player throws (decoding the sound of the next player took 0.3 s, the game waited)
     PREPARED_SOUNDS = ('next_player',)
 
-    def prepare_sound(self, filename):
+    # Sounds kept once decoded (a sound alone, not one chosen at random in a folder) : 3 minutes
+    # in all at most (16 MB). Decoding miss.ogg took 0.1 s at each dart missed
+    KEPT_SOUNDS_SECONDS = 180
+
+    @staticmethod
+    def chosen_in_folder(filename, sound_file):
         '''
-        Choose the next sound of this name and decode it in the background
+        Sound chosen at random in the folder of this name (another one next time)
+        '''
+        return os.path.basename(os.path.dirname(sound_file)) == filename
+
+    def decoded_sound(self, filename, sound_file):
+        '''
+        The sound of this file : decoded once if it is a sound alone
+        '''
+        with self.kept_sounds_lock:
+            sound = self.kept_sounds.get(sound_file)
+            if sound is not None:
+                self.kept_sounds.move_to_end(sound_file)
+                return sound
+        sound = pygame.mixer.Sound(sound_file)
+        if not self.chosen_in_folder(filename, sound_file):
+            with self.kept_sounds_lock:
+                self.kept_sounds[sound_file] = sound
+                while len(self.kept_sounds) > 1                         and sum(kept.get_length() for kept in self.kept_sounds.values()) > self.KEPT_SOUNDS_SECONDS:
+                    self.kept_sounds.popitem(last=False)
+        return sound
+
+    def prepare_sound(self, *filenames):
+        '''
+        Decode these sounds in the background (for a folder : its next sound, chosen now)
         '''
         if self.hidden or self.audio_deferred or not pygame.mixer.get_init():
             return
 
         def decode():
-            sound_file = self.file_class.get_full_filename(filename, 'sounds')
-            if sound_file is None:
-                return
-            try:
-                self.prepared_sounds[filename] = (sound_file, pygame.mixer.Sound(sound_file))
-            except Exception as error:    # pylint: disable=broad-except
-                self.logs.warning(f"Sound {sound_file} not prepared : {error}")
+            for filename in filenames:
+                sound_file = self.file_class.get_full_filename(filename, 'sounds')
+                if sound_file is None:
+                    continue
+                try:
+                    if self.chosen_in_folder(filename, sound_file):
+                        self.prepared_sounds[filename] = (sound_file, pygame.mixer.Sound(sound_file))
+                    else:
+                        self.decoded_sound(filename, sound_file)
+                except Exception as error:    # pylint: disable=broad-except
+                    self.logs.warning(f"Sound {sound_file} not prepared : {error}")
 
         threading.Thread(target=decode, daemon=True).start()
 
@@ -9299,7 +9416,7 @@ class Screen(pygame.Surface):
         if sound_file is not None:
             try:
                 pygame.mixer.init(22050, -16, 2, MIXER_BUFFER)
-                sound = prepared[1] if prepared else pygame.mixer.Sound(sound_file)
+                sound = prepared[1] if prepared else self.decoded_sound(filename, sound_file)
                 if filename in self.PREPARED_SOUNDS:
                     self.prepare_sound(filename)
                 # Play only if sound is set
@@ -9313,7 +9430,7 @@ class Screen(pygame.Surface):
                     # if crop duration is requested, new thread to fadeout the sound (its
                     # 100 ms of delay in the thread : the game waited them)
                     if duration > 0:
-                        x = threading.Thread(target = self.fade_out, args = (sound, duration + 100, 2000))
+                        x = threading.Thread(target = self.fade_out, args = (sound, duration + 100, 2000, play_sound))
                         x.start()
 
                     # if requested, we block the process until the sound is running
