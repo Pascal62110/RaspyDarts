@@ -237,6 +237,8 @@ class Screen(pygame.Surface):
         else:
             self.qrcode = None
         self.qrlogo = ''
+        # QR codes generated (see draw_qrcode)
+        self.qrcodes = {}
         self.camera = ccamera.Camera(self.config, self.display, logs, show_in_parametrage=True)
 
     def set_end_of_game_winner(self, value):
@@ -542,6 +544,18 @@ class Screen(pygame.Surface):
             Alpha = self.alpha
         if not border_color:
             border_color = self.colorset['menu-border']
+
+        # Nothing to blend : invisible, or the color as it is (filled, same pixels : a full
+        # screen took 19 ms through a surface created, 5 ms filled)
+        if Alpha <= 0 or Alpha >= 255:
+            rect = (int(pos_x), int(pos_y), int(width), int(height))
+            if Alpha >= 255:
+                self.pristine_background = None
+                self.screen.fill(color, rect)
+            if border:
+                self.pristine_background = None
+                pygame.draw.rect(self.screen, border_color, rect, border)
+            return
 
         # A veil on the whole background just displayed (game screens, at each dart) :
         # blending 1920x1080 pixels took 35 ms on a Pi 3. The result is kept, then copied
@@ -2201,7 +2215,8 @@ class Screen(pygame.Surface):
     def new_blit_rect(self, pos_x, pos_y, width, height, background_color, border_color=None, Alpha=None, corners=None, border_radius=None, border_size=3):
         '''
         New blit_rect method, usefull for pygame 2.0
-        It could display rounded corners
+        It could display rounded corners (blended by SDL2 through blit : the blending of pygame
+        took 180 ms for the frame of a game's description on a Pi 3)
         '''
         if background_color is None:
             return
@@ -2241,7 +2256,7 @@ class Screen(pygame.Surface):
                     , bottom_left = bottom_left - border_size
                     , bottom_right = bottom_right - border_size
                 )
-            self.screen.blit(shape_surf, (pos_x + border_size * 2, pos_y + border_size * 2, width + border_size * 2, height + border_size * 2))
+            self.blit(shape_surf, (pos_x + border_size * 2, pos_y + border_size * 2, width + border_size * 2, height + border_size * 2))
 
             shape_surf = pygame.Surface((width, height), pygame.SRCALPHA)
             self.rect(shape_surf
@@ -2253,7 +2268,7 @@ class Screen(pygame.Surface):
                 , bottom_left = bottom_left
                 , bottom_right = bottom_right
             )
-            self.screen.blit(shape_surf, (pos_x, pos_y, width, height))
+            self.blit(shape_surf, (pos_x, pos_y, width, height))
 
         else:
             shape_surf = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -2266,7 +2281,7 @@ class Screen(pygame.Surface):
                     , bottom_left = bottom_left
                     , bottom_right = bottom_right
                 )
-            self.screen.blit(shape_surf, (pos_x, pos_y, width, height))
+            self.blit(shape_surf, (pos_x, pos_y, width, height))
 
 
     def div_color(self, component, div):
@@ -8582,9 +8597,13 @@ class Screen(pygame.Surface):
         if image_cache not in self.imagecache or UseCache is False:
             try:
                 self.logs.debug(f"Inserting image into cache {imagepath} ({image_cache})")
+                opaque = False
                 if enabledImage:
-                    # Load
-                    loaded_image = pygame.image.load(imagepath).convert_alpha()
+                    # Load. Without alpha channel nor transparent color (JPEG...), the image is
+                    # opaque : nothing to check (checking every pixel took 210 ms for a background)
+                    loaded_image = pygame.image.load(imagepath)
+                    opaque = not loaded_image.get_flags() & pygame.SRCALPHA and loaded_image.get_colorkey() is None
+                    loaded_image = loaded_image.convert() if opaque else loaded_image.convert_alpha()
                 else:
                     loaded_image_PIL = Image.open(imagepath).convert('LA').convert('RGBA')
                     loaded_image = pygame.image.fromstring(
@@ -8601,7 +8620,9 @@ class Screen(pygame.Surface):
         
                 # Scale
                 scaled = self.scale_image(loaded_image, scale=Scale, width=int(width), height=int(height))
-                if Opaque:
+                if opaque:
+                    pass
+                elif Opaque:
                     # Nothing to see under a background : a few transparent pixels (2 in a
                     # theme's background) made it blended at each display, 16 ms instead of 9
                     flat = pygame.Surface(scaled[0].get_size(), 0, self.screen)
@@ -9874,7 +9895,18 @@ class Screen(pygame.Surface):
         if self.qrlogo != f'logos_menu/{game}':
             self.qrlogo = f'logos_menu/{game}'
             logo = self.file_class.get_full_filename(self.qrlogo, 'images')
-            img  = self.qrcode.generate(game, logo, size, bordure)
+            # Generated once for the same code (210 ms on a Pi 3 at each opening of the options)
+            maker = self.qrcode
+            key = (game, logo, size, bordure, maker.transparent, maker.qrsize, maker.color, maker.bgcolor, maker.tcolor)
+            img = self.qrcodes.get(key)
+            if img is None:
+                img = maker.generate(game, logo, size, bordure)
+                if len(self.qrcodes) >= 16:
+                    self.qrcodes = {}
+                self.qrcodes[key] = img
+            else:
+                # As generate does : transparency asked for one code only
+                maker.transparent = False
         else:
             img = None #n'affiche pas l'image à nouveau
         return img

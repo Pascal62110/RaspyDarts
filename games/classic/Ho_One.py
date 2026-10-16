@@ -862,13 +862,8 @@ class Game(cgame.Game):
 
         game_background = f"background_{logo.replace('_', '_').replace('!', '').split('.')[0]}"
         game_background = self.display.file_class.get_full_filename(game_background, 'images')
-        if game_background is not None:
-            self.display.display_background(image=game_background)
-            self.display.save_background()
-            self.display.blit_rect(0, 0, self.display.res['x'], self.display.res['y'], self.display.colorset['game-bg'])
-        else:
-            # The background under its veil : copied from the cache after the first time
-            self.display.display_background(veil=self.display.colorset['game-bg'])
+        # The background under its veil : copied from the cache after the first time
+        self.display.display_background(image=game_background, veil=self.display.colorset['game-bg'])
 
         self.display.blit_text(f"Round", right_x, right_y, int(right_width / 3), right_height, color=self.display.colorset['game-round'], dafont='Impact', align='Left', valign='top', margin=False)
         self.display.blit_text(f"{actual_round} / {max_round}", right_x + int(right_width / 2), 0, self.display.res['x'] - right_x - int(right_width / 2), right_height * 2, color=self.display.colorset['game-round'], dafont='Impact', align='Right', valign='top', margin=False)

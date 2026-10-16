@@ -1069,11 +1069,8 @@ class Game(cgame.Game):
 
         game_background = f"background_{logo}"
         game_background = self.display.file_class.get_full_filename(game_background, 'images')
-        if game_background is not None:
-            self.display.display_background(image=game_background)
-            self.display.save_background()
-        else:
-            self.display.display_background()
+        # The background under its veil : copied from the cache after the first time
+        self.display.display_background(image=game_background, veil=self.display.colorset['game-bg'])
 
         if len(players) > 6:
             left_x = self.margin
@@ -1136,8 +1133,6 @@ class Game(cgame.Game):
         game_y = dart_y + dart_h + 2 * self.margin
         game_height = int(self.display.res['y'] / 24)
 
-        # Background
-        self.display.blit_rect(0, 0, self.display.res_x, self.display.res_y, self.display.colorset['game-bg'])
 
         # Round informations
         self.display.blit_rect(left_x, left_y, left_w, left_h, self.display.colorset['game-bg'])

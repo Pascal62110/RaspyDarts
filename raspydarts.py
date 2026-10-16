@@ -1434,6 +1434,7 @@ try:
         # The webcam is recorded during the game only
         if not match_done:
             camera.game_start()
+            File.remember(True)
             # The sound of the first next player : chosen and decoded during the first turn, with
             # the ones of the end of the game (a second at least to decode, before the winner)
             display.prepare_sound('next_player', 'winneris', 'winnerare', 'victory', 'set_victory')
@@ -2393,6 +2394,7 @@ try:
                   
         camera.close_qr_popup()                    
         camera.game_end()
+        File.remember(False)
         
         display.file_class.reset_theme(Config.get_value('SectionGlobals', 'colorset'))
         display.define_constants(True, Font=config_globals['font'])

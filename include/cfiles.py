@@ -15,7 +15,16 @@ class Cfile():
     def __init__(self, config, logs, theme=None):
         self.logs = logs
         self.config = config
+        # Files found, kept during a game (see remember)
+        self.remembered = None
         self.reset_theme(theme)
+
+    def remember(self, enabled):
+        '''
+        During a game, the files found are kept : the same ones are searched at each dart (15
+        searches, 8 ms per game screen on a Pi 3). Forgotten after : files can change in the menus
+        '''
+        self.remembered = {} if enabled else None
 
     def reset_theme(self, theme):
         self.files = {}
@@ -56,6 +65,22 @@ class Cfile():
         return False
 
     def get_full_filename(self, file_name=None, file_type=None):
+        """
+        Full file name (see search_full_filename), kept during a game (see remember)
+        """
+        remembered = self.remembered
+        if remembered is None or file_name is None or file_type is None:
+            return self.search_full_filename(file_name, file_type)
+        key = (file_name, file_type, self.theme_dir)
+        if key in remembered:
+            return remembered[key]
+        found = self.search_full_filename(file_name, file_type)
+        # Not a folder of files chosen at random (another one each time)
+        if f'{file_name}-{file_type}' not in self.files:
+            remembered[key] = found
+        return found
+
+    def search_full_filename(self, file_name=None, file_type=None):
         """
         Return full file name (absolute directory / file_name . extension if found
         None if not found
