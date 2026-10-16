@@ -114,6 +114,19 @@ def intro_over_screen():
     '''
     return shutil.which('omxplayer') is not None
 
+def with_look(name):
+    '''
+    A screen whose buttons come from the game (games, options, players, wizard) : its look
+    is the one the files of menus give to the menu of this name (docs/menu/menus.md, 7.6)
+    '''
+    def decorate(method):
+        def run(self, *args, **kwargs):
+            return self.run_with_look(name, method, *args, **kwargs)
+        run.__name__ = method.__name__
+        run.__doc__ = method.__doc__
+        return run
+    return decorate
+
 # Sent by the background task watching the intro video when it is finished : the main loop
 # then shows the window of the game (see craspberry.keyboard_mouse)
 INTRO_END_EVENT = pygame.event.custom_type() if hasattr(pygame.event, 'custom_type') else pygame.USEREVENT + 30
@@ -231,6 +244,8 @@ class Screen(pygame.Surface):
         # Screens skipped by a button of the main menu or by start : ('game', 'classic.Cricket'),
         # ('category', 'favoris') or None (see cmenus.Menus.target)
         self.menu_target = None
+        # Screen whose look comes from the files (see with_look)
+        self.current_look = None
         self.end_of_game_winner = ''
         if QRCODE:
             self.qrcode = cqrcode.Qrcoder()
@@ -690,6 +705,22 @@ class Screen(pygame.Surface):
         '''
         All menus use the same header
         '''
+        if self.current_look is not None and centertxt is None:
+            # Screen whose look comes from the files : their title and subtitle (text and look)
+            name = self.current_look
+            title, title_look = self.menu_text_look(name, 'title')
+            subtitle, subtitle_look = self.menu_text_look(name, 'subtitle')
+            text = title or text
+            subtxt = subtitle or subtxt
+            if title_look or subtitle_look:
+                self.styled_title(name, text, subtxt)
+                return
+        self.classic_header(text, subtxt, centertxt)
+
+    def classic_header(self, text, subtxt=None, centertxt=None):
+        '''
+        The header of always : bands of the colours of the theme
+        '''
         rect = pygame.Rect(0, int(self.res['y'] / 30), self.res['x'], int(self.res['y'] / 15))
 
         if self.colorset['menu-header'] is not None:
@@ -1042,6 +1073,7 @@ class Screen(pygame.Surface):
                 j += 1
         return new_keys
 
+    @with_look('wizard')
     def wizard(self):
         '''
         1st execution : get configuration
@@ -1755,6 +1787,7 @@ class Screen(pygame.Surface):
 
         return selected
 
+    @with_look('players')
     def players_menu(self, favorites, context='game', bank=None, sets=None, competition_mode=False, colors_available = None, players_color = None):
         '''
         Player Names menu
@@ -3283,6 +3316,64 @@ class Screen(pygame.Surface):
         self.display_image(self.file_class.get_full_filename(f'logos_menu/{logo}', 'images'), pos_x, pos_y, height, height, True, False, False, enabledImage=available)
 
         return (pos_x, pos_y, height, height)
+
+    # Zone of the tiles of the list of games when the files do not give one : the left of the
+    # screen, the description of the game on the right (from 7/16 of the width)
+    GAME_TILES_AREA = {'x': 1 / 32, 'y': 3 / 16, 'width': 0.4, 'height': 10 / 16}
+
+    def game_tiles(self, games, columns, own):
+        '''
+        Tiles of the list of games drawn with the style of the menu games (section 7.6) : None
+        if its style is classic (the logos as always). All on the screen : square, the logo
+        of the game above its name ; when the rows are too many for squares, as wide as the
+        columns, the logo on the left of the name
+        '''
+        menus = self.menus()
+        menu = menus.menu('games')
+        if str(menu.get('style') or 'classic') == 'classic' or not games:
+            return None
+        width, height = self.screen.get_size()
+        units = cmenustyle.Units((width, height), menus.data.get('resolution'))
+        area = cmenustyle.merge(self.GAME_TILES_AREA, own.get('area') or {})
+        gap = cmenustyle.merge(cmenustyle.GAP_DEFAULT, own.get('gap') or {})
+        rows = math.ceil(len(games) / columns)
+        area_w, area_h = units.length(area['width'], 'x'), units.length(area['height'], 'y')
+        gap_x, gap_y = units.length(gap['x'], 'x'), units.length(gap['y'], 'y')
+        column_w = (area_w - (columns - 1) * gap_x) / columns
+        tile_h = max(1.0, min(column_w, (area_h - (rows - 1) * gap_y) / rows))
+        square = tile_h >= column_w * 0.8
+        tile_w = tile_h if square else column_w
+        # Sizes in pixels of this screen : no reference resolution for this layout
+        description = {'layout': 'grid', 'columns': columns, 'align': own.get('align') or 'center',
+                       'area': {key: units.length(area[key], 'x' if key in ('x', 'width') else 'y') / (width if key in ('x', 'width') else height)
+                                for key in ('x', 'y', 'width', 'height')},
+                       'gap': {'x': gap_x / width, 'y': gap_y / height},
+                       'button_size': {'width': tile_w / column_w, 'height': tile_h / height}}
+        rects = cmenustyle.layout(description, [{}] * len(games), (width, height))[0]
+        look = {'icon': {'position': 'top', 'size': 0.72}, 'text': {'size': round(tile_h * 0.13 / height, 4)}} if square else \
+            {'icon': {'position': 'left', 'size': 0.86}, 'text': {'size': round(tile_h * 0.3 / height, 4)}}
+        style = cmenustyle.merge(look, self.button_style(menu, {}))
+        logos = [self.file_class.get_full_filename(f"logos_menu/{game.replace(' ', '_')}", 'images') for game in games]
+        return {'rects': rects, 'style': style, 'logos': logos, 'names': [game.replace('_', ' ') for game in games],
+                'units': units, 'composites': {}}
+
+    def game_tile(self, tiles, pristine, index, look):
+        '''
+        A tile of the list of games in a state, drawn on its piece of background once (an
+        opaque image, copied at each move) : returns its rectangle
+        '''
+        painter = self.menu_painter()
+        rect = pygame.Rect(tiles['rects'][index])
+        target = painter.placed(rect, tiles['style'], look)[1].clip(self.screen.get_rect())
+        key = (index, look, tuple(target))
+        composite = tiles['composites'].get(key)
+        if composite is None:
+            composite = pristine.subsurface(target).copy()
+            painter.draw_button(composite, rect.move(-target.x, -target.y), tiles['style'], tiles['names'][index - 1],
+                                tiles['logos'][index - 1], look, tiles['units'])
+            tiles['composites'][key] = composite
+        self.screen.blit(composite, target)
+        return (rect.x, rect.y, rect.width, rect.height)
 
     def menu_item(self, item, value, space=0, align=None, collapsed=False, exit=True, special=None, border_color=None, valid=None, item_per_line=None, limit_height=None, divider=None, tabs=False):
         '''
@@ -6719,7 +6810,7 @@ class Screen(pygame.Surface):
         subtitle_look = self.menu_text_look(name, 'subtitle')[1]
         if not title_look and not subtitle_look:
             if title:
-                self.menu_header(title, subtitle)
+                self.classic_header(title, subtitle)
             return
         painter = self.menu_painter()
         units = cmenustyle.Units(self.screen.get_size(), self.menus().data.get('resolution'))
@@ -6737,11 +6828,88 @@ class Screen(pygame.Surface):
             painter.text(self.screen, self.lang.translate(str(text)), rect, settings, units)
 
         rect = place_of(title_look, pygame.Rect(0, int(self.res['y'] / 30), self.res['x'], int(self.res['y'] / 15)))
-        if title:
+        if title and title_look:
             band(title, cmenustyle.merge(self.TITLE_LOOK, title_look), rect)
+        elif title:
+            # Only the subtitle has a look of its own : the title of always
+            self.classic_header(title)
         if subtitle:
             settings = cmenustyle.merge(self.SUBTITLE_LOOK, subtitle_look)
             band(subtitle, settings, place_of(settings, pygame.Rect(rect.x, rect.bottom, rect.width, int(self.res['y'] / 20))))
+
+    def screen_skin(self, name):
+        '''
+        Colours of the theme (Colorset.cfg) given by the style of the menu of this name, for the
+        screens drawn with them (games, options, players, wizard : section 7.6), and the font
+        of their texts (None : the font of the theme)
+        '''
+        menus = self.menus()
+        menu = menus.menu(name)
+        style = (menus.data.get('styles') or {}).get(str(menu.get('style') or 'classic')) or {}
+        painter = self.menu_painter()
+        skin = {}
+
+        def color(block, key):
+            value = block.get('color') if isinstance(block, dict) else block
+            found = painter.color(value, None)
+            if found is not None:
+                skin[key] = tuple(found[:3])
+
+        selected = style.get('selected') or {}
+        disabled = style.get('disabled') or {}
+        if 'color' in style:
+            color(style['color'], 'menu-buttons')
+        color(style.get('background') or {}, 'menu-buttons')
+        color(selected.get('background') or {}, 'menu-selected')
+        color(disabled.get('background') or {}, 'menu-warning')
+        color(style.get('text') or {}, 'menu-text-black')
+        color(selected.get('text') or {}, 'menu-text-white')
+        border = cmenustyle.merge(style.get('border') or {}, selected.get('border') or {})
+        color(border, 'menu-border')
+        if 'width' in border:
+            skin['border-size'] = int(border.get('width') or 0)
+        color(menu.get('shortcuts') or {}, 'menu-shortcut')
+        shape = style.get('shape')
+        if shape == 'pill':
+            skin['border-radius'] = skin['button-radius'] = 'max'
+        elif shape == 'rectangle':
+            skin['border-radius'] = skin['button-radius'] = 0
+        elif style.get('radius') is not None:
+            radius = float(style['radius'])
+            # A part of the height of a button (the rows of these screens : 1/15 of the screen)
+            pixels = int(radius * self.res['y'] / 15) if radius <= 1 else \
+                int(cmenustyle.Units(self.screen.get_size(), menus.data.get('resolution')).length(radius, 'y'))
+            skin['border-radius'] = skin['button-radius'] = pixels
+        font = (style.get('text') or {}).get('font')
+        return skin, (painter.font_path(font) if font else None)
+
+    def run_with_look(self, name, method, *args, **kwargs):
+        '''
+        A screen drawn with the look of the menu of this name (see with_look) : its colours
+        and font while it is shown, those of the theme again after
+        '''
+        colorset = self.colorset
+        skin, font = self.screen_skin(name)
+        saved = {key: colorset[key] for key in skin if key in colorset}
+        added = [key for key in skin if key not in colorset]
+        saved_font = getattr(self, 'defaultfontpath', None)
+        previous = self.current_look
+        colorset.update(skin)
+        if font:
+            self.defaultfontpath = font
+            # Sizes of texts computed for the font of the theme
+            self.scale_text.cache_clear()
+        self.current_look = name
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            self.current_look = previous
+            colorset.update(saved)
+            for key in added:
+                colorset.pop(key, None)
+            if font:
+                self.defaultfontpath = saved_font
+                self.scale_text.cache_clear()
 
     def menu_painter(self):
         '''
@@ -6892,7 +7060,9 @@ class Screen(pygame.Surface):
                                                 [(tip_x, middle), (base_x, middle - side // 2), (base_x, middle + side // 2)])
                 self.update_screen()
                 full = False
-                if intro_is_playing():
+                if self.intro and not intro_is_playing():
+                    self.intro = False
+                if self.intro:
                     # The intro video still plays (the menu is ready first) : the other looks
                     # of the buttons drawn now, unseen (the first move took up to 240 ms)
                     for index in rects:
@@ -7192,6 +7362,7 @@ class Screen(pygame.Surface):
                                                       if menus.result(button) == category), None)
         return menus.result(self.run_menu('categories', buttons, everything, initial=initial))
 
+    @with_look('games')
     def game_menu(self, category, games_list, favorites, nb_player, selected_game=None, load=False):
         '''
         Menu which display a table to choose the game
@@ -7228,20 +7399,33 @@ class Screen(pygame.Surface):
         else:
             nb_column = 4
 
+        # Look given by the files of menus (menu games : columns, area, style of the tiles)
+        own = (self.menus().data.get('menus') or {}).get('games') or {}
+        if own.get('columns'):
+            nb_column = max(1, int(own['columns']))
+        tiles = None if load else self.game_tiles(games, nb_column, own)
+        pristine = None
+
         refresh = True
         old_selection = None
         #self.imagecache = {}
-        
+
         while True:
             click_zones = {}
             shortcuts = []
             validate = []
-            if not load:
+            states = []
+            if not load and tiles is not None and pristine is not None:
+                # Background and title drawn once
+                self.screen.blit(pristine, (0, 0))
+            elif not load:
                 # Draw background
                 self.display_background()
 
                 # Screen Titles
                 self.menu_header(self.lang.translate('game-list'))
+                if tiles is not None:
+                    pristine = self.screen.copy()
 
             index = 1
             for game in games:     # Display Game menu
@@ -7263,8 +7447,11 @@ class Screen(pygame.Surface):
                     game_desc_rect = self.game_description(game, False, min_max_players=min_max_players_per_game, goodNbPlayers=good_nb_players)
                     game_desc_rect = [(game_desc_rect[0], game_desc_rect[1], game_desc_rect[2], game_desc_rect[3])]
                 
-                click_zones[shortcut] = self.logo_item((index, len(games), selected), game.replace(' ', '_'), nb_column, 'Left', border_radius=25, available=good_nb_players)
-                
+                if tiles is None:
+                    click_zones[shortcut] = self.logo_item((index, len(games), selected), game.replace(' ', '_'), nb_column, 'Left', border_radius=25, available=good_nb_players)
+                else:
+                    states.append((index, 'selected' if index == selected else 'normal' if good_nb_players else 'disabled'))
+
                 validate.append(good_nb_players)
                 if good_nb_players:
                     shortcuts.append(shortcut)
@@ -7272,6 +7459,11 @@ class Screen(pygame.Surface):
 
             if load:
                 return
+            if tiles is not None:
+                # The selected tile last : enlarged (scale), it stays over its neighbours
+                for tile_index, look in sorted(states, key=lambda state: state[1] == 'selected'):
+                    click_zones[f'F{tile_index}'] = self.game_tile(tiles, pristine, tile_index, look)
+                refresh = True
             # Arrow to go back and next
             click_zones['escape'] = self.display_button(index == selected, 'back', special='escape')
 
@@ -7677,6 +7869,7 @@ class Screen(pygame.Surface):
 
         return pygame.Rect(box_pos_x, box_pos_y, box_width, box_height + 1)
 
+    @with_look('options')
     def options_menu(self, game_options, game, number_of_players, versionGame = '', max_players = 12):
         '''
         Game options menu
@@ -8574,6 +8767,16 @@ class Screen(pygame.Surface):
         '''
         Display background, under a veil of this color if given (game screens)
         '''
+        if self.current_look is not None and image is None and rect is None and veil is None \
+                and self.game_background is None:
+            # Screen whose look comes from the files : their background, if they give one
+            block = self.menus().menu(self.current_look).get('background')
+            if block is not None:
+                block = cmenustyle.merge({'fit': 'cover'}, block) if isinstance(block, dict) else block
+                self.screen.fill((0, 0, 0))
+                self.blit(self.menu_painter().background(block, self.screen.get_size()), (0, 0))
+                self.pristine_background = None
+                return
         if image is True:
             image = self.background
         elif image is not None:

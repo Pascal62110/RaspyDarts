@@ -381,8 +381,28 @@ boutons sont fabriqués par le jeu (§7.6).
 
 `games` (liste des jeux d'une catégorie), `options` (options d'un jeu), `players` (joueurs),
 `wizard` (assistant de configuration) : leurs boutons viennent du jeu, le fichier n'en règle
-que l'aspect (`background`, `layout`, `columns`, `style`, `title`…), pas la liste. Un
-`buttons:` y est ignoré (journal).
+que l'aspect, pas la liste (un `buttons:` y est ignoré).
+
+| Réglage | `games` | `options`, `players`, `wizard` |
+|---|---|---|
+| `background` (§7.3 bis) | ✓ | ✓ |
+| `title`, `subtitle` (texte et aspect, §7.1) | ✓ | ✓ (remplace le titre de chaque étape de l'assistant) |
+| `style` : couleurs | ✓ | ✓ |
+| `style` : forme, images, icône, ombre, `scale` | ✓ (tuiles) | — |
+| `columns`, `area`, `gap`, `align` | ✓ | — (disposition propre à l'écran) |
+
+- **`games`** : avec un style autre que `classic`, chaque jeu est une tuile du style, le
+  logo du jeu en icône et son nom en texte ; un jeu qui ne convient pas au nombre de joueurs
+  prend l'état `disabled`. Tous les jeux tiennent sur l'écran, dans `area` (par défaut la
+  gauche de l'écran, la description du jeu à droite) : tuiles carrées (logo au-dessus du
+  nom) ou, s'il y a trop de rangées pour des carrés, aussi larges que les colonnes (logo à
+  gauche du nom). Avec `style: classic`, les logos de toujours ; `columns` s'applique aussi.
+- **`options`, `players`, `wizard`** : leurs rangées (raccourci, texte, valeur, cases à
+  cocher…) gardent leur disposition ; le style leur donne ses couleurs, le temps de l'écran :
+  `background.color` (rangées), `selected.background.color` (rangée choisie),
+  `disabled.background.color` (avertissements), `text.color` et `selected.text.color`,
+  `border` (bordure de la rangée choisie), `shape`/`radius` (arrondi des rangées et des
+  boutons du bas), `text.font` ; `shortcuts.color` colore la case du raccourci.
 
 ## 9. Navigation
 
