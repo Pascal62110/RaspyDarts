@@ -3304,3 +3304,18 @@ msgstr "Preferiti"
 msgid "deposit-Server"
 msgstr "Server di gioco in rete"
 
+msgid "vk-delete"
+msgstr "Cancella"
+
+msgid "vk-ok"
+msgstr "OK"
+
+msgid "vk-cancel"
+msgstr "Annulla"
+
+msgid "vk-shift"
+msgstr "Maiusc"
+
+msgid "vk-space"
+msgstr "Spazio"
+

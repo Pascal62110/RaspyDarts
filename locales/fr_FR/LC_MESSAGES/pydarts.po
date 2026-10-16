@@ -3938,3 +3938,18 @@ msgstr "Favoris"
 msgid "deposit-Server"
 msgstr "Serveur de jeu en réseau"
 
+msgid "vk-delete"
+msgstr "Effacer"
+
+msgid "vk-ok"
+msgstr "Valider"
+
+msgid "vk-cancel"
+msgstr "Annuler"
+
+msgid "vk-shift"
+msgstr "Maj"
+
+msgid "vk-space"
+msgstr "Espace"
+

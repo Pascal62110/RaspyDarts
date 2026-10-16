@@ -3719,6 +3719,69 @@ class Screen(pygame.Surface):
                         if response:
                             return 'restart'
 
+    # Keyboards on the screen : rows of keys. Special keys : (name, width in keys)
+    KEYPAD_NUMBERS = [['1', '2', '3', ('backspace', 1.5)], ['4', '5', '6', ','], ['7', '8', '9', '.'],
+                      [('escape', 1.5), '0', ('enter', 1.5)]]
+    KEYBOARDS = {
+        'azerty': [list('1234567890'), list('azertyuiop'), list('qsdfghjklm'),
+                   [('shift', 1.5)] + list('wxcvbn') + ['.', '-', ('backspace', 1.5)],
+                   [('escape', 2)] + ['_', ':', '@', ('space', 4), ('enter', 2)]],
+        'qwerty': [list('1234567890'), list('qwertyuiop'), list('asdfghjkl') + ['-'],
+                   [('shift', 1.5)] + list('zxcvbnm') + ['.', ('backspace', 1.5)],
+                   [('escape', 2)] + ['_', ':', '@', ('space', 4), ('enter', 2)]],
+    }
+    KEY_TEXTS = {'backspace': 'vk-delete', 'enter': 'vk-ok', 'escape': 'vk-cancel', 'shift': 'vk-shift', 'space': 'vk-space'}
+
+    def keyboard_wanted(self):
+        '''
+        Keyboard on the screen for a field : virtual_keyboard.mode of the files of menus.
+        touch (default) : the field was reached by a finger ; always ; never
+        '''
+        mode = str((self.menus().data.get('virtual_keyboard') or {}).get('mode') or 'touch')
+        if mode == 'always':
+            return True
+        if mode == 'never':
+            return False
+        return bool(getattr(self.rpi, 'last_input_touch', False))
+
+    def draw_keyboard(self, v_type, shift):
+        '''
+        Keyboard on the screen, under the field : returns {rect: key}. Numbers : a keypad
+        (with , and . for the leds) ; text : letters of the language of the game
+        '''
+        if v_type == 'string':
+            language = str(self.config.get_value('SectionGlobals', 'locale', False) or 'en')[:2]
+            rows = self.KEYBOARDS['azerty' if language == 'fr' else 'qwerty']
+            width = int(self.res_x_16 * 14)
+        else:
+            rows = [[key for key in row if v_type == 'leds' or key not in (',', '.')] for row in self.KEYPAD_NUMBERS]
+            width = int(self.res_x_16 * 6)
+        top = int(self.res_y_16 * 10.25)
+        height = int(self.res_y_16 * 5.5)
+        panel = pygame.Rect(int((self.res['x'] - width) / 2), top, width, height)
+        self.new_blit_rect2(panel, self.colorset['menu-header'], corners='All', border_radius=int(self.res_y_16 / 3), alpha=255)
+        margin = max(2, int(self.res_y_16 / 12))
+        row_height = (height - margin) / len(rows)
+        keys = {}
+        for index, row in enumerate(rows):
+            units = sum(key[1] if isinstance(key, tuple) else 1 for key in row)
+            unit = (width - margin) / units
+            pos_x = panel.x + margin
+            for key in row:
+                name, size = key if isinstance(key, tuple) else (key, 1)
+                rect = pygame.Rect(int(pos_x), int(top + margin + index * row_height), int(unit * size) - margin, int(row_height) - margin)
+                pos_x += unit * size
+                color = self.colorset['menu-selected'] if name in ('enter', 'shift') and (name != 'shift' or shift) \
+                    else self.colorset['menu-buttons']
+                self.new_blit_rect2(rect, color, corners='All', border_radius=int(rect.h / 4), alpha=255)
+                if name in self.KEY_TEXTS:
+                    label = self.lang.translate(self.KEY_TEXTS[name])
+                else:
+                    label = name.upper() if shift else name
+                self.blit_text2(label, rect, self.colorset['menu-text-black'])
+                keys[(rect.x, rect.y, rect.w, rect.h)] = name
+        return panel, keys
+
     def input_value_item(self, v_type, value, v_min, v_max, character=None, align='Center', text=None, zero=False):
         '''
         Input value item
@@ -3775,7 +3838,14 @@ class Screen(pygame.Surface):
             border_radius = int(self.colorset['border-radius'])
 
         key = ''
+        # Keyboard on the screen (field reached by a finger) : drawn under the field
+        keyboard = self.keyboard_wanted()
+        shift = False
+        panel = None
+        keyboard_keys = {}
         while True:
+            if keyboard:
+                panel, keyboard_keys = self.draw_keyboard(v_type, shift)
             self.blit_border(rect, self.colorset['menu-border'], border_size, corners='All', border_radius=border_radius, alpha=255)
             inside_border_radius = border_radius - border_size
             if text is not None:
@@ -3787,13 +3857,32 @@ class Screen(pygame.Surface):
 
             self.blit_text2(value, v_rect, self.colorset['menu-text-black'], align=align)
 
-            self.update_screen(rect)
+            self.update_screen(rect_array=[rect] + ([panel] if keyboard else []))
 
             # Read input
             key = self.rpi.listen_inputs(authorized,
                     ['PLAYERBUTTON', 'BACKUPBUTTON', 'GAMEBUTTON', 'EXTRABUTTON',
                     'escape', 'enter', 'backspace', 'tab', 'TOGGLEFULLSCREEN',
                     'space', 'single-click'], wait_for=limited, context='editing')
+
+            if isinstance(key, tuple):
+                # A touch : a key of the keyboard on the screen, or the field (opens it)
+                pressed = next((name for zone, name in keyboard_keys.items() if pygame.Rect(zone).collidepoint(key)), None)
+                if pressed is None and not keyboard and rect.collidepoint(key):
+                    keyboard = True
+                    continue
+                if pressed == 'shift':
+                    shift = not shift
+                    continue
+                if pressed is None:
+                    continue
+                key = pressed.upper() if shift and len(pressed) == 1 else pressed
+            elif keyboard and key not in (None, False) and not getattr(self.rpi, 'last_input_touch', False):
+                # A real keyboard is used : the one on the screen goes away
+                keyboard = False
+                if panel is not None and self.game_background is not None:
+                    self.screen.blit(self.game_background, panel, panel)
+                    self.update_screen(panel)
 
             if key in ENTER_KEYS :    # Valid and quit
                 if v_type == 'leds' and len(value) > 0:

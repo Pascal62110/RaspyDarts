@@ -425,9 +425,12 @@ virtual_keyboard:
   style: classic
 ```
 
-`touch` : un champ de saisie touché **au doigt** ouvre un pavé numérique (broches, nombres)
-ou un clavier (prénoms) ; un clic de souris ou une frappe au clavier ne l'ouvrent pas, et
-taper au clavier le referme.
+`touch` : un champ de saisie touché **au doigt** ouvre un pavé numérique (broches, nombres ;
+avec `,` et `.` pour les LED) ou un clavier (textes : AZERTY si le jeu est en français,
+QWERTY sinon, avec Maj, Espace, `. - _ : @`, Effacer, Valider, Annuler) ; un clic de souris
+ou une frappe au clavier ne l'ouvrent pas, et taper au clavier le referme. Si le clavier est
+fermé, toucher le champ l'ouvre. Toutes les saisies du jeu en profitent (broches, nombres,
+prénoms, mot de passe de la galerie, serveurs…).
 
 ## 12. Règles de placement exactes
 

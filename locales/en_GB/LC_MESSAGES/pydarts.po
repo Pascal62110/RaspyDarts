@@ -2850,3 +2850,18 @@ msgstr "Favorites"
 msgid "deposit-Server"
 msgstr "Network game server"
 
+msgid "vk-delete"
+msgstr "Delete"
+
+msgid "vk-ok"
+msgstr "OK"
+
+msgid "vk-cancel"
+msgstr "Cancel"
+
+msgid "vk-shift"
+msgstr "Shift"
+
+msgid "vk-space"
+msgstr "Space"
+

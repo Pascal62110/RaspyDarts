@@ -822,6 +822,12 @@ class Craspberry():
 
         # Look for events
         for event in events:
+            # A field reached by a finger opens the keyboard on the screen (see
+            # Screen.input_value_item) ; a key or a click of the mouse does not
+            if event.type == pygame.FINGERDOWN:
+                self.last_input_touch = True
+            elif event.type == pygame.KEYDOWN or (event.type == pygame.MOUSEBUTTONDOWN and not getattr(event, 'touch', False)):
+                self.last_input_touch = False
 
             if event.type == USEREVENT:
                 pygame.time.set_timer(USEREVENT, 0)

@@ -620,3 +620,18 @@ msgstr "Favoritos"
 msgid "deposit-Server"
 msgstr "Servidor de juego en red"
 
+msgid "vk-delete"
+msgstr "Borrar"
+
+msgid "vk-ok"
+msgstr "Aceptar"
+
+msgid "vk-cancel"
+msgstr "Cancelar"
+
+msgid "vk-shift"
+msgstr "Mayús"
+
+msgid "vk-space"
+msgstr "Espacio"
+

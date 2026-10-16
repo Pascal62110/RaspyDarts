@@ -614,3 +614,18 @@ msgstr "Favoriten"
 msgid "deposit-Server"
 msgstr "Netzwerkspielserver"
 
+msgid "vk-delete"
+msgstr "Löschen"
+
+msgid "vk-ok"
+msgstr "OK"
+
+msgid "vk-cancel"
+msgstr "Abbrechen"
+
+msgid "vk-shift"
+msgstr "Umsch"
+
+msgid "vk-space"
+msgstr "Leertaste"
+
