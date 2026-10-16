@@ -205,8 +205,15 @@ menus:
         shortcut: escape
         footer: left
 
-  # Screens which save a favorite (options of a game, button Favori) : their buttons come
-  # from the game (the favorites fav1 to fav9, then how the players are chosen)
+  # Screens of the favorites (Jeux favoris) : their buttons come from the game. A favorite
+  # game chosen again : its options changed or removed (title : the game)
+  favorite_game: {}
+
+  # A question answered by Yes or No (title : the question)
+  question: {}
+
+  # A favorite game placed on a button fav1 to fav9 of the main menu, then how its players
+  # are chosen
   favorite_save:
     title: favorite-save
     subtitle: favorite-save-sub

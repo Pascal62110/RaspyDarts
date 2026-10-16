@@ -2609,9 +2609,6 @@ class Screen(pygame.Surface):
             pos_x = int(self.res['x'] / 8)
         elif special in ('tab2', 'refresh'):
             pos_x = int(self.res['x'] / 2 - width / 2)
-        elif special == 'favorite':
-            # Between the one of the middle and the one on the right
-            pos_x = int((self.res['x'] / 2 + width / 2 + self.res['x'] * 7 / 8 - width) / 2 - width / 2)
         #elif special == 'return':
         else:
             pos_x = int(self.res['x'] * 7 / 8 - width)
@@ -3591,6 +3588,8 @@ class Screen(pygame.Surface):
 
         game_list.sort()
         tab = -2
+        # Options of favorite games defined or removed here : saved with the list (Save)
+        pending = {}
 
         old_selection = None
         refresh = True
@@ -3676,6 +3675,12 @@ class Screen(pygame.Surface):
                 return 'escape'
 
             if key_pressed in SAVE_KEYS or (key_pressed in ENTER_KEYS and selected == nb_elements + 2):
+                if pending:
+                    try:
+                        self.favorites().set_games_options(pending)
+                    except Exception as error:    # pylint: disable=broad-except
+                        self.logs.error(f"Favorites : options not saved ({error})")
+                        self.message([self.lang.translate('favorite-not-saved')], 2500, 'menu-ko', 'middle', 'big')
                 return ', '.join(prefered)
 
             if selected < 1:
@@ -3692,14 +3697,45 @@ class Screen(pygame.Surface):
                 refresh = True
                 tab = selected
 
-            # Keyboard cases
+            # Keyboard cases : a game chosen as favorite, its options defined or not ; a
+            # favorite game : its options changed, or removed from the favorites
             if key_pressed in ENTER_KEYS and selected <= nb_elements and selected > 0:
-                if games[selected - 1] in prefered:
-                    prefered.remove(games[selected - 1])
+                game = games[selected - 1]
+                if game in prefered:
+                    edit = {'id': 'edit', 'action': 'edit', 'text': 'favorite-edit-options', 'shortcut': 'F1'}
+                    remove = {'id': 'remove', 'action': 'remove', 'text': 'favorite-remove', 'shortcut': 'F2'}
+                    back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
+                    choice = self.run_menu('favorite_game', [edit, remove, back], [edit, remove, back], title=game).get('id')
+                    if choice == 'remove':
+                        prefered.remove(game)
+                        pending[game] = None
+                    elif choice == 'edit':
+                        self.define_favorite_options(game, pending)
                 else:
-                    prefered.append(games[selected - 1])
+                    prefered.append(game)
+                    if self.ask_yes_no(f"{game} : {self.lang.translate('favorite-define-options')}"):
+                        self.define_favorite_options(game, pending)
+                refresh = True
 
             old_selection = selection
+
+    def define_favorite_options(self, game, pending):
+        '''
+        Screen Jeux favoris : the options of a favorite game defined (saved with the list),
+        then placed on a button of the main menu if wanted
+        '''
+        preset = pending[game] if pending.get(game) is not None else self.favorites().game_options(game)
+        try:
+            options = self.favorite_game_options(game, preset)
+        except Exception as error:    # pylint: disable=broad-except
+            self.logs.error(f"Favorites : options of {game} not shown ({error})")
+            return
+        if options is None:
+            return
+        pending[game] = options
+        if self.ask_yes_no(self.lang.translate('favorite-place-button')):
+            names = self.favorite_players()
+            self.favorite_save(game, options, len(names) or 1, names)
 
     def display_changelog(self, version):
         '''
@@ -6559,9 +6595,50 @@ class Screen(pygame.Surface):
             button['game_logo'] = self.file_class.get_full_filename(f"logos_menu/{favorite['game']}", 'images')
         return button
 
+    def ask_yes_no(self, question):
+        '''
+        A question answered by Yes or No (menu question of the files : its look), back : No
+        '''
+        items = [{'id': 'yes', 'action': 'yes', 'text': 'yes', 'shortcut': 'F1'},
+                 {'id': 'no', 'action': 'no', 'text': 'no', 'shortcut': 'F2'}]
+        escape = {'id': 'no', 'action': 'no', 'text': 'no', 'shortcut': 'escape'}
+        previous = self.current_look
+        self.current_look = None
+        try:
+            return self.run_menu('question', items, items + [escape], title=question).get('id') == 'yes'
+        finally:
+            self.current_look = previous
+
+    def favorite_game_options(self, game, preset=None):
+        '''
+        Screen of the options of a favorite game (its options : those saved for the game, and
+        those already defined for the favorite over them). None : given up
+        '''
+        name = game.replace(' ', '_')
+        module = importlib.import_module(f'games.{cmenus.game_category(name)}.{name}')
+        options = dict(module.OPTIONS)
+        saved = self.config.read_file(f"game-{name}") or {}
+        options.update({option: value for option, value in saved.items() if option in options})
+        options.update({option: value for option, value in (preset or {}).items() if option in options})
+        try:
+            limits = self.config.get_value('NbOfPlayersPerGame', name)
+            count = max(1, int(limits[0])) + (1 if bool(limits[2]) and int(limits[0]) % 2 else 0)
+        except Exception:    # pylint: disable=broad-except
+            count = 1
+        result = self.options_menu(options, name, count, favorite=True)
+        return None if result == 'escape' else result
+
+    def favorite_players(self):
+        '''
+        The favorite players (Divers > Joueurs favoris) : the players of a favorite button
+        made in the screen Jeux favoris
+        '''
+        names = self.config.get_value('Favorites', 'firstnames', False, None, split=',') or []
+        return [str(name).strip() for name in names if str(name).strip()]
+
     def favorite_save(self, game, options, count, players):
         '''
-        Screen of the options of a game : the game and its options saved as a favorite, with
+        A favorite game and its options placed on a button fav1... of the main menu, with
         the number of players and how they are chosen (section 13)
         '''
         favorites = self.favorites()
@@ -6751,7 +6828,7 @@ class Screen(pygame.Surface):
                 return True
         return False
 
-    def run_menu(self, name, items, everything, hook=None, initial=None):
+    def run_menu(self, name, items, everything, hook=None, initial=None, title=None, subtitle=None):
         '''
         A menu of the files, drawn as a list of classic buttons (menu_item) and the buttons
         at its bottom (display_button) : returns the button chosen. items : buttons shown ;
@@ -6762,9 +6839,10 @@ class Screen(pygame.Surface):
         menus = self.menus()
         menu = menus.menu(name)
         if self.menu_styled(name, menu, items):
-            return self.run_styled_menu(name, menu, items, everything, hook, initial)
-        title = self.menu_text_look(name, 'title')[0]
-        subtitle = self.menu_text_look(name, 'subtitle')[0]
+            return self.run_styled_menu(name, menu, items, everything, hook, initial, title, subtitle)
+        # Title and subtitle : those given (a question...), else those of the files
+        title = title or self.menu_text_look(name, 'title')[0]
+        subtitle = subtitle or self.menu_text_look(name, 'subtitle')[0]
         show_version = bool(menu.get('show_version'))
         info = [str(value) for value in cmenus.as_list(menu.get('info'))]
         remember = bool(menu.get('remember'))
@@ -7015,7 +7093,7 @@ class Screen(pygame.Surface):
             self.painter = cmenustyle.Painter(self)
         return self.painter
 
-    def run_styled_menu(self, name, menu, items, everything, hook=None, initial=None):
+    def run_styled_menu(self, name, menu, items, everything, hook=None, initial=None, title=None, subtitle=None):
         '''
         A menu whose look is described by the files (styles, layouts, places, backgrounds) :
         same behaviour as run_menu (keys, shortcuts, confirmation, remembered button), drawn
@@ -7025,8 +7103,8 @@ class Screen(pygame.Surface):
         painter = self.menu_painter()
         resolution = menus.data.get('resolution')
         units = cmenustyle.Units(self.screen.get_size(), resolution)
-        title = self.menu_text_look(name, 'title')[0]
-        subtitle = self.menu_text_look(name, 'subtitle')[0]
+        title = title or self.menu_text_look(name, 'title')[0]
+        subtitle = subtitle or self.menu_text_look(name, 'subtitle')[0]
         shortcuts = cmenustyle.merge({'show': True, 'format': '{key}', 'color': 'menu-shortcut',
                                       'position': 'top_left' if menu.get('layout') == 'tiles' else 'left'},
                                      menu.get('shortcuts') or {})
@@ -7112,7 +7190,7 @@ class Screen(pygame.Surface):
                                                         selected=selected if selected <= nb_listed else
                                                         next((i for i, p in page_of.items() if p == page), 1))
                 rects = {index: pygame.Rect(rect) for index, rect in layout.items()}
-                cache_key = (name, 'styled', repr(menu.get('background')), repr(self.menu_text_look(name, 'title')),
+                cache_key = (name, 'styled', title, subtitle, repr(menu.get('background')), repr(self.menu_text_look(name, 'title')),
                              repr(self.menu_text_look(name, 'subtitle')), show_version,
                              tuple(info), tuple(self.screen.get_size()), getattr(self.file_class, 'theme_dir', None), self.background)
                 pristine = self.menu_backgrounds.get(cache_key)
@@ -7967,10 +8045,16 @@ class Screen(pygame.Surface):
         return pygame.Rect(box_pos_x, box_pos_y, box_width, box_height + 1)
 
     @with_look('options')
-    def options_menu(self, game_options, game, number_of_players, versionGame = '', max_players = 12, players=None):
+    def options_menu(self, game_options, game, number_of_players, versionGame = '', max_players = 12, favorite=False):
         '''
-        Game options menu. players : those chosen (saved with a favorite)
+        Game options menu. favorite : options of a favorite game (screen Jeux favoris) : the
+        buttons Back and Save only, Save returns the options
         '''
+        # Buttons at the bottom : (zone, text, place)
+        if favorite:
+            footers = [('escape', 'back', 'escape'), ('continue', 'save', 'return')]
+        else:
+            footers = [('escape', 'back', 'escape'), ('save', 'save', 'refresh'), ('continue', 'continue', 'return')]
         self.logs.debug("Waiting for game options")
 
         # Show message on Raspydarts DMD
@@ -7989,8 +8073,8 @@ class Screen(pygame.Surface):
             teaming = True
 
         nb_elements = 0
-        # Buttons at the bottom : back, save, favorite, continue (selected first)
-        selected = 4
+        # The last button at the bottom selected first (Continue)
+        selected = len(footers)
         for option_name, option_value in game_options.items():
             if (option_name.endswith('Teaming') or option_name.endswith('optionteamscore')) \
                     and not teaming:
@@ -8077,21 +8161,13 @@ class Screen(pygame.Surface):
                 index += 1
 
             # Arrow to go back and next
-            click_zones['escape'] = self.display_button(index == selected, 'back', special='escape')
-            click_zones['save'] = self.display_button(index + 1 == selected, 'save', special='refresh')
-            click_zones['favorite'] = self.display_button(index + 2 == selected, 'favorite', special='favorite')
-            click_zones['continue'] = self.display_button(index + 3 == selected, 'continue', special='return')
+            for position, (zone, text, place) in enumerate(footers):
+                click_zones[zone] = self.display_button(index + position == selected, text, special=place)
 
             if selected < nb_elements:
                 selection = click_zones[f'F{selected}']
-            elif index == selected:
-                selection = click_zones['escape']
-            elif index + 1 == selected:
-                selection = click_zones['save']
-            elif index + 2 == selected:
-                selection = click_zones['favorite']
-            elif index + 3 == selected:
-                selection = click_zones['continue']
+            elif index <= selected < index + len(footers):
+                selection = click_zones[footers[selected - index][0]]
             else:
                 selection = None
 
@@ -8117,27 +8193,22 @@ class Screen(pygame.Surface):
                 key = str(key)
 
             # Navigation in menu
-            selected = self.navigate(selected, key, nb_elements, 4, 4)
+            selected = self.navigate(selected, key, nb_elements, len(footers), len(footers))
 
             if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
                 self.qrlogo = ''
                 return 'escape'
 
-            if key in SAVE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 2):
+            if not favorite and (key in SAVE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 2)):
                 self.config.set_game_config(game, game_options)
                 self.config.write_file()
                 self.message(['options-saved'], None, self.colorset['menu-text-black'], 'middle', 'big')
                 refresh = True
                 continue
 
-            if key == 'favorite' or (key in ENTER_KEYS and selected == nb_elements + 3):
-                self.favorite_save(game, game_options, number_of_players, players)
-                refresh = True
-                continue
-
             #if key in SAVE_KEYS + CONTINUE_KEYS or key == 'BTN_NEXTPLAYER' \
-            if key in CONTINUE_KEYS and key != 'BTN_NEXTPLAYER' \
-                    or (key in ENTER_KEYS and selected == nb_elements + 4):
+            if key in CONTINUE_KEYS and key != 'BTN_NEXTPLAYER' or (favorite and key in SAVE_KEYS) \
+                    or (key in ENTER_KEYS and selected == nb_elements + len(footers)):
                 self.game_options = game_options
                 self.qrlogo = ''
                 return game_options

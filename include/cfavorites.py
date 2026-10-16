@@ -1,8 +1,10 @@
 """
-Favorites fav1, fav2... (docs/menu/menus.md, section 13) : a game, its options, the number of
-players planned and how the players are chosen. Created in the game (screen of the options of
-a game), kept in ~/.raspydarts/favorites.yaml ; the files of menus only place them
-(action favorite:fav1)
+Favorites (docs/menu/menus.md, section 13), kept in ~/.raspydarts/favorites.yaml :
+- the options of the favorite games (screen Jeux favoris) : such a game starts without its
+  screen of options ;
+- the buttons fav1, fav2... of the main menu : a game, its options, the number of players
+  planned and how the players are chosen. The files of menus only place them (action
+  favorite:fav1)
 """
 
 import os
@@ -20,6 +22,8 @@ except ImportError:
 FILE_NAME = 'favorites.yaml'
 # Favorites which can be saved : fav1 to fav9 (F1 to F9 in the screen which saves them)
 SLOTS = 9
+# Key of the file holding the options of the favorite games (not a button fav1...)
+GAMES = 'games'
 # How the players of a favorite are chosen
 MODES = ('choose', 'generic', 'last')
 
@@ -72,17 +76,47 @@ class Favorites:
         '''
         Saves a favorite (the others are kept)
         '''
-        if yaml is None:
-            raise RuntimeError('PyYAML is missing')
         data = self.read()
         data[str(name)] = {'game': str(game).replace(' ', '_'), 'options': dict(options), 'players': int(players),
                            'mode': mode, 'names': [str(player) for player in names] if mode == 'choose' else []}
-        ordered = {key: data[key] for key in sorted(data, key=lambda key: (len(key), key))}
+        self.write(data)
+        self.logs.info(f"Favorites : {name} saved ({game}, {players} players, {mode})")
+
+    def game_options(self, game):
+        '''
+        Options defined for a favorite game (screen Jeux favoris), None if none
+        '''
+        games = self.read().get(GAMES)
+        options = games.get(str(game).replace(' ', '_')) if isinstance(games, dict) else None
+        return dict(options) if isinstance(options, dict) else None
+
+    def set_games_options(self, changes):
+        '''
+        Options of favorite games : {game : options, or None to remove them}
+        '''
+        data = self.read()
+        games = data.get(GAMES) if isinstance(data.get(GAMES), dict) else {}
+        for game, options in changes.items():
+            key = str(game).replace(' ', '_')
+            if options is None:
+                games.pop(key, None)
+            else:
+                games[key] = dict(options)
+        data[GAMES] = games
+        self.write(data)
+        self.logs.info(f"Favorites : options of favorite games {sorted(changes)} saved")
+
+    def write(self, data):
+        '''
+        The file written whole (the options of the games first, then fav1, fav2...)
+        '''
+        if yaml is None:
+            raise RuntimeError('PyYAML is missing')
+        ordered = {key: data[key] for key in sorted(data, key=lambda key: (key != GAMES, len(key), key))}
         temporary = f'{self.path}.tmp'
         with open(temporary, 'w', encoding='utf-8') as file:
             yaml.dump(ordered, file, Dumper=DUMPER, allow_unicode=True, sort_keys=False, default_flow_style=False)
         os.replace(temporary, self.path)
-        self.logs.info(f"Favorites : {name} saved ({game}, {players} players, {mode})")
 
     @staticmethod
     def players_for(favorite, last_players, generic_name):

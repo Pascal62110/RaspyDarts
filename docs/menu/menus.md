@@ -485,36 +485,54 @@ calculés des deux côtés (ils doivent être identiques au pixel).
    flèches du clavier passent d'une page à l'autre), `scroll` fait défiler pour garder le
    bouton sélectionné visible.
 
-## 13. Favoris `fav1`, `fav2`…
+## 13. Favoris
 
-Les favoris se **créent dans RaspyDarts** (écran des options d'un jeu : « Enregistrer comme
-favori n° N ») ; le fichier ne fait que les placer :
+Les favoris se **créent dans RaspyDarts**, dans **Divers > Jeux favoris** (la liste où l'on
+coche les jeux favoris) :
+
+- **cocher un jeu** demande « définir ses options ? » (Oui / Non) :
+  - **Oui** ouvre l'écran des options du jeu (boutons Retour et Sauvegarder) ; le jeu
+    favori démarrera ensuite **sans écran d'options**, avec celles-ci, quel que soit le
+    chemin (liste d'une catégorie, catégorie Favoris…). Puis : « le placer aussi sur un
+    bouton du menu principal ? » (ci-dessous) ;
+  - **Non** : jeu favori sans options fixées, demandées au moment de jouer ;
+- **choisir un jeu déjà favori** propose « Modifier les options » ou « Retirer des
+  favoris ».
+
+Comme les jeux cochés, les options ne sont enregistrées qu'avec **Sauvegarder**.
+
+### Boutons `fav1`, `fav2`… du menu principal
+
+Un jeu favori dont les options sont définies peut aussi être placé sur un bouton du menu
+principal : son numéro (1 à 9 : `fav1` à `fav9` ; un favori déjà enregistré est remplacé),
+puis comment choisir ses joueurs :
+
+- `choose` : les **joueurs favoris** (Divers > Joueurs favoris), mémorisés avec le favori ;
+- `generic` : Joueur 1, Joueur 2… ;
+- `last` : les derniers joueurs choisis, ajustés au nombre prévu, avec un avertissement
+  s'il y en a trop (« les joueurs en trop seront retirés ») ou pas assez (« il manquera des
+  joueurs » : la partie se joue avec ceux qu'il y a), et le choix de continuer.
+
+Le fichier de menus ne fait que placer ces boutons :
 
 ```yaml
       - action: favorite:fav1        # texte et logo du jeu par défaut
         shortcut: [F7, '1']
 ```
 
-Dans l'écran des options d'un jeu, le bouton **Favori** (entre Sauvegarder et Continuer)
-demande son numéro (1 à 9 : `fav1` à `fav9` ; un favori déjà enregistré est remplacé), puis
-comment choisir ses joueurs. Un favori mémorise : le jeu, ses options, le nombre de joueurs
-prévu (celui de la partie en cours de préparation) et le choix des joueurs :
-
-- `choose` : les joueurs de la partie en cours de préparation, mémorisés avec le favori ;
-- `generic` : Joueur 1, Joueur 2… ;
-- `last` : les derniers joueurs choisis, ajustés au nombre prévu, avec un avertissement
-  s'il y en a trop (« les joueurs en trop seront retirés ») ou pas assez (« il manquera des
-  joueurs » : la partie se joue avec ceux qu'il y a), et le choix de continuer.
-
 Un bouton `favorite:` lance la partie aussitôt : ni choix des joueurs, ni liste des jeux, ni
 options. Un favori vide (ou dont le jeu n'existe plus) affiche son bouton grisé (état
 `disabled`), qui ne fait rien. Un favori ne peut pas être le premier écran (`start`) : sa
 partie recommencerait à chaque retour.
 
-Les favoris sont écrits dans `~/.raspydarts/favorites.yaml` (gardé par les mises à jour) :
+### Fichier
+
+Tout est écrit dans `~/.raspydarts/favorites.yaml` (gardé par les mises à jour) :
 
 ```yaml
-fav1:
+games:                    # options des jeux favoris (Jeux favoris)
+  Cricket: {max_round: 20, optioncrazy: false}
+fav1:                     # bouton fav1 du menu principal
   game: Cricket
   options: {max_round: 20, optioncrazy: false}
   players: 2
@@ -522,8 +540,9 @@ fav1:
   names: [Rémi, Bob]      # choose seulement
 ```
 
-Les deux écrans qui l'enregistrent sont des menus du fichier (`favorite_save`,
-`favorite_players` : titre, sous-titre, aspect) dont le jeu fournit les boutons.
+Les petits écrans de ces choix sont des menus du fichier dont le jeu fournit les boutons :
+`question` (Oui / Non ; titre : la question), `favorite_game` (titre : le jeu),
+`favorite_save` et `favorite_players` (titre, sous-titre, aspect).
 
 ## 14. Exemple complet
 

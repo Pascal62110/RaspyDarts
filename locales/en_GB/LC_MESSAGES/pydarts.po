@@ -2901,6 +2901,18 @@ msgstr "The extra players will be removed. Continue?"
 msgid "favorite-too-few"
 msgstr "Some players will be missing. Continue?"
 
+msgid "favorite-define-options"
+msgstr "define its options?"
+
+msgid "favorite-edit-options"
+msgstr "Change the options"
+
+msgid "favorite-remove"
+msgstr "Remove from the favorites"
+
+msgid "favorite-place-button"
+msgstr "Also place it on a button of the main menu?"
+
 msgid "vk-shift"
 msgstr "Shift"
 

@@ -671,6 +671,18 @@ msgstr "Los jugadores de más se quitarán. ¿Continuar?"
 msgid "favorite-too-few"
 msgstr "Faltarán jugadores. ¿Continuar?"
 
+msgid "favorite-define-options"
+msgstr "¿definir sus opciones?"
+
+msgid "favorite-edit-options"
+msgstr "Cambiar las opciones"
+
+msgid "favorite-remove"
+msgstr "Quitar de los favoritos"
+
+msgid "favorite-place-button"
+msgstr "¿Ponerlo también en un botón del menú principal?"
+
 msgid "vk-shift"
 msgstr "Mayús"
 

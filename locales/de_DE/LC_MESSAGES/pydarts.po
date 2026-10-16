@@ -665,6 +665,18 @@ msgstr "Überzählige Spieler werden entfernt. Weiter?"
 msgid "favorite-too-few"
 msgstr "Es fehlen Spieler. Weiter?"
 
+msgid "favorite-define-options"
+msgstr "Optionen festlegen?"
+
+msgid "favorite-edit-options"
+msgstr "Optionen ändern"
+
+msgid "favorite-remove"
+msgstr "Aus den Favoriten entfernen"
+
+msgid "favorite-place-button"
+msgstr "Auch auf eine Taste des Hauptmenüs legen?"
+
 msgid "vk-shift"
 msgstr "Umsch"
 

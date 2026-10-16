@@ -3989,6 +3989,18 @@ msgstr "Les joueurs en trop seront retirés. Continuer ?"
 msgid "favorite-too-few"
 msgstr "Il manquera des joueurs. Continuer ?"
 
+msgid "favorite-define-options"
+msgstr "définir ses options ?"
+
+msgid "favorite-edit-options"
+msgstr "Modifier les options"
+
+msgid "favorite-remove"
+msgstr "Retirer des favoris"
+
+msgid "favorite-place-button"
+msgstr "Le placer aussi sur un bouton du menu principal ?"
+
 msgid "vk-shift"
 msgstr "Maj"
 

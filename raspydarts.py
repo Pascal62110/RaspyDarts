@@ -1215,8 +1215,16 @@ try:
                 game_options.update(config_game_options)
 
                 dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])
-                game_options = display.options_menu(game_options, Game.replace(' ', '_'), players_count, versionGame,
-                                                    players=local_players)
+                # A favorite game whose options were defined (screen Jeux favoris) : no screen
+                # of options, those options
+                favorite_games = [name.strip() for name in str(config_favorites.get('games') or '').split(',')]
+                preset = display.favorites().game_options(Game) if Game in favorite_games else None
+                if preset is not None:
+                    game_options.update({option: value for option, value in preset.items() if option in game_options})
+                    display.game_options = game_options
+                    logs.info(f"Favorite game {Game} : its options, no screen of options")
+                else:
+                    game_options = display.options_menu(game_options, Game.replace(' ', '_'), players_count, versionGame)
                 if game_options == 'escape':
                     # Straight to a game : its list was not shown, back to the players
                     target = display.menu_target if game_type == 'local' else None
