@@ -127,3 +127,49 @@ menus:
         action: update
         text: btn_update
         footer: right
+
+  settings:
+    title: setup
+    remember: true
+    buttons:
+      - id: setup-buttons
+        action: setup_buttons
+        text: setup-buttons
+        shortcut: F1
+      - id: setup-pinleds
+        action: setup_pins_leds
+        text: setup-pinsleds
+        shortcut: F2
+      - id: setup-leds
+        action: setup_leds
+        text: setup-leds
+        shortcut: F3
+      - id: setup-couleurs-segments
+        action: setup_segment_colors
+        text: setup-couleurs-segments
+        shortcut: F4
+      - id: setup-cam
+        action: setup_camera
+        text: setup-cam
+        shortcut: F5
+      - id: test-buttons
+        action: test_buttons
+        text: test-buttons
+        shortcut: F6
+      - id: test-target
+        action: test_target
+        text: test-target
+        shortcut: F7
+      - id: test-toys
+        action: test_toys
+        text: test-toys
+        shortcut: F8
+      - id: reset
+        action: reset
+        text: reset
+        shortcut: F9
+      - id: back
+        action: back
+        text: back
+        shortcut: escape
+        footer: left

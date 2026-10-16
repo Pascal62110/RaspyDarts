@@ -41,6 +41,15 @@ ACTIONS = {
     'exhibition': 'exhibition',
     'update': 'update',
     'back': 'escape',
+    'setup_buttons': 'setup-buttons',
+    'setup_pins_leds': 'setup-pinleds',
+    'setup_leds': 'setup-leds',
+    'setup_segment_colors': 'setup-couleurs-segments',
+    'setup_camera': 'setup-cam',
+    'test_buttons': 'test-buttons',
+    'test_target': 'test-target',
+    'test_toys': 'test-toys',
+    'reset': 'reset',
 }
 # Menus opened by the main loop : what it is given for each of them
 MENU_RESULTS = {'settings': 'setup'}
