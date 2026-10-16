@@ -886,9 +886,16 @@ class Craspberry():
             elif event.type == pygame.VIDEORESIZE:
                 self.newresolution = [event.w, event.h]
                 return 'resize'
+            # A touch on a touchscreen comes twice : as a click simulated by SDL (touch=True),
+            # often at the position of the touch before, then as a finger. Both were clicks :
+            # the wrong one could press a button of the next screen. The finger only
+            elif event.type == pygame.MOUSEBUTTONDOWN and getattr(event, 'touch', False):
+                continue
             # Case of MOUSE BUTTON PRESSED
             elif (event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.FINGERDOWN):
-                pygame.mouse.set_visible(True)
+                # The pointer is shown for a mouse, not for a finger
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    pygame.mouse.set_visible(True)
                 #on click
                 if 'single-click' in specials:
                     if(event.type == pygame.FINGERDOWN):
@@ -899,7 +906,7 @@ class Craspberry():
                     else:
                         position = pygame.mouse.get_pos()
                     return position
-            elif (event.type == pygame.MOUSEMOTION or  event.type == pygame.FINGERMOTION):
+            elif event.type == pygame.MOUSEMOTION and not getattr(event, 'touch', False):
                 pygame.mouse.set_visible(True)
         # Everything above failed, return -1 (0 is a valid char)
         return None
