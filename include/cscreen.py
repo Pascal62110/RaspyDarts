@@ -217,6 +217,9 @@ class Screen(pygame.Surface):
         self.selected_menu = {}
         # Background and title of the menus of the files (see run_menu)
         self.menu_backgrounds = {}
+        # Screens skipped by a button of the main menu or by start : ('game', 'classic.Cricket'),
+        # ('category', 'favoris') or None (see cmenus.Menus.target)
+        self.menu_target = None
         self.end_of_game_winner = ''
         if QRCODE:
             self.qrcode = cqrcode.Qrcoder()
@@ -6479,6 +6482,11 @@ class Screen(pygame.Surface):
             return shown
 
         button = self.run_menu('main', self.main_menu_items(), menus.buttons('main'), hook=banned)
+        # A button going straight to a game or to the games of a category : a local game,
+        # whose players are chosen first
+        self.menu_target = menus.target(button.get('action'))
+        if self.menu_target is not None:
+            return 'local'
         return menus.result(button)
 
     def exhibition_menu(self):

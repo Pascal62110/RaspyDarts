@@ -107,6 +107,27 @@ menus: {…}               # les menus (§7.3)
 
 Toutes les sections sont facultatives.
 
+### 6.1 Premier écran (`start`)
+
+```yaml
+start: main               # le menu principal (défaut)
+```
+
+| Valeur | Premier écran |
+|---|---|
+| `main` | le menu principal |
+| `local_game` | le choix des joueurs d'une partie simple (comme l'option « Ne pas afficher le menu principal ») |
+| `category:<nom>` | les joueurs, puis directement la liste des jeux de cette catégorie |
+| `game:<Nom>` | les joueurs, puis directement les options de ce jeu |
+
+Retour depuis les joueurs mène alors au menu principal. Les options du jeu « Ne pas afficher
+le menu principal » et « Afficher uniquement les jeux favoris » (Paramètres > Personnalisation
+> Général) restent prioritaires : un fichier ne peut pas les contredire.
+
+Un bouton peut aussi sauter des écrans : `category:<nom>` et `game:<Nom>` dans le menu
+principal passent par les joueurs puis vont directement à la liste ou aux options. Retour
+depuis ces écrans revient aux joueurs (les écrans sautés ne sont pas réaffichés).
+
 ## 7. Aspect
 
 ### 7.1 `defaults` et cascade
@@ -336,7 +357,7 @@ Une action par bouton. Le jeu refuse une action inconnue (§3).
 |---|---|
 | `menu:<id>` | ouvre le menu `<id>` ; un menu imbriqué s'écrit `menu:settings/display` |
 | `category:<nom>` | ouvre la liste des jeux de la catégorie `classic`, `fun`, `sport`, `favorites` |
-| `game:<Nom>` | ouvre directement les options du jeu `<Nom>` (ex. `game:Cricket`) |
+| `game:<Nom>` | partie de ce jeu : joueurs, puis directement ses options (ex. `game:Cricket`, `game:High_Score`) ; un jeu inconnu est ignoré |
 | `favorite:fav<N>` | lance le favori n° N (§13) |
 | `back` | revient à l'écran précédent |
 

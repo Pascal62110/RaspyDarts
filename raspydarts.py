@@ -636,11 +636,16 @@ try:
 
             fast_games_mode = bool(Config.get_value('SectionGlobals', 'fast_games_mode', False))
             only_favorites_games_mode = bool(Config.get_value('SectionGlobals', 'only_favorites_games_mode', False))
+            # First screen of the files of menus (start) : the main menu, or the players for
+            # a local game (straight to a game or a category). The option fast_games_mode
+            # stays first : the players, nothing skipped after them
+            start = 'local_game' if fast_games_mode else display.menus().start()
+            skip_main = start != 'main'
 
             ########
             # MAIN MENU - GAME TYPE (LOCAL, NETWORK, NETWORK MANUAL)
             ########
-            if (menu == 'gametype' and not fast_games_mode) or (menu == 'mainmenu' and fast_games_mode) :
+            if (menu == 'gametype' and not skip_main) or (menu == 'mainmenu' and skip_main) :
                 rpi.light_toys(['LIGHT_NAVIGATE', 'LIGHT_VALIDATE'])
                 rpi.light_toys(['LIGHT_BACK'], False)
                 dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER', 'LIGHT', 'STROBE'])
@@ -673,8 +678,10 @@ try:
                     display.gallery_menu()
                 elif game_type != 'miscellaneous':
                     menu = 'players'
-            elif menu == 'gametype' and fast_games_mode :
+            elif menu == 'gametype' and skip_main :
                     menu = 'players'
+                    game_type = 'local'
+                    display.menu_target = display.menus().target(start)
 
             ########
             # PLAYERS NAMES
@@ -699,9 +706,9 @@ try:
                                                  colors_available = dispatcher.get_colors(), players_color = players_favorite_color)
 
                 if players_list == 'escape':
-                    if not fast_games_mode :
+                    if not skip_main :
                         menu = 'gametype'
-                    elif  fast_games_mode :
+                    elif  skip_main :
                         menu = 'mainmenu'
                 else:
                     local_players = players_list[::]
@@ -709,6 +716,11 @@ try:
 
                     if game_type in ('netjoin', 'netcreate'):
                         menu = 'serverlist'
+                    elif game_type == 'local' and display.menu_target is not None:
+                        # Button of the main menu (or start) going straight to a game or a category
+                        if display.menu_target[0] == 'category':
+                            category = display.menu_target[1]
+                        menu = 'gamelist'
                     elif game_type == 'local':
                         menu = 'gamecategory'
                 rpi.light_toys(['LIGHT_PLAYERS'], False)
@@ -807,9 +819,9 @@ try:
                     Misc = display.miscellaneous((cupdate,config_favorites))
 
                     if Misc == 'escape':
-                        if not fast_games_mode :
+                        if not skip_main :
                             menu = 'gametype'
-                        elif  fast_games_mode :
+                        elif  skip_main :
                             menu = 'mainmenu'
                     elif Misc == 'restart':
                         game_type = Misc
@@ -1086,7 +1098,11 @@ try:
                 else:
                     games = display.get_games_list(category)
 
-                if category == 'favoris' and len(games) == 0 and only_favorites_games_mode:
+                target = display.menu_target if game_type == 'local' else None
+                if target is not None and target[0] == 'game':
+                    # Button going straight to a game : no list of games
+                    Game = target[1]
+                elif category == 'favoris' and len(games) == 0 and only_favorites_games_mode:
                     display.update_screen(display.message(["no-favs-games"], wait=3000, size='big', refresh=True))
                     Game = 'escape'
                 else:
@@ -1095,7 +1111,10 @@ try:
                     Game = display.game_menu(category, games, config_favorites['games'], players_count, selected_game=selected_game)
 
                 if Game == 'escape':
-                    if not only_favorites_games_mode:
+                    if target is not None:
+                        # The categories were skipped : back to the players
+                        menu = 'players'
+                    elif not only_favorites_games_mode:
                         menu = 'gamecategory'
                     else:
                         menu = 'players'
@@ -1154,7 +1173,9 @@ try:
                 dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])
                 game_options = display.options_menu(game_options, Game.replace(' ', '_'), players_count, versionGame)
                 if game_options == 'escape':
-                    menu = 'gamelist'
+                    # Straight to a game : its list was not shown, back to the players
+                    target = display.menu_target if game_type == 'local' else None
+                    menu = 'players' if target is not None and target[0] == 'game' else 'gamelist'
                 elif net_status is None:
                     menu = True
                 else:

@@ -53,7 +53,7 @@ ACTIONS = {
 }
 # Menus opened by the main loop : what it is given for each of them
 MENU_RESULTS = {'settings': 'setup'}
-ACTION_PREFIXES = ('menu:', 'category:')
+ACTION_PREFIXES = ('menu:', 'category:', 'game:')
 # Categories of games : what the main loop is given (category:<name>)
 CATEGORY_RESULTS = {'favorites': 'favoris'}
 
@@ -92,6 +92,18 @@ def key_name(key):
     if key.startswith('dart:'):
         return key[5:]
     return key
+
+
+def game_category(name):
+    '''
+    Category of a game (folder of games/ holding <name>.py), None if unknown
+    '''
+    file_name = f"{str(name).replace(' ', '_')}.py"
+    games_dir = os.path.join(cpaths.ROOT_DIR, 'games')
+    for category in sorted(os.listdir(games_dir)) if os.path.isdir(games_dir) else []:
+        if os.path.isfile(os.path.join(games_dir, category, file_name)):
+            return category
+    return None
 
 
 def as_list(value):
@@ -171,7 +183,11 @@ class Menus:
             if not isinstance(button, dict):
                 continue
             action = str(button.get('action') or '')
-            if action in ACTIONS or action.startswith(ACTION_PREFIXES):
+            if action.startswith('game:') and game_category(action[5:]) is None:
+                if action not in self.errors:
+                    self.errors.append(action)
+                    self.logs.warning(f"Menus : unknown game '{action[5:]}' in the menu {name}")
+            elif action in ACTIONS or action.startswith(ACTION_PREFIXES):
                 result.append(button)
             elif action not in self.errors:
                 self.errors.append(action)
@@ -191,6 +207,34 @@ class Menus:
             category = action[9:]
             return CATEGORY_RESULTS.get(category, category)
         return ACTIONS[action]
+
+    @staticmethod
+    def target(action):
+        '''
+        Destination of a button skipping screens : ('game', 'classic.Cricket'),
+        ('category', 'favoris') or None
+        '''
+        action = str(action or '')
+        if action.startswith('game:'):
+            name = action[5:]
+            category = game_category(name)
+            return ('game', f"{category}.{name.replace('_', ' ')}") if category else None
+        if action.startswith('category:'):
+            category = action[9:]
+            return ('category', CATEGORY_RESULTS.get(category, category))
+        return None
+
+    def start(self):
+        '''
+        First screen : 'main' (the main menu), or an action whose screen replaces it
+        (local_game : the players ; game:<Name>, category:<name> : the players, then the game
+        or the games of the category)
+        '''
+        start = str(self.data.get('start') or 'main')
+        if start in ('main', 'local_game') or self.target(start) is not None:
+            return start
+        self.logs.warning(f"Menus : start '{start}' unknown, the main menu is shown")
+        return 'main'
 
     def keys(self, name):
         '''
