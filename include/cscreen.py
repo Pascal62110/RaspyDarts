@@ -40,6 +40,7 @@ from include.ColorSets import *
 from include import cpaths
 from include import ccamera
 from include import cmenus
+from include import cmenustyle
 
 try:
     from include import cqrcode
@@ -217,6 +218,8 @@ class Screen(pygame.Surface):
         self.selected_menu = {}
         # Background and title of the menus of the files (see run_menu)
         self.menu_backgrounds = {}
+        # Buttons of the styles over their piece of background (see run_styled_menu)
+        self.menu_composites = {}
         # Screens skipped by a button of the main menu or by start : ('game', 'classic.Cricket'),
         # ('category', 'favoris') or None (see cmenus.Menus.target)
         self.menu_target = None
@@ -6355,6 +6358,9 @@ class Screen(pygame.Surface):
         Text of a button : a key of translation, a text, or a text per language
         '''
         text = button.get('text', self.menus().button_id(button))
+        if isinstance(text, dict) and not set(text) <= self.LANGUAGES:
+            # Look of the text (size, font...), not its translations : the name of the button
+            return self.menus().button_id(button)
         if isinstance(text, dict):
             language = str(self.config.get_value('SectionGlobals', 'locale', False) or 'en')[:2]
             text = text.get(language) or text.get('en') or next(iter(text.values()), '')
@@ -6404,6 +6410,44 @@ class Screen(pygame.Surface):
     # Places of the buttons at the bottom of the menus (footer : see display_button)
     FOOTERS = {'left': 'escape', 'center': 'refresh', 'right': 'return'}
 
+    # Keys of a button which change its look (section 7.2 : style properties on the button)
+    STYLE_KEYS = ('shape', 'radius', 'background', 'border', 'shadow', 'selected', 'disabled', 'pressed')
+    LANGUAGES = {'fr', 'en', 'de', 'es', 'it'}
+
+    def button_style(self, menu, button):
+        '''
+        Style of a button : the style named by the button or its menu, then the properties
+        written on the button (text: {size...}, color, background...)
+        '''
+        styles = self.menus().data.get('styles') or {}
+        style = dict(styles.get(str(button.get('style') or menu.get('style') or 'classic')) or {})
+        inline = {key: button[key] for key in self.STYLE_KEYS if key in button}
+        if 'color' in button:
+            inline['background'] = cmenustyle.merge(inline.get('background') or {}, {'color': button['color']})
+        if isinstance(button.get('text'), dict) and not set(button['text']) <= self.LANGUAGES:
+            inline['text'] = button['text']
+        if isinstance(button.get('icon'), dict):
+            inline['icon'] = button['icon']
+        return cmenustyle.merge(style, inline)
+
+    def menu_styled(self, menu, items):
+        '''
+        A menu drawn by cmenustyle : a style other than classic, a layout or places of its
+        own, a background or title of its own. Otherwise the classic drawing (as always)
+        '''
+        if str(menu.get('style') or 'classic') != 'classic' or menu.get('area') or menu.get('layout') == 'grid':
+            return True
+        if menu.get('background') is not None or menu.get('title_style') is not None:
+            return True
+        for button in items:
+            if button.get('footer') in self.FOOTERS:
+                continue
+            if button.get('place') or str(button.get('style') or 'classic') != 'classic' or \
+                    any(key in button for key in self.STYLE_KEYS + ('color',)) or isinstance(button.get('icon'), dict) or \
+                    (isinstance(button.get('text'), dict) and not set(button['text']) <= self.LANGUAGES) or button.get('icon'):
+                return True
+        return False
+
     def run_menu(self, name, items, everything, hook=None, initial=None):
         '''
         A menu of the files, drawn as a list of classic buttons (menu_item) and the buttons
@@ -6414,6 +6458,8 @@ class Screen(pygame.Surface):
         '''
         menus = self.menus()
         menu = menus.menu(name)
+        if self.menu_styled(menu, items):
+            return self.run_styled_menu(name, menu, items, everything, hook, initial)
         title = menu.get('title')
         show_version = bool(menu.get('show_version'))
         info = [str(value) for value in cmenus.as_list(menu.get('info'))]
@@ -6537,6 +6583,226 @@ class Screen(pygame.Surface):
             if button is None:
                 continue
             # The selection kept is the one of a button of the list (not Back at the bottom)
+            if remember and button in listed:
+                self.selected_menu[name] = listed.index(button) + 1
+            if button.get('confirm'):
+                full = True
+                if not self.wait_validation(self.lang.translate(str(button['confirm']))):
+                    continue
+            return button
+
+    def styled_title(self, menu, title):
+        '''
+        Title of a menu drawn by cmenustyle : its band and text (title_style), the classic
+        header otherwise
+        '''
+        settings = menu.get('title_style')
+        if not isinstance(settings, dict):
+            self.menu_header(title)
+            return
+        painter = self.menu_painter()
+        units = cmenustyle.Units(self.screen.get_size(), self.menus().data.get('resolution'))
+        rect = pygame.Rect(0, int(self.res['y'] / 30), self.res['x'], int(self.res['y'] / 15))
+        place = settings.get('place')
+        if isinstance(place, dict):
+            rect = pygame.Rect(int(units.length(place.get('x', 0), 'x')), int(units.length(place.get('y', 0), 'y')),
+                               int(units.length(place.get('width', 1), 'x')), int(units.length(place.get('height', 0.07), 'y')))
+        band = settings.get('background')
+        if band is not None:
+            self.screen.blit(painter.background(band, rect.size), rect.topleft)
+        painter.text(self.screen, self.lang.translate(str(title)), rect,
+                     cmenustyle.merge({'size': 0.05, 'color': 'menu-text'}, settings), units)
+
+    def menu_painter(self):
+        '''
+        Drawer of the buttons of the styles (kept : it keeps the buttons drawn)
+        '''
+        if getattr(self, 'painter', None) is None:
+            self.painter = cmenustyle.Painter(self)
+        return self.painter
+
+    def run_styled_menu(self, name, menu, items, everything, hook=None, initial=None):
+        '''
+        A menu whose look is described by the files (styles, layouts, places, backgrounds) :
+        same behaviour as run_menu (keys, shortcuts, confirmation, remembered button), drawn
+        by cmenustyle. The buttons at the bottom (footer) stay the classic ones
+        '''
+        menus = self.menus()
+        painter = self.menu_painter()
+        resolution = menus.data.get('resolution')
+        units = cmenustyle.Units(self.screen.get_size(), resolution)
+        title = menu.get('title')
+        show_version = bool(menu.get('show_version'))
+        info = [str(value) for value in cmenus.as_list(menu.get('info'))]
+        remember = bool(menu.get('remember'))
+        keys = {direction: set(menus.keys(direction)) for direction in
+                ('up', 'down', 'left', 'right', 'next', 'previous', 'validate', 'back')}
+        listed = [button for button in items if button.get('footer') not in self.FOOTERS]
+        footers = [button for button in items if button.get('footer') in self.FOOTERS]
+        shown = listed + footers
+        nb_listed, nb_shown = len(listed), len(shown)
+        styles = [self.button_style(menu, button) for button in listed]
+        selected = self.selected_menu.get(name, 1) if remember else 1
+        if initial is not None:
+            selected = next((index for index, button in enumerate(shown, 1) if menus.button_id(button) == initial), selected)
+        if not 1 <= selected <= nb_shown:
+            selected = 1
+        page_of = {}
+        for index in range(1, nb_listed + 1):
+            page_of[index] = cmenustyle.layout(menu, listed, self.screen.get_size(), resolution, selected=index)[1]
+        full, pristine, page = True, None, None
+        rects, drawn, looks = {}, {}, {}
+        dmd_sent = None
+
+        def state(index):
+            if index == selected:
+                return 'selected'
+            return 'disabled' if listed[index - 1].get('disabled') else 'normal'
+
+        def draw(index):
+            if index > nb_listed:
+                button = shown[index - 1]
+                rects[index] = drawn[index] = pygame.Rect(self.display_button(index == selected, self.button_text(button),
+                                                                              self.FOOTERS[button['footer']]))
+                looks[index] = index == selected
+                return
+            button = listed[index - 1]
+            look = state(index)
+            rect = pygame.Rect(rects[index])
+            surface = painter.button((name, index), styles[index - 1], rect.size, self.lang.translate(self.button_text(button))
+                                     if button.get('text', True) is not None else '', button.get('icon') if isinstance(button.get('icon'), str) else None,
+                                     look, units)
+            target = surface.get_rect(center=rect.center).clip(self.screen.get_rect())
+            # The button over its piece of background, once : an opaque image in the format of
+            # the screen (16 bits). Blending a button with transparency at each move took
+            # 80 to 130 ms on a Pi 3
+            composite_key = (id(pristine), index, look, tuple(target))
+            composite = self.menu_composites.get(composite_key)
+            if composite is None:
+                composite = pristine.subsurface(target).copy()
+                composite.blit(surface, (surface.get_rect(center=rect.center).x - target.x,
+                                         surface.get_rect(center=rect.center).y - target.y))
+                if len(self.menu_composites) >= 256:
+                    self.menu_composites.pop(next(iter(self.menu_composites)))
+                self.menu_composites[composite_key] = composite
+            self.screen.blit(composite, target)
+            drawn[index] = target.union(rect)
+            looks[index] = look
+
+        while True:
+            if hook is not None and hook():
+                full = True
+            dmd = shown[selected - 1].get('dmd') if 1 <= selected <= nb_shown else None
+            if dmd and dmd != dmd_sent:
+                self.dmd.send_text(self.lang.translate(str(dmd)))
+                dmd_sent = dmd
+            new_page = page_of.get(selected, page)
+            if new_page != page:
+                full = True
+            if full:
+                page = new_page if new_page is not None else 0
+                layout, page, pages = cmenustyle.layout(menu, listed, self.screen.get_size(), resolution,
+                                                        selected=selected if selected <= nb_listed else
+                                                        next((i for i, p in page_of.items() if p == page), 1))
+                rects = {index: pygame.Rect(rect) for index, rect in layout.items()}
+                cache_key = (name, 'styled', repr(menu.get('background')), repr(menu.get('title_style')), title, show_version,
+                             tuple(info), tuple(self.screen.get_size()), getattr(self.file_class, 'theme_dir', None), self.background)
+                pristine = self.menu_backgrounds.get(cache_key)
+                if pristine is None:
+                    if menu.get('background') is not None:
+                        block = menu.get('background')
+                        block = cmenustyle.merge({'fit': 'cover'}, block) if isinstance(block, dict) else block
+                        self.screen.fill((0, 0, 0))
+                        self.screen.blit(painter.background(block, self.screen.get_size()), (0, 0))
+                    else:
+                        self.display_background(display_version=show_version)
+                    if title:
+                        self.styled_title(menu, title)
+                    if 'ips' in info:
+                        self.display_ips()
+                    if 'rpi_version' in info:
+                        self.display_rpi_version()
+                    if 'version' in info:
+                        self.display_version()
+                    pristine = self.screen.copy()
+                    while len(self.menu_backgrounds) >= MENU_BACKGROUNDS:
+                        self.menu_backgrounds.pop(next(iter(self.menu_backgrounds)))
+                    self.menu_backgrounds[cache_key] = pristine
+                else:
+                    self.screen.blit(pristine, (0, 0))
+                self.pristine_background = None
+                drawn, looks = {}, {}
+                for index in list(rects) + list(range(nb_listed + 1, nb_shown + 1)):
+                    draw(index)
+                if pages > 1:
+                    area = pygame.Rect(int(self.res['x'] * 0.9), int(self.res['y'] * 0.9), int(self.res['x'] * 0.08), int(self.res_y_16))
+                    self.blit_text2(f"{page + 1} / {pages}", area, self.colorset['menu-text-white'])
+                self.update_screen()
+                full = False
+            else:
+                changed = [index for index in drawn if looks.get(index) != (state(index) if index <= nb_listed else index == selected)]
+                updates = []
+                for index in changed:
+                    old = pygame.Rect(drawn[index])
+                    self.screen.blit(pristine, old, old)
+                    draw(index)
+                    updates.append(old.union(drawn[index]))
+                if updates:
+                    self.update_screen(rect_array=updates)
+
+            key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha', 'math'],
+               ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON',
+                'single-click', 'double-click', 'resize', 'VOLUME-UP', 'VOLUME-DOWN', 'enter', 'space'],
+                 events=[(self.wait_event_time, 'EVENT', 'wait')])
+
+            if key == 'resize':
+                full = True
+                continue
+            clicked = self.is_clicked({index: pygame.Rect(rect) for index, rect in drawn.items()}, key)
+            if clicked:
+                selected = clicked
+                key = 'enter'
+
+            for direction in ('up', 'down', 'left', 'right'):
+                if key in keys[direction] and selected in drawn:
+                    moved = self.move_selection({index: tuple(rect) for index, rect in drawn.items()}, selected, direction)
+                    # Several pages : at the edge of one, the next one (or the one before)
+                    if selected <= nb_listed and page_of:
+                        last_page = max(page_of.values())
+                        forward = direction in ('down', 'right')
+                        on_page = sorted(index for index, number in page_of.items() if number == page)
+                        at_edge = (forward and selected == on_page[-1]) or (not forward and selected == on_page[0])
+                        if at_edge and ((forward and page < last_page) or (not forward and page > 0)):
+                            moved = on_page[-1] + 1 if forward else on_page[0] - 1
+                    selected = moved
+            if key in keys['next']:
+                selected = selected % nb_shown + 1
+            elif key in keys['previous']:
+                selected = (selected - 2) % nb_shown + 1
+
+            if key in keys['validate'] and 1 <= selected <= nb_shown:
+                button = shown[selected - 1]
+            else:
+                pressed = 'escape' if key in keys['back'] else key
+                button = next((button for button in everything
+                               if pressed in [cmenus.key_name(k) for k in cmenus.as_list(button.get('shortcut'))]), None)
+            if button is None:
+                continue
+            if button in listed and button.get('disabled'):
+                continue
+            if button in listed and listed.index(button) + 1 in drawn:
+                # Pressed : seen for a moment
+                index = listed.index(button) + 1
+                old = pygame.Rect(drawn[index])
+                self.screen.blit(pristine, old, old)
+                look = 'pressed'
+                surface = painter.button((name, index), styles[index - 1], rects[index].size,
+                                         self.lang.translate(self.button_text(button)),
+                                         button.get('icon') if isinstance(button.get('icon'), str) else None, look, units)
+                self.screen.blit(surface, surface.get_rect(center=rects[index].center))
+                self.update_screen(rect_array=[old])
+                pygame.time.wait(80)
+                looks[index] = 'pressed'
             if remember and button in listed:
                 self.selected_menu[name] = listed.index(button) + 1
             if button.get('confirm'):
