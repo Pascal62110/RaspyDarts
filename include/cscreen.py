@@ -400,7 +400,7 @@ class Screen(pygame.Surface):
         # Tell pygame it is fullscreen if it is
         if self.fullscreen:
             self.flags = pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF
-            self.screen = pygame.display.set_mode((0, 0), self.flags | hidden_flag, 16)    # Set fullscreen with actual resolution
+            self.screen = pygame.display.set_mode((0, 0), self.flags | hidden_flag)    # Set fullscreen with actual resolution and depth (X : 32 bits, a depth asked is not followed)
         else:
             self.screen = pygame.display.set_mode((self.res['x'], self.res['y']), pygame.RESIZABLE | hidden_flag) # Start windowed with settings
 
@@ -720,7 +720,7 @@ class Screen(pygame.Surface):
             # already drawn on it is lost
             drawn = self.screen.copy()
             if self.fullscreen:
-                self.screen = pygame.display.set_mode((0, 0), self.flags, 16)
+                self.screen = pygame.display.set_mode((0, 0), self.flags)
             else:
                 self.screen = pygame.display.set_mode((self.res['x'], self.res['y']), pygame.RESIZABLE)
             self.hidden = False
