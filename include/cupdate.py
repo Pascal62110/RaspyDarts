@@ -13,6 +13,8 @@ import filecmp
 import tarfile
 import requests
 
+from threading import Thread
+
 from include import cpaths
 
 RASPYDARTS_HOME = cpaths.ROOT_DIR
@@ -292,10 +294,12 @@ def apply_update(logs, update):
     return get_version(logs)
 
 def send_infos(logs, game, nb_players, options, rpi_version, rpi_serial, action, competition_mode, play_id, version):
-
-    if ISCONNECTED == False:
-        return
-
+    '''
+    Statistics of a game, sent in the background : the game never waits for the network.
+    (A test of the connection made when this module was imported held the start of the
+    game up to 10 s at boot, the Wi-Fi not being connected yet : the desktop was seen
+    after the intro)
+    '''
     if competition_mode:
         mode = 'competition'
     else:
@@ -304,6 +308,12 @@ def send_infos(logs, game, nb_players, options, rpi_version, rpi_serial, action,
     data_1 = {"game": f"{game}", "nb_players":nb_players, "options": f"{options}", \
             "rpi_version": f"{rpi_version}", "rpi_serial": f"{rpi_serial}", "action": f"{action}", \
             "play_id": f"{play_id}", "play_mode": f"{mode}", "version": f"{version}"}
+    Thread(target=post_infos, args=(logs, data_1), daemon=True).start()
+
+def post_infos(logs, data_1):
+    '''
+    Send the statistics of a game (see send_infos)
+    '''
     url= 'http://raspydarts.fr:8080/api/plays'
 
     headers = {"Content-Type": "application/json", "accept": "*/*"}
@@ -315,14 +325,3 @@ def send_infos(logs, game, nb_players, options, rpi_version, rpi_serial, action,
     except Exception as exception:
         logs.error(f"Unable to reach {url}")
         logs.error(f"Exception is {exception}")
-
-def connected_to_the_web():
-    try:
-        response = requests.get("https://www.google.com/", timeout=(3, 3))
-        if response.status_code == 200:
-            return True
-    except requests.exceptions.RequestException:
-        pass
-    return False
-
-ISCONNECTED = connected_to_the_web()
