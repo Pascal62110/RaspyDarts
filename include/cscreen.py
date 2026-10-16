@@ -6501,8 +6501,9 @@ class Screen(pygame.Surface):
             self.menu_header(self.lang.translate('exhibition'), self.lang.translate('exhibition-sub'))
             for index, (name, text) in enumerate(rows, 1):
                 value = active if name == 'exhibition_mode' else name in chosen
+                # tabs : below the subtitle (more than 8 lines began higher, over it)
                 click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), (f'F{index}', text, BTN_CHECK, value),
-                                                          align='Left', exit=False)
+                                                          align='Left', exit=False, tabs=nb_elements > 8)
             click_zones['escape'] = self.display_button(nb_elements + 1 == selected, 'back', special='escape')
             click_zones['save'] = self.display_button(nb_elements + 2 == selected, 'save', special='return')
             self.update_screen()
