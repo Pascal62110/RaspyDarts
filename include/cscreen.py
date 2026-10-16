@@ -6443,15 +6443,53 @@ class Screen(pygame.Surface):
         return str(text)
 
     @staticmethod
-    def button_label(button):
+    def button_label(button, menu=None):
         '''
-        Shortcut written on a button : its first key (F1, ESC...), None if it has none
+        Shortcut written on a button : its first key (F1, ESC...) in the format of the menu
+        (shortcuts: format, '{key}' by default), None if it has none or if they are hidden
+        (shortcuts: show: false : they still work)
         '''
+        settings = (menu or {}).get('shortcuts') or {}
+        if settings.get('show') is False:
+            return None
         keys = cmenus.as_list(button.get('shortcut'))
         if not keys or str(keys[0]).lower() == 'none':
             return None
         key = str(keys[0])
-        return 'ESC' if key == 'escape' else key
+        key = 'ESC' if key == 'escape' else key
+        return str(settings.get('format') or '{key}').replace('{key}', key)
+
+    # Look of the titles when the files say nothing (section 7.1)
+    TITLE_LOOK = {'size': 0.05, 'color': 'menu-text'}
+    SUBTITLE_LOOK = {'size': 0.035, 'color': 'menu-text', 'position': 'below_title'}
+
+    def menu_text_look(self, name, key):
+        '''
+        Title or subtitle of a menu (section 7.1) : its text, and its look (font, size, colour,
+        background, place) from the defaults then from the menu ; {} : the look of always.
+        Written as a text, or as a block with its text : {text: ..., size: ...}
+        '''
+        data = self.menus().data
+        default = (data.get('defaults') or {}).get(key)
+        own = ((data.get('menus') or {}).get(name) or {}).get(key)
+        # A text per language ({fr: ..., en: ...}) is a text, not a look
+        default, own = [{'text': value} if isinstance(value, dict) and value and set(value) <= self.LANGUAGES else value
+                        for value in (default, own)]
+        look = {}
+        for value in (default, own):
+            if isinstance(value, dict):
+                look = cmenustyle.merge(look, {k: v for k, v in value.items() if k != 'text'})
+        if isinstance(own, dict):
+            text = own.get('text')
+        elif own is not None:
+            text = own
+        else:
+            text = default if not isinstance(default, dict) else default.get('text')
+        if isinstance(text, dict):
+            # A text per language
+            language = str(self.config.get_value('SectionGlobals', 'locale', False) or 'en')[:2]
+            text = text.get(language) or text.get('en') or next(iter(text.values()), '')
+        return (str(text) if text else None), look
 
     @staticmethod
     def move_selection(rects, selected, direction):
@@ -6506,14 +6544,18 @@ class Screen(pygame.Surface):
             inline['icon'] = button['icon']
         return cmenustyle.merge(style, inline)
 
-    def menu_styled(self, menu, items):
+    def menu_styled(self, name, menu, items):
         '''
         A menu drawn by cmenustyle : a style other than classic, a layout or places of its
-        own, a background or title of its own. Otherwise the classic drawing (as always)
+        own, a background, a title or shortcuts of their own look. Otherwise the classic
+        drawing (as always)
         '''
         if str(menu.get('style') or 'classic') != 'classic' or menu.get('area') or menu.get('layout') == 'grid':
             return True
-        if menu.get('background') is not None or menu.get('title_style') is not None:
+        if menu.get('background') is not None or self.menu_text_look(name, 'title')[1] or \
+                self.menu_text_look(name, 'subtitle')[1]:
+            return True
+        if any(key in (menu.get('shortcuts') or {}) for key in ('color', 'position', 'size', 'font')):
             return True
         for button in items:
             if button.get('footer') in self.FOOTERS:
@@ -6534,9 +6576,10 @@ class Screen(pygame.Surface):
         '''
         menus = self.menus()
         menu = menus.menu(name)
-        if self.menu_styled(menu, items):
+        if self.menu_styled(name, menu, items):
             return self.run_styled_menu(name, menu, items, everything, hook, initial)
-        title = menu.get('title')
+        title = self.menu_text_look(name, 'title')[0]
+        subtitle = self.menu_text_look(name, 'subtitle')[0]
         show_version = bool(menu.get('show_version'))
         info = [str(value) for value in cmenus.as_list(menu.get('info'))]
         remember = bool(menu.get('remember'))
@@ -6579,7 +6622,7 @@ class Screen(pygame.Surface):
                 rects[index] = self.logo_item((index, nb_listed, selected), str(button.get('logo') or ''), nb_listed, 'Center',
                                               limit_height=self.res['y'] / 3, menu=True)
             else:
-                rects[index] = self.menu_item((index, nb_listed, selected), (self.button_label(button), self.button_text(button),
+                rects[index] = self.menu_item((index, nb_listed, selected), (self.button_label(button, menu), self.button_text(button),
                                               BTN_CHOICE, None), space=spaces[index - 1], exit=False)
             drawn[index] = look(index)
 
@@ -6594,13 +6637,13 @@ class Screen(pygame.Surface):
             if full:
                 # Background, title and informations : drawn once, then kept from one display
                 # to the next (copying the whole screen each time made the return slower)
-                cache_key = (name, title, show_version, tuple(info), tuple(self.screen.get_size()),
+                cache_key = (name, title, subtitle, show_version, tuple(info), tuple(self.screen.get_size()),
                              getattr(self.file_class, 'theme_dir', None), self.background)
                 pristine = self.menu_backgrounds.get(cache_key)
                 if pristine is None:
                     self.display_background(display_version=show_version)
                     if title:
-                        self.menu_header(title)
+                        self.menu_header(title, subtitle)
                     if 'ips' in info:
                         self.display_ips()
                     if 'rpi_version' in info:
@@ -6667,27 +6710,38 @@ class Screen(pygame.Surface):
                     continue
             return button
 
-    def styled_title(self, menu, title):
+    def styled_title(self, name, title, subtitle):
         '''
-        Title of a menu drawn by cmenustyle : its band and text (title_style), the classic
-        header otherwise
+        Title and subtitle of a menu drawn by cmenustyle (section 7.1) : their band and text
+        as the files say, the classic header if they say nothing
         '''
-        settings = menu.get('title_style')
-        if not isinstance(settings, dict):
-            self.menu_header(title)
+        title_look = self.menu_text_look(name, 'title')[1]
+        subtitle_look = self.menu_text_look(name, 'subtitle')[1]
+        if not title_look and not subtitle_look:
+            if title:
+                self.menu_header(title, subtitle)
             return
         painter = self.menu_painter()
         units = cmenustyle.Units(self.screen.get_size(), self.menus().data.get('resolution'))
-        rect = pygame.Rect(0, int(self.res['y'] / 30), self.res['x'], int(self.res['y'] / 15))
-        place = settings.get('place')
-        if isinstance(place, dict):
-            rect = pygame.Rect(int(units.length(place.get('x', 0), 'x')), int(units.length(place.get('y', 0), 'y')),
+
+        def place_of(settings, default):
+            place = settings.get('place')
+            if not isinstance(place, dict):
+                return default
+            return pygame.Rect(int(units.length(place.get('x', 0), 'x')), int(units.length(place.get('y', 0), 'y')),
                                int(units.length(place.get('width', 1), 'x')), int(units.length(place.get('height', 0.07), 'y')))
-        band = settings.get('background')
-        if band is not None:
-            self.screen.blit(painter.background(band, rect.size), rect.topleft)
-        painter.text(self.screen, self.lang.translate(str(title)), rect,
-                     cmenustyle.merge({'size': 0.05, 'color': 'menu-text'}, settings), units)
+
+        def band(text, settings, rect):
+            if settings.get('background') is not None:
+                self.blit(painter.background(settings['background'], rect.size), rect.topleft)
+            painter.text(self.screen, self.lang.translate(str(text)), rect, settings, units)
+
+        rect = place_of(title_look, pygame.Rect(0, int(self.res['y'] / 30), self.res['x'], int(self.res['y'] / 15)))
+        if title:
+            band(title, cmenustyle.merge(self.TITLE_LOOK, title_look), rect)
+        if subtitle:
+            settings = cmenustyle.merge(self.SUBTITLE_LOOK, subtitle_look)
+            band(subtitle, settings, place_of(settings, pygame.Rect(rect.x, rect.bottom, rect.width, int(self.res['y'] / 20))))
 
     def menu_painter(self):
         '''
@@ -6707,7 +6761,11 @@ class Screen(pygame.Surface):
         painter = self.menu_painter()
         resolution = menus.data.get('resolution')
         units = cmenustyle.Units(self.screen.get_size(), resolution)
-        title = menu.get('title')
+        title = self.menu_text_look(name, 'title')[0]
+        subtitle = self.menu_text_look(name, 'subtitle')[0]
+        shortcuts = cmenustyle.merge({'show': True, 'format': '{key}', 'color': 'menu-shortcut',
+                                      'position': 'top_left' if menu.get('layout') == 'tiles' else 'left'},
+                                     menu.get('shortcuts') or {})
         show_version = bool(menu.get('show_version'))
         info = [str(value) for value in cmenus.as_list(menu.get('info'))]
         remember = bool(menu.get('remember'))
@@ -6742,28 +6800,37 @@ class Screen(pygame.Surface):
                                                                               self.FOOTERS[button['footer']]))
                 looks[index] = index == selected
                 return
-            button = listed[index - 1]
             look = state(index)
             rect = pygame.Rect(rects[index])
-            surface = painter.button((name, index), styles[index - 1], rect.size, self.lang.translate(self.button_text(button))
-                                     if button.get('text', True) is not None else '', button.get('icon') if isinstance(button.get('icon'), str) else None,
-                                     look, units)
-            target = surface.get_rect(center=rect.center).clip(self.screen.get_rect())
-            # The button over its piece of background, once : an opaque image in the format of
-            # the screen (16 bits). Blending a button with transparency at each move took
-            # 80 to 130 ms on a Pi 3
-            composite_key = (id(pristine), index, look, tuple(target))
-            composite = self.menu_composites.get(composite_key)
-            if composite is None:
-                composite = pristine.subsurface(target).copy()
-                composite.blit(surface, (surface.get_rect(center=rect.center).x - target.x,
-                                         surface.get_rect(center=rect.center).y - target.y))
-                if len(self.menu_composites) >= 256:
-                    self.menu_composites.pop(next(iter(self.menu_composites)))
-                self.menu_composites[composite_key] = composite
+            target, composite = composed(index, look)
             self.screen.blit(composite, target)
             drawn[index] = target.union(rect)
             looks[index] = look
+
+        def composed(index, look):
+            # The button drawn on its piece of background, once : an opaque image in the
+            # format of the screen. Blending a button with transparency at each move took 80 to
+            # 130 ms on a Pi 3
+            rect = pygame.Rect(rects[index])
+            target = painter.placed(rect, styles[index - 1], look)[1].clip(self.screen.get_rect())
+            composite_key = (id(pristine), index, look, tuple(target))
+            composite = self.menu_composites.get(composite_key)
+            if composite is None:
+                composite = paint(index, look, rect, target)
+                if len(self.menu_composites) >= 256:
+                    self.menu_composites.pop(next(iter(self.menu_composites)))
+                self.menu_composites[composite_key] = composite
+            return target, composite
+
+        def paint(index, look, rect, target):
+            # The button of this index in this state on the piece target of the background
+            button = listed[index - 1]
+            patch = pristine.subsurface(target).copy()
+            painter.draw_button(patch, rect.move(-target.x, -target.y), styles[index - 1],
+                                self.lang.translate(self.button_text(button)) if button.get('text', True) is not None else '',
+                                button.get('icon') if isinstance(button.get('icon'), str) else None, look, units,
+                                shortcut=self.button_label(button, menu), shortcuts=shortcuts)
+            return patch
 
         while True:
             if hook is not None and hook():
@@ -6781,7 +6848,8 @@ class Screen(pygame.Surface):
                                                         selected=selected if selected <= nb_listed else
                                                         next((i for i, p in page_of.items() if p == page), 1))
                 rects = {index: pygame.Rect(rect) for index, rect in layout.items()}
-                cache_key = (name, 'styled', repr(menu.get('background')), repr(menu.get('title_style')), title, show_version,
+                cache_key = (name, 'styled', repr(menu.get('background')), repr(self.menu_text_look(name, 'title')),
+                             repr(self.menu_text_look(name, 'subtitle')), show_version,
                              tuple(info), tuple(self.screen.get_size()), getattr(self.file_class, 'theme_dir', None), self.background)
                 pristine = self.menu_backgrounds.get(cache_key)
                 if pristine is None:
@@ -6792,8 +6860,8 @@ class Screen(pygame.Surface):
                         self.screen.blit(painter.background(block, self.screen.get_size()), (0, 0))
                     else:
                         self.display_background(display_version=show_version)
-                    if title:
-                        self.styled_title(menu, title)
+                    if title or subtitle:
+                        self.styled_title(name, title, subtitle)
                     if 'ips' in info:
                         self.display_ips()
                     if 'rpi_version' in info:
@@ -6808,23 +6876,42 @@ class Screen(pygame.Surface):
                     self.screen.blit(pristine, (0, 0))
                 self.pristine_background = None
                 drawn, looks = {}, {}
-                for index in list(rects) + list(range(nb_listed + 1, nb_shown + 1)):
+                # The selected button last : enlarged (scale), it stays over its neighbours
+                for index in sorted(list(rects) + list(range(nb_listed + 1, nb_shown + 1)), key=lambda i: i == selected):
                     draw(index)
                 if pages > 1:
+                    # Arrows of the pages (pages before, after), and the page shown
                     area = pygame.Rect(int(self.res['x'] * 0.9), int(self.res['y'] * 0.9), int(self.res['x'] * 0.08), int(self.res_y_16))
                     self.blit_text2(f"{page + 1} / {pages}", area, self.colorset['menu-text-white'])
+                    side = int(area.height * 0.5)
+                    middle = area.centery
+                    for shown_arrow, tip_x, base_x in ((page > 0, area.x - side, area.x),
+                                                       (page < pages - 1, area.right + side, area.right)):
+                        if shown_arrow:
+                            pygame.draw.polygon(self.screen, self.colorset['menu-text-white'],
+                                                [(tip_x, middle), (base_x, middle - side // 2), (base_x, middle + side // 2)])
                 self.update_screen()
                 full = False
+                if intro_is_playing():
+                    # The intro video still plays (the menu is ready first) : the other looks
+                    # of the buttons drawn now, unseen (the first move took up to 240 ms)
+                    for index in rects:
+                        for look in ('selected', 'normal'):
+                            if not listed[index - 1].get('disabled'):
+                                composed(index, look)
             else:
                 changed = [index for index in drawn if looks.get(index) != (state(index) if index <= nb_listed else index == selected)]
-                updates = []
-                for index in changed:
-                    old = pygame.Rect(drawn[index])
-                    self.screen.blit(pristine, old, old)
-                    draw(index)
-                    updates.append(old.union(drawn[index]))
-                if updates:
-                    self.update_screen(rect_array=updates)
+                if changed:
+                    # Places of the changed buttons back to the background, then the buttons
+                    # touching them drawn again too (an enlarged button covers its
+                    # neighbours a little), the selected one last
+                    olds = [pygame.Rect(drawn[index]) for index in changed]
+                    for old in olds:
+                        self.screen.blit(pristine, old, old)
+                    again = {index for index in drawn if any(pygame.Rect(drawn[index]).colliderect(old) for old in olds)}
+                    for index in sorted(again | set(changed), key=lambda i: i == selected):
+                        draw(index)
+                    self.update_screen(rect_array=olds + [pygame.Rect(drawn[index]) for index in again | set(changed)])
 
             key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha', 'math'],
                ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON',
@@ -6872,11 +6959,9 @@ class Screen(pygame.Surface):
                 old = pygame.Rect(drawn[index])
                 self.screen.blit(pristine, old, old)
                 look = 'pressed'
-                surface = painter.button((name, index), styles[index - 1], rects[index].size,
-                                         self.lang.translate(self.button_text(button)),
-                                         button.get('icon') if isinstance(button.get('icon'), str) else None, look, units)
-                self.screen.blit(surface, surface.get_rect(center=rects[index].center))
-                self.update_screen(rect_array=[old])
+                target = painter.placed(rects[index], styles[index - 1], look)[1].clip(self.screen.get_rect())
+                self.screen.blit(paint(index, look, pygame.Rect(rects[index]), target), target)
+                self.update_screen(rect_array=[old.union(target)])
                 pygame.time.wait(80)
                 looks[index] = 'pressed'
             if remember and button in listed:

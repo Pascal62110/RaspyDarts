@@ -140,13 +140,26 @@ defaults:
   background: images/background/menu.png   # fond du menu (§7.3 bis : image, couleur ou bloc)
   layout: list                             # disposition des boutons (§7.4)
   style: classic                           # style des boutons (§7.2)
-  title:    {font: Kamikzon.ttf, size: 0.06, color: menu-header, position: top}
-  subtitle: {size: 0.035, color: menu-text, position: below_title}
+  title:    {font: Kamikzon.ttf, size: 0.06, color: menu-header, bold: true,
+             background: '#00000080'}      # bande derrière le titre (§7.3 bis)
+  subtitle: {size: 0.035, color: menu-text}
   shortcuts: {show: true, format: '{key}', color: menu-shortcut, position: left}
 ```
 
-`shortcuts.show: false` n'affiche plus les F1, F2… (ils restent actifs). `format` permet
-`'> '` ou `'[{key}]'` (remplace l'ancien réglage `shortcuts` de `Colorset.cfg`).
+**Titre et sous-titre** : dans un menu, `title` et `subtitle` s'écrivent soit comme un
+texte (`title: game-type-menu`), soit comme un bloc qui donne aussi l'aspect
+(`title: {text: game-type-menu, size: 0.07}`). L'aspect se lit dans `defaults`, puis dans
+le menu. Propriétés : `font`, `size`, `color`, `bold`, `shadow`, `align`, `background` (la
+bande derrière le texte), `place` (`{x, y, width, height}` : placement libre de la bande ;
+par défaut le titre est en haut et le sous-titre juste dessous). Sans aspect donné, le
+bandeau de titre habituel du thème est gardé.
+
+**Raccourcis** : `shortcuts.show: false` n'affiche plus les F1, F2… (ils restent actifs).
+`format` permet `'> '` ou `'[{key}]'`. Dans les menus dessinés par un style (§7.2) :
+`color`, `font`, `bold`, `position` (`left` ou `right` : sur le côté, le texte du bouton à
+côté ; `top_left`, `top_right`, `bottom_left`, `bottom_right` : dans un coin ; par défaut
+`left`, et `top_left` pour les tuiles) et `size` (part de la hauteur du bouton : 0.4 sur un
+côté, 0.15 dans un coin par défaut).
 
 ### 7.2 Styles et états
 
@@ -447,8 +460,10 @@ calculés des deux côtés (ils doivent être identiques au pixel).
 4. Ligne `i` : `y = area.y + Σ(hauteurs et écarts des lignes précédentes) + space_before`.
 5. Bloc entier centré dans `area` (horizontalement toujours, verticalement si
    `align: center`).
-6. Plus de lignes que n'en tient `area` : `overflow: pages` coupe en pages (les flèches de
-   page s'affichent), `scroll` fait défiler pour garder le bouton sélectionné visible.
+6. Plus de lignes que n'en tient `area` : `overflow: pages` coupe en pages (en bas à
+   droite : la page affichée et des flèches vers les pages d'avant et d'après ; les
+   flèches du clavier passent d'une page à l'autre), `scroll` fait défiler pour garder le
+   bouton sélectionné visible.
 
 ## 13. Favoris `fav1`, `fav2`…
 
