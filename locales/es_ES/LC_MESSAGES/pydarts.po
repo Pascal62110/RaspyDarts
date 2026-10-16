@@ -692,6 +692,12 @@ msgstr "¿Guardarlo también como favorito numerado?"
 msgid "favorite-numbered-sub"
 msgstr "Favorito 1 a 9: solo estará en el menú principal si el archivo de menús le da un botón (favorite:fav1…)"
 
+msgid "favorite-options-mark"
+msgstr "Opc."
+
+msgid "favorite-options-legend"
+msgstr "Opc.: opciones definidas, sin pantalla de opciones"
+
 msgid "vk-shift"
 msgstr "Mayús"
 

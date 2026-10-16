@@ -2890,8 +2890,10 @@ class Screen(pygame.Surface):
         2 columns
 
         item is : (item_id, total, selected)
-        favorite is Shortcut / Game name / value=True/False
+        favorite is Shortcut / Game name / value=True/False [/ options defined : True/False]
         '''
+        # A favorite whose options are defined : its mark in the box of colour
+        marked = len(favorite) > 3 and bool(favorite[3])
         
         pict_shortcut = self.colorset['parametrage-menu-shortcuts']
         align_text = self.colorset['parametrage-menu-text-align']
@@ -2957,7 +2959,9 @@ class Screen(pygame.Surface):
             # To keep same text size
             rect2 = pygame.Rect(pos_x, pos_y, height, height)
             shortcut = ''            
-            if pict_shortcut is not None:
+            if marked:
+                self.blit_text2('favorite-options-mark', rect2, color=shortcut_text_color)
+            elif pict_shortcut is not None:
                 if pict_shortcut != '':
                     self.blit_text2(pict_shortcut, rect2, color=shortcut_text_color)
                 else:
@@ -2984,7 +2988,9 @@ class Screen(pygame.Surface):
             self.new_blit_rect2(rect, shortcut_bg_color, corners=self.adapt_corners(corners, 'AddRight'), border_radius=radius)
             #self.blit_text2(favorite[0], rect, color=shortcut_text_color)
             shortcut = ''            
-            if pict_shortcut is not None:
+            if marked:
+                self.blit_text2('favorite-options-mark', rect, color=shortcut_text_color)
+            elif pict_shortcut is not None:
                 if pict_shortcut != '':
                     self.blit_text2(pict_shortcut, rect, color=shortcut_text_color)
                 else:
@@ -3590,6 +3596,8 @@ class Screen(pygame.Surface):
         tab = -2
         # Options of favorite games defined or removed here : saved with the list (Save)
         pending = {}
+        saved = self.favorites().read().get(cfavorites.GAMES)
+        saved_options = {name.replace('_', ' ') for name in saved} if isinstance(saved, dict) else set()
 
         old_selection = None
         refresh = True
@@ -3621,13 +3629,17 @@ class Screen(pygame.Surface):
                     value = True
                 else:
                     value = False
+                with_options = value and (pending[game] is not None if game in pending else game in saved_options)
                 click_zones[f'F{index}'] = self.game_item((index, nb_elements, selected) \
-                        , (f'F{index}', game, value))
+                        , (f'F{index}', game, value, with_options))
                 shortcuts.append(f'F{index}')
 
             # go back and next
             click_zones['escape'] = self.display_button(nb_elements + 1 == selected, 'back', special='escape')
             click_zones['save'] = self.display_button(nb_elements + 2 == selected, 'save', special='return')
+            # Legend of the mark of the favorites whose options are defined (between the buttons)
+            legend = pygame.Rect(int(self.res['x'] * 5 / 16), int(self.res['y'] / 32 * 29), int(self.res['x'] * 6 / 16), self.res_y_16)
+            self.blit_text2('favorite-options-legend', legend, self.colorset['menu-text-white'])
 
             if selected <= nb_elements:
                 selection = [click_zones[f'F{selected}']]
@@ -3705,16 +3717,20 @@ class Screen(pygame.Surface):
                     edit = {'id': 'edit', 'action': 'edit', 'text': 'favorite-edit-options', 'shortcut': 'F1'}
                     remove = {'id': 'remove', 'action': 'remove', 'text': 'favorite-remove', 'shortcut': 'F2'}
                     back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
-                    choice = self.run_menu('favorite_game', [edit, remove, back], [edit, remove, back], title=game).get('id')
-                    if choice == 'remove':
-                        prefered.remove(game)
-                        pending[game] = None
-                    elif choice == 'edit':
-                        self.define_favorite_options(game, pending)
+                    # Back in its options : back to this choice
+                    while True:
+                        choice = self.run_menu('favorite_game', [edit, remove, back], [edit, remove, back], title=game).get('id')
+                        if choice == 'remove':
+                            prefered.remove(game)
+                            pending[game] = None
+                        if choice != 'edit' or self.define_favorite_options(game, pending):
+                            break
                 else:
                     prefered.append(game)
-                    if self.ask_yes_no(f"{game} : {self.lang.translate('favorite-define-options')}"):
-                        self.define_favorite_options(game, pending)
+                    # Back in its options : back to the question
+                    while self.ask_yes_no(f"{game} : {self.lang.translate('favorite-define-options')}"):
+                        if self.define_favorite_options(game, pending):
+                            break
                 refresh = True
 
             old_selection = selection
@@ -3722,20 +3738,21 @@ class Screen(pygame.Surface):
     def define_favorite_options(self, game, pending):
         '''
         Screen Jeux favoris : the options of a favorite game defined (saved with the list),
-        then placed on a button of the main menu if wanted
+        then saved as a numbered favorite if wanted. False : given up (Back in the options)
         '''
         preset = pending[game] if pending.get(game) is not None else self.favorites().game_options(game)
         try:
             options = self.favorite_game_options(game, preset)
         except Exception as error:    # pylint: disable=broad-except
             self.logs.error(f"Favorites : options of {game} not shown ({error})")
-            return
+            return True
         if options is None:
-            return
+            return False
         pending[game] = options
         if self.ask_yes_no(self.lang.translate('favorite-numbered'), self.lang.translate('favorite-numbered-sub')):
             names = self.favorite_players()
             self.favorite_save(game, options, len(names) or 1, names)
+        return True
 
     def display_changelog(self, version):
         '''

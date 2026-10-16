@@ -494,10 +494,13 @@ coche les jeux favoris) :
   - **Oui** ouvre l'écran des options du jeu (boutons Retour et Sauvegarder) ; le jeu
     favori démarrera ensuite **sans écran d'options**, avec celles-ci, quel que soit le
     chemin (liste d'une catégorie, catégorie Favoris…). Puis : « l'enregistrer aussi comme
-    favori numéroté ? » (ci-dessous) ; **Retour** dans les options : comme Non ;
+    favori numéroté ? » (ci-dessous) ; **Retour** dans les options ramène à la question ;
   - **Non** : jeu favori sans options fixées, demandées au moment de jouer ;
 - **choisir un jeu déjà favori** propose « Modifier les options » ou « Retirer des
-  favoris ».
+  favoris » (Retour dans les options ramène à ce choix).
+
+Dans la liste, un jeu favori dont les options sont définies porte la marque **Opt.** (légende
+en bas de l'écran).
 
 Comme les jeux cochés, les options ne sont enregistrées qu'avec **Sauvegarder**.
 

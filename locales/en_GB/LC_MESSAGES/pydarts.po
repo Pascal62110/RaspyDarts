@@ -2922,6 +2922,12 @@ msgstr "Also save it as a numbered favorite?"
 msgid "favorite-numbered-sub"
 msgstr "Favorite 1 to 9: it is in the main menu only if the file of menus gives it a button (favorite:fav1…)"
 
+msgid "favorite-options-mark"
+msgstr "Opt."
+
+msgid "favorite-options-legend"
+msgstr "Opt.: options defined, no screen of options"
+
 msgid "vk-shift"
 msgstr "Shift"
 

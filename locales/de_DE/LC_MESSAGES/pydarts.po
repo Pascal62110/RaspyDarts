@@ -686,6 +686,12 @@ msgstr "Auch als nummerierten Favoriten speichern?"
 msgid "favorite-numbered-sub"
 msgstr "Favorit 1 bis 9: im Hauptmenü nur, wenn die Menüdatei ihm eine Taste gibt (favorite:fav1…)"
 
+msgid "favorite-options-mark"
+msgstr "Opt."
+
+msgid "favorite-options-legend"
+msgstr "Opt.: Optionen festgelegt, ohne Optionsseite"
+
 msgid "vk-shift"
 msgstr "Umsch"
 
