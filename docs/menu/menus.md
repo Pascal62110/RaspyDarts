@@ -114,7 +114,7 @@ L'aspect se décide à trois niveaux, chacun ne précisant que ce qui change :
 
 ```yaml
 defaults:
-  background: images/background/menu.png   # fond (image ou couleur)
+  background: images/background/menu.png   # fond du menu (§7.3 bis : image, couleur ou bloc)
   layout: list                             # disposition des boutons (§7.4)
   style: classic                           # style des boutons (§7.2)
   title:    {font: Kamikzon.ttf, size: 0.06, color: menu-header, position: top}
@@ -132,16 +132,17 @@ styles:
   classic:
     shape: rounded           # rounded | rectangle | pill | none (texte seul)
     radius: 12               # arrondi (pixels de référence ou fraction de la hauteur du bouton)
-    color: menu-buttons      # fond du bouton
+    background:              # fond du bouton (§7.3 bis)
+      color: menu-buttons
+      image: null
     border: {width: 0, color: menu-border}
-    image: null              # image de fond du bouton (étirée), à la place de color
     shadow: false
     text: {font: null, size: 0.045, color: menu-text, align: center, position: center,
            offset: [0, 0], shadow: false, bold: false}
-    icon: {position: left, size: 0.7}      # taille relative à la hauteur du bouton
+    icon: {position: left, size: 0.7, fit: contain}   # taille relative à la hauteur du bouton
     # États : chacun ne précise que ce qui change par rapport à l'état normal
-    selected: {color: menu-selected, text: {color: menu-text-white}}
-    disabled: {color: '#808080', text: {color: '#C0C0C0'}}
+    selected: {background: {color: menu-selected}, text: {color: menu-text-white}}
+    disabled: {background: {color: '#808080'}, text: {color: '#C0C0C0'}}
     pressed:  {scale: 0.96}
 ```
 
@@ -149,7 +150,44 @@ styles:
   `offset` : décalage `[x, y]`.
 - `scale` (dans un état) : agrandit ou réduit le bouton autour de son centre.
 - Un bouton ou un menu peut prendre un style nommé (`style: tile`) **et/ou** changer des
-  propriétés directement (`color: '#C0392B'`, `selected: {…}`, `text: {size: 0.05}`).
+  propriétés directement (`background: {color: '#C0392B'}`, `selected: {…}`,
+  `text: {size: 0.05}`).
+- `color: …` seul est un raccourci de `background: {color: …}`.
+
+### 7.3 bis Fonds (boutons et menus)
+
+Le même bloc décrit le fond d'un bouton (dans un style, un état ou un bouton) et le fond
+d'un menu (`background` d'un menu ou de `defaults`) :
+
+```yaml
+background:
+  color: menu-buttons          # couleur de fond, sous l'image (null : transparent)
+  image: images/buttons/tile.png
+  fit: stretch                 # comment l'image remplit la place (ci-dessous)
+  position: center             # center | top | bottom | left | right | top_left | top_right
+                               # | bottom_left | bottom_right
+  offset: [0, 0]               # décalage depuis cette position
+  size: [1.0, 1.0]             # taille de l'image, en part du bouton (fit: center)
+  opacity: 1.0                 # 0 (invisible) à 1
+  slice: 12                    # fit: slice : largeur des bords gardés intacts
+```
+
+| `fit` | Rendu |
+|---|---|
+| `stretch` | l'image occupe **tout** le bouton, déformée si besoin |
+| `cover` | l'image occupe tout le bouton **sans déformation**, ce qui dépasse est coupé |
+| `contain` | l'image entière **sans déformation**, centrée (ou selon `position`), des bandes de `color` comblent le reste |
+| `center` | l'image à la taille `size`, placée selon `position` et `offset` |
+| `tile` | l'image répétée en mosaïque |
+| `slice` | l'image découpée en 9 (« 9-slice ») : les coins gardent leur taille, les bords et le centre s'étirent ; pour des boutons de toutes tailles avec un cadre net |
+
+- L'image est coupée selon la **forme** du bouton (coins arrondis, pilule).
+- Écritures courtes : `background: images/x.png` (image, `fit: stretch`) ;
+  `background: '#123456'` ou `background: menu-buttons` (couleur seule).
+- Chaque état (`selected`, `disabled`, `pressed`) peut changer tout ou partie du fond :
+  `selected: {background: {image: images/buttons/tile_on.png}}`.
+- Un fond de menu se règle pareil ; `fit: cover` est conseillé (aucune déformation, quelle
+  que soit la résolution).
 
 ### 7.3 Menus et boutons
 
@@ -406,16 +444,16 @@ version: 1
 resolution: auto
 
 defaults:
-  background: images/background/menu.png
+  background: {image: images/background/menu.png, fit: cover}
   style: classic
 
 styles:
   tile:
     shape: rounded
     radius: 18
-    image: images/buttons/tile.png
+    background: {image: images/buttons/tile.png, fit: slice, slice: 16}
     text: {size: 0.035, color: '#FFFFFF', position: bottom, shadow: true}
-    selected: {image: images/buttons/tile_on.png, scale: 1.06}
+    selected: {background: {image: images/buttons/tile_on.png}, scale: 1.06}
 
 menus:
   main:
