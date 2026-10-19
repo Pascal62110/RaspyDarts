@@ -88,6 +88,8 @@ fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; pa
 legend { font-weight: 700; padding: 0 5px; font-size: .9rem; }
 textarea#yaml { width: 100%; min-height: 220px; font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
 .hidden { display: none !important; }
+.image-note { color: #d11a1a; font-weight: 600; font-size: .84rem; margin: 3px 0 6px; }
+.image-note:empty { display: none; }
 .errors { color: var(--accent); font-weight: 600; font-size: .9rem; }
 footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 10px 16px 26px; }
 </style>
@@ -172,11 +174,12 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 10
       <button class="main" id="download2" data-t="download"></button>
     </div>
     <p class="hint" data-t="preview-hint"></p>
+    <p class="hint hidden" id="choice-note"></p>
     <p class="errors" id="file-errors"></p>
     <div id="canvas-wrap"><canvas id="preview" width="1920" height="1080"></canvas><canvas id="overlay" width="1920" height="1080" tabindex="0"></canvas></div>
   </div>
 </main>
-<dialog id="ask"><p id="ask-text"></p><p class="hint" id="ask-sub"></p><div class="row" id="ask-buttons"></div></dialog>
+<dialog id="ask"><p id="ask-text"></p><p class="hint" id="ask-sub"></p><div id="ask-keep"></div><div class="row" id="ask-buttons" style="margin-top:8px"></div></dialog>
 <footer data-t="footer"></footer>
 
 <script src="vendor/js-yaml.min.js"></script>

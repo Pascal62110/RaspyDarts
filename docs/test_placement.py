@@ -50,6 +50,13 @@ def cases():
                                                        {'id': 'y', 'cell': {'row': 3, 'column': 0}, 'span': {'columns': 2}},
                                                        {'id': 'c'}, {'id': 'x', 'cell': {'row': 1, 'column': 2}}]},
         {'layout': 'list', 'buttons': nine[:3] + [{'id': 'k', 'cell': {'row': 5, 'column': 4}}]},
+        # Parts de colonne (demi, tiers, quart) et plusieurs zones
+        {'layout': 'list', 'buttons': [{'id': 'h1', 'span': {'columns': 0.5}}, {'id': 'h2', 'span': {'columns': 0.5}}, {'id': 'w'},
+                                       {'id': 'q1', 'span': {'columns': 0.25}}, {'id': 't1', 'span': {'columns': 0.333}},
+                                       {'id': 'f', 'cell': {'row': 3, 'column': 0.5}, 'span': {'columns': 0.5}}]},
+        {'layout': 'grid', 'columns': 2, 'buttons': nine[:4] + [{'id': 'z1', 'zone': 'right'}, {'id': 'z2', 'zone': 'right'},
+                                                                 {'id': 'z3', 'zone': 'unknown'}],
+         'zones': {'right': {'layout': 'list', 'area': {'x': 0.75, 'y': 0.2, 'width': 0.2, 'height': 0.6}}}},
     ]
     result = []
     for menu in menus:

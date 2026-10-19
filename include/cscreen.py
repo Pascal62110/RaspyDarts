@@ -6780,9 +6780,10 @@ class Screen(pygame.Surface):
     @staticmethod
     def move_selection(rects, selected, direction):
         '''
-        Arrows : the closest button in the direction (docs/menu/menus.md, 9). Score : distance
-        along the axis + 2 x distance across ; none, the button the farthest on the other side
-        with the smallest distance across
+        Arrows : the closest button in the direction (docs/menu/menus.md, 9). The buttons within
+        45 degrees of the direction first (left : more on the left than above or below, another
+        zone of buttons too), then the others ; score : distance along the axis + 2 x distance
+        across ; none, the button the farthest on the other side with the smallest distance across
         '''
         def center(rect):
             return (rect[0] + rect[2] / 2, rect[1] + rect[3] / 2)
@@ -6796,7 +6797,7 @@ class Screen(pygame.Surface):
             along = (point[0] - origin[0]) * axis[0] + (point[1] - origin[1]) * axis[1]
             across = abs((point[0] - origin[0]) * axis[1] + (point[1] - origin[1]) * axis[0])
             if along > 0:
-                score = (along + 2 * across, index)
+                score = (0 if along >= across else 1, along + 2 * across, index)
                 if best is None or score < best[0]:
                     best = (score, index)
             elif along < 0:
@@ -6852,7 +6853,8 @@ class Screen(pygame.Surface):
         own, a background, a title or shortcuts of their own look. Otherwise the classic
         drawing (as always)
         '''
-        if str(menu.get('style') or 'classic') != 'classic' or menu.get('area') or menu.get('layout') == 'grid':
+        if str(menu.get('style') or 'classic') != 'classic' or menu.get('area') or menu.get('layout') == 'grid' or \
+                menu.get('zones') or isinstance(menu.get('show_version'), dict):
             return True
         if menu.get('background') is not None or self.menu_text_look(name, 'title')[1] or \
                 self.menu_text_look(name, 'subtitle')[1]:
@@ -6883,7 +6885,7 @@ class Screen(pygame.Surface):
         # Title and subtitle : those given (a question...), else those of the files
         title = title or self.menu_text_look(name, 'title')[0]
         subtitle = subtitle or self.menu_text_look(name, 'subtitle')[0]
-        show_version = bool(menu.get('show_version'))
+        show_version = menu.get('show_version') or False
         info = [str(value) for value in cmenus.as_list(menu.get('info'))]
         remember = bool(menu.get('remember'))
         layout = str(menu.get('layout') or 'list')
@@ -6942,11 +6944,12 @@ class Screen(pygame.Surface):
             if full:
                 # Background, title and informations : drawn once, then kept from one display
                 # to the next (copying the whole screen each time made the return slower)
-                cache_key = (name, title, subtitle, show_version, tuple(info), tuple(self.screen.get_size()),
+                cache_key = (name, title, subtitle, repr(show_version), tuple(info), tuple(self.screen.get_size()),
                              getattr(self.file_class, 'theme_dir', None), self.background)
                 pristine = self.menu_backgrounds.get(cache_key)
                 if pristine is None:
-                    self.display_background(display_version=show_version)
+                    self.display_background()
+                    self.menu_version(show_version)
                     if title:
                         self.menu_header(title, subtitle)
                     if 'ips' in info:
@@ -7152,7 +7155,7 @@ class Screen(pygame.Surface):
         shortcuts = cmenustyle.merge({'show': self.colorset.get('main-sub-menu-shortcuts') is not None, 'format': '{key}',
                                       'position': 'top_left' if menu.get('layout') == 'tiles' else 'left'},
                                      menu.get('shortcuts') or {})
-        show_version = bool(menu.get('show_version'))
+        show_version = menu.get('show_version') or False
         info = [str(value) for value in cmenus.as_list(menu.get('info'))]
         remember = bool(menu.get('remember'))
         keys = {direction: set(menus.keys(direction)) for direction in
@@ -7236,7 +7239,7 @@ class Screen(pygame.Surface):
                                                         next((i for i, p in page_of.items() if p == page), 1))
                 rects = {index: pygame.Rect(rect) for index, rect in layout.items()}
                 cache_key = (name, 'styled', title, subtitle, repr(menu.get('background')), repr(self.menu_text_look(name, 'title')),
-                             repr(self.menu_text_look(name, 'subtitle')), show_version,
+                             repr(self.menu_text_look(name, 'subtitle')), repr(show_version),
                              tuple(info), tuple(self.screen.get_size()), getattr(self.file_class, 'theme_dir', None), self.background)
                 pristine = self.menu_backgrounds.get(cache_key)
                 if pristine is None:
@@ -7246,7 +7249,8 @@ class Screen(pygame.Surface):
                         self.screen.fill((0, 0, 0))
                         self.screen.blit(painter.background(block, self.screen.get_size()), (0, 0))
                     else:
-                        self.display_background(display_version=show_version)
+                        self.display_background()
+                    self.menu_version(show_version)
                     if title or subtitle:
                         self.styled_title(name, title, subtitle)
                     if 'ips' in info:
@@ -8316,6 +8320,24 @@ class Screen(pygame.Surface):
         old_selection = selection
         self.qrlogo = ''
 
+
+    def menu_version(self, show):
+        '''
+        The version (V4.6) on the background of a menu : show_version: true (at the right, as
+        always), or a block of its place and look ({x, y, width, height, color, font} : the
+        text fills its box ; positions as the menus files measure them, section 4)
+        '''
+        if not show:
+            return
+        look = show if isinstance(show, dict) else {}
+        units = cmenustyle.Units(self.screen.get_size(), self.menus().data.get('resolution'))
+        width = int(units.length(look['width'], 'x')) if 'width' in look else self.res_x_16
+        height = int(units.length(look['height'], 'y')) if 'height' in look else self.res_y_16
+        pos_x = int(units.length(look['x'], 'x')) if 'x' in look else self.res['x'] - width
+        pos_y = int(units.length(look['y'], 'y')) if 'y' in look else int(self.res['y'] * 3 / 4) - height
+        color = self.menu_painter().color(look.get('color'), None) or self.colorset['menu-text-white']
+        font = self.file_class.get_full_filename(str(look.get('font') or 'Impact'), 'fonts')
+        self.blit_text(f"V{self.config.pyDartsVersion[0:3]}", pos_x, pos_y, width, height, tuple(color[:3]), dafont=font)
 
     def display_version(self):
         self.blit_text(self.config.pyDartsFullVersion, self.margin, \

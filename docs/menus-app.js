@@ -152,22 +152,40 @@ function menuInfo(name) {
   const listed = items.filter(b => !R.FOOTERS[b.footer]), footers = items.filter(b => R.FOOTERS[b.footer]);
   return { renderer: renderer, menu: menu, items: items, listed: listed, footers: footers, styled: renderer.styled(name, menu, items) };
 }
-function metrics(menu, listed) {
-  // Les grandeurs de la disposition (comme MenusLayout.layout), en pixels de l'apercu
-  const [W, H] = previewSize();
-  const units = new L.Units([W, H], reference());
-  const kind = String(menu.layout || 'list');
+// Zones de boutons d'un ecran (section 7.4) : la sienne (nom ''), puis zones: {nom: {...}}
+function zoneNames(menu) {
+  return [''].concat(L.isDict(menu.zones) ? Object.keys(menu.zones).filter(k => L.isDict(menu.zones[k])) : []);
+}
+function zoneSettings(menu, zone) { return zone && L.isDict(menu.zones) && L.isDict(menu.zones[zone]) ? menu.zones[zone] : menu; }
+function zoneOwn(zone, create) {
+  // Ce que le fichier dit de cette zone : le menu lui-meme (premiere zone), ou zones: {nom: ...}
+  const menu = userMenu(screen, create);
+  if (!zone) return menu;
+  if (!L.isDict(menu.zones)) { if (!create) return {}; menu.zones = {}; }
+  if (!L.isDict(menu.zones[zone])) { if (!create) return {}; menu.zones[zone] = {}; }
+  return menu.zones[zone];
+}
+function zoneLabel(zone) {
+  const names = zoneNames(menuInfo(screen).menu);
+  return t('zone-name', { n: Math.max(0, names.indexOf(zone)) + 1 });
+}
+function zoneOfButton(id) {
+  const button = buttonOf(id) || {};
+  const zone = String(button.zone || '');
+  return zoneNames(menuInfo(screen).menu).includes(zone) ? zone : '';
+}
+function metrics(menu, listed, zone) {
+  // Les grandeurs d'une zone (comme MenusLayout.layout), en pixels de l'apercu
+  zone = zone || '';
+  const result = L.layout(menu, listed, previewSize(), reference(), 1);
+  const z = result.zones[zone] || result.zones[''];
+  const settings = zoneSettings(menu, zone);
+  const kind = String(settings.layout || 'list');
   const defaults = L.LAYOUT_DEFAULTS[kind] || L.LAYOUT_DEFAULTS.list;
-  const area = L.merge(defaults.area, menu.area || {});
-  const columns = Math.max(1, parseInt(menu.columns || defaults.columns, 10));
-  const gap = L.merge(L.GAP_DEFAULT, menu.gap || {});
-  const rect = [units.length(area.x, 'x'), units.length(area.y, 'y'), units.length(area.width, 'x'), units.length(area.height, 'y')];
-  const gapX = units.length(gap.x, 'x'), gapY = units.length(gap.y, 'y');
-  const flowing = listed.filter(b => !b.place);
-  // Rangees de la grille (boutons sur plusieurs cases compris)
-  const grid = L.layout(menu, listed, [W, H], reference(), 1);
-  return { kind: kind, columns: columns, rows: Math.max(1, grid.rows), cells: grid.cells, buttonH: grid.buttonH, area: rect, gapX: gapX, gapY: gapY,
-           columnW: (rect[2] - (columns - 1) * gapX) / columns, flowing: flowing, size: L.merge(defaults.button_size, menu.button_size || {}) };
+  const g = z.grid;
+  return { kind: kind, columns: g.columns, rows: Math.max(1, z.rows), cells: z.cells, buttonH: g.buttonH, area: g.area, gapX: g.gapX,
+           gapY: g.gapY, columnW: g.columnW, members: z.members, flowing: z.members.map(i => listed[i - 1]), rects: z.rects,
+           pages: z.pages, tops: g.tops, settings: settings, size: L.merge(defaults.button_size, settings.button_size || {}) };
 }
 function ensureStyled(name) {
   // Le dessin classique du theme ne suit pas la disposition : il passe au dessin par la
@@ -196,27 +214,31 @@ function ensureStyled(name) {
   own.align = 'top';
 }
 function fitOnScreen(name) {
-  // Un ecran reste un seul ecran : si les boutons de la disposition depassent sa zone (pages),
-  // leur hauteur est reduite pour qu'ils y tiennent tous
+  // Un ecran reste un seul ecran : si les boutons d'une zone depassent sa place (pages), leur
+  // hauteur est reduite pour qu'ils y tiennent tous
   if (GAME_SCREENS.includes(name)) return false;
   let fitted = false;
   for (let attempt = 0; attempt < 4; attempt++) {
     const info = menuInfo(name);
     if (!info.styled || !info.listed.length) return fitted;
-    const m = metrics(info.menu, info.listed);
-    const result = L.layout(info.menu, info.listed, previewSize(), reference(), 1);
-    const rects = info.listed.map((b, i) => (b.place ? null : result.rects[i + 1])).filter(Boolean);
-    const over = result.pages > 1 || rects.some(r => r[1] + r[3] > m.area[1] + m.area[3] + 1 || r[1] < m.area[1] - 1);
-    if (!over) return fitted;
-    const spaces = m.flowing.reduce((sum, b) => sum + (parseFloat(b.space_before) || 0), 0);
-    const height = Math.max(1, (m.area[3] - (m.rows - 1) * m.gapY) / (m.rows + spaces) * (1 - 0.003 * (attempt + 1)));
-    const own = userMenu(name, true);
-    if (m.size.height === null || m.size.height === undefined) {
-      // Tuiles carrees : elles le restent
-      setPath(own, ['button_size', 'width'], Math.min(1, Math.floor(height / m.columnW * 1000) / 1000));
+    let any = false;
+    for (const zone of zoneNames(info.menu)) {
+      const m = metrics(info.menu, info.listed, zone);
+      if (!m.flowing.length) continue;
+      const rects = m.members.map(i => m.rects[i]).filter(Boolean);
+      const over = m.pages > 1 || rects.some(r => r[1] + r[3] > m.area[1] + m.area[3] + 1 || r[1] < m.area[1] - 1);
+      if (!over) continue;
+      const spaces = m.flowing.reduce((sum, b) => sum + (parseFloat(b.space_before) || 0), 0);
+      const height = Math.max(1, (m.area[3] - (m.rows - 1) * m.gapY) / (m.rows + spaces) * (1 - 0.003 * (attempt + 1)));
+      const own = zoneOwn(zone, true);
+      if (m.size.height === null || m.size.height === undefined) {
+        // Tuiles carrees : elles le restent
+        setPath(own, ['button_size', 'width'], Math.min(1, Math.floor(height / m.columnW * 1000) / 1000));
+      }
+      setPath(own, ['button_size', 'height'], pxToFile(height, 'y', true));
+      fitted = any = true;
     }
-    setPath(own, ['button_size', 'height'], pxToFile(height, 'y', true));
-    fitted = true;
+    if (!any) return fitted;
   }
   return fitted;
 }
@@ -278,14 +300,15 @@ function draw() {
 }
 function geometry() {
   // Ou sont les boutons de l'ecran (rectangles de la disposition, sans l'agrandissement de
-  // l'etat choisi) et sa zone de boutons
+  // l'etat choisi), ses zones de boutons et la version
   const [W, H] = previewSize();
+  const version = lastDraw.version || null;
   if (GAME_SCREENS.includes(screen)) {
     const menu = (merged().menus || {}).games || {};
-    if (screen !== 'games' || String(makeRenderer().menu('games').style || 'classic') === 'classic') return { ids: [], rects: {}, area: null };
+    if (screen !== 'games' || String(makeRenderer().menu('games').style || 'classic') === 'classic') return { ids: [], rects: {}, area: null, areas: {} };
     const units = new L.Units([W, H], reference());
     const area = L.merge(GAME_TILES_AREA, menu.area || {});
-    return { ids: [], rects: {}, area: [units.length(area.x, 'x'), units.length(area.y, 'y'), units.length(area.width, 'x'), units.length(area.height, 'y')] };
+    return { ids: [], rects: {}, areas: {}, area: [units.length(area.x, 'x'), units.length(area.y, 'y'), units.length(area.width, 'x'), units.length(area.height, 'y')] };
   }
   const info = menuInfo(screen);
   const ids = info.listed.concat(info.footers).map(R.buttonId);
@@ -295,7 +318,18 @@ function geometry() {
     const rect = layout && i < info.listed.length ? layout[i + 1] : lastDraw.zones[i + 1];
     if (rect && !rects[id]) rects[id] = rect;
   });
-  return { ids: ids, rects: rects, listed: info.listed.map(R.buttonId), area: info.styled ? metrics(info.menu, info.listed).area : null };
+  const areas = {};
+  if (info.styled) for (const zone of zoneNames(info.menu)) areas[zone] = metrics(info.menu, info.listed, zone).area;
+  return { ids: ids, rects: rects, listed: info.listed.map(R.buttonId), areas: areas, area: areas[''] || null, version: version };
+}
+function zoneAt(point) {
+  // La zone de boutons sous ce point (la plus petite si elles se chevauchent)
+  const areas = (lastDraw && lastDraw.geometry && lastDraw.geometry.areas) || {};
+  let found = null;
+  for (const [zone, area] of Object.entries(areas)) {
+    if (inside(point, area) && (found === null || area[2] * area[3] < areas[found][2] * areas[found][3])) found = zone;
+  }
+  return found;
 }
 function shownIds() { return (lastDraw && lastDraw.geometry && lastDraw.geometry.ids) || []; }
 
@@ -339,13 +373,28 @@ function drawOverlay() {
     }
   };
   if (hover && !(selection.kind === 'button' && selection.id === hover) && geo.rects[hover]) frame(geo.rects[hover], 'rgba(255,255,255,0.7)', 1, false);
+  // Les zones de boutons : en pointilles (celle choisie avec ses poignees), et leur nom
+  for (const [zone, area] of Object.entries(geo.areas || {})) {
+    const active = selection.kind === 'zone' && selection.zone === zone;
+    if (!active && !['screen', 'zone'].includes(selection.kind)) continue;
+    frame(area, active ? '#ffd60a' : 'rgba(255,214,10,0.5)', active ? 2 : 1, true);
+    if (active) knobs(area);
+    if (Object.keys(geo.areas).length > 1 || active) {
+      g.font = 'bold ' + Math.round(13 * s) + 'px system-ui, sans-serif';
+      const label = zoneLabel(zone);
+      g.fillStyle = 'rgba(0,0,0,0.7)'; g.fillRect(area[0], area[1] - 20 * s, g.measureText(label).width + 10 * s, 19 * s);
+      g.fillStyle = '#ffd60a'; g.fillText(label, area[0] + 5 * s, area[1] - 6 * s);
+    }
+  }
+  if (screen === 'games' && selection.kind === 'screen' && geo.area) { frame(geo.area, '#ffd60a', 2, true); knobs(geo.area); }
+  if (geo.version) {
+    if (selection.kind === 'version') { frame(geo.version, '#0a84ff', 3, false); knobs(geo.version); }
+    else if (hover === '__version') frame(geo.version, 'rgba(255,255,255,0.7)', 1, false);
+  }
   if (selection.kind === 'button' && geo.rects[selection.id]) {
     const rect = geo.rects[selection.id];
     frame(rect, '#0a84ff', 3, false);
     if (resizable(selection.id)) knobs(rect);
-  } else if (selection.kind === 'screen' && geo.area) {
-    frame(geo.area, '#ffd60a', 2, true);
-    knobs(geo.area);
   }
   if (ghost) {
     frame(ghost, '#ffd60a', 2, true);
@@ -421,16 +470,39 @@ function setPlace(id, rect) {
     });
   });
 }
-function cellsFor(rect) {
-  // Nombre entier de colonnes et de rangees de la disposition le plus proche de ce rectangle
-  const info = menuInfo(screen);
-  const m = metrics(info.menu, info.listed);
-  const stepX = m.columnW + m.gapX, stepY = m.buttonH + m.gapY;
-  const baseW = (info.styled ? m.columnW * parseFloat(m.size.width || 1) : m.columnW);
-  return [Math.max(1, Math.round((rect[2] - baseW) / stepX) + 1), Math.max(1, Math.round((rect[3] - m.buttonH) / stepY) + 1)];
+// Largeurs en parts de colonne : un quart, un tiers, une demie, deux tiers, trois quarts
+const FRACTIONS = { 3: '¼', 4: '⅓', 6: '½', 8: '⅔', 9: '¾' };
+function fractionLabel(units) {
+  const S = L.SUBCELLS;
+  return units % S === 0 ? String(units / S) : (FRACTIONS[units] || (units / S).toFixed(2));
 }
-function setArea(rect) {
-  setPath(userMenu(screen, true), ['area'], { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') });
+const round4 = (v) => Math.round(v * 10000) / 10000;
+function cellsFor(rect, zone) {
+  // La largeur (en parts de colonne : ¼, ⅓, ½, ⅔, ¾, 1, 2...) et le nombre de rangees les plus
+  // proches de ce rectangle
+  const info = menuInfo(screen);
+  const m = metrics(info.menu, info.listed, zone);
+  const S = L.SUBCELLS, unit = (m.columnW + m.gapX) / S;
+  const measured = (rect[2] + m.gapX) / unit;
+  const allowed = Object.keys(FRACTIONS).map(Number).concat([1, 2, 3, 4, 5, 6, 8].map(n => n * S));
+  const units = allowed.reduce((best, u) => (Math.abs(u - measured) < Math.abs(best - measured) ? u : best), S);
+  return [units, Math.max(1, Math.round((rect[3] - m.buttonH) / (m.buttonH + m.gapY)) + 1)];
+}
+function setSpan(button, units, rows) {
+  const span = Object.assign({}, L.isDict(button.span) ? button.span : {});
+  if (units === L.SUBCELLS) delete span.columns; else span.columns = round4(units / L.SUBCELLS);
+  if (!rows || rows <= 1) delete span.rows; else span.rows = rows;
+  if (Object.keys(span).length) button.span = span; else delete button.span;
+}
+function setArea(rect, zone) {
+  setPath(zoneOwn(zone || '', true), ['area'], { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') });
+}
+function setVersion(rect) {
+  // La version placee : un bloc de sa place (et de son aspect s'il en avait un)
+  const current = ((merged().menus || {})[screen] || {}).show_version;
+  const look = L.isDict(current) ? clone(current) : {};
+  Object.assign(look, { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') });
+  userMenu(screen, true).show_version = look;
 }
 function resized(rect, handle, dx, dy) {
   const [W, H] = previewSize();
@@ -446,7 +518,7 @@ function resized(rect, handle, dx, dy) {
 }
 const clamp = (v, low, high) => Math.max(low, Math.min(high, v));
 
-let op = null;   // ce que fait la souris : move, resize, area
+let op = null;   // ce que fait la souris : move, resize, area, version
 $('overlay').addEventListener('pointerdown', (event) => {
   if (event.button !== 0) return;
   $('overlay').focus();
@@ -461,16 +533,24 @@ $('overlay').addEventListener('pointerdown', (event) => {
       // sont alors justes) ; Annuler le remet comme avant
       const before = JSON.stringify(user);
       if (!isFree(id)) ensureStyled(screen);
-      op = { type: 'resize', id: id, handle: handle, start: point, rect: geo.rects[id].slice(), free: isFree(id), before: before };
+      op = { type: 'resize', id: id, handle: handle, start: point, rect: geo.rects[id].slice(), free: isFree(id), before: before, zone: zoneOfButton(id) };
       capture(event); return;
     }
   }
-  if (selection.kind === 'screen' && geo.area) {
-    const handle = handleAt(geo.area, point);
-    if (handle) { op = { type: 'area', handle: handle, start: point, rect: geo.area.slice(), size: clone(userMenu(screen).button_size || null) }; capture(event); return; }
+  // Poignees de la zone choisie (ou de la place des tuiles de la liste des jeux), de la version
+  const zone = selection.kind === 'zone' ? selection.zone : (screen === 'games' && selection.kind === 'screen' ? '' : null);
+  const zoneArea = zone === null ? null : (screen === 'games' ? geo.area : (geo.areas || {})[zone]);
+  if (zoneArea) {
+    const handle = handleAt(zoneArea, point);
+    if (handle) { op = { type: 'area', zone: zone, handle: handle, start: point, rect: zoneArea.slice(), size: clone(zoneOwn(zone).button_size || null) }; capture(event); return; }
+  }
+  if (selection.kind === 'version' && geo.version) {
+    const handle = handleAt(geo.version, point);
+    if (handle) { op = { type: 'version', handle: handle, start: point, rect: geo.version.slice() }; capture(event); return; }
   }
   if (GAME_SCREENS.includes(screen)) {
     // Ecran du jeu : ses boutons montrent leur aspect choisi, le panneau reste celui de l'ecran
+    if (zoneArea && onEdge(zoneArea, point)) { op = { type: 'area', zone: '', handle: 'move', start: point, rect: zoneArea.slice() }; capture(event); return; }
     for (const [index, rect] of Object.entries(lastDraw.zones || {})) if (rect && inside(point, rect)) { selected = Number(index); schedule(); break; }
     if (selection.kind !== 'screen') selectScreen();
     return;
@@ -481,8 +561,16 @@ $('overlay').addEventListener('pointerdown', (event) => {
     if (resizable(hit) && geo.rects[hit]) { op = { type: 'move', id: hit, start: point, rect: geo.rects[hit].slice(), started: false }; capture(event); }
     return;
   }
-  if (selection.kind === 'screen' && geo.area && onEdge(geo.area, point)) {
-    op = { type: 'area', handle: 'move', start: point, rect: geo.area.slice(), size: clone(userMenu(screen).button_size || null) }; capture(event); return;
+  if (geo.version && inside(point, geo.version)) {
+    if (selection.kind !== 'version') selectVersion();
+    op = { type: 'version', handle: 'move', start: point, rect: geo.version.slice() }; capture(event); return;
+  }
+  // Une zone de boutons : choisie, et deplacee en la glissant par son interieur
+  const under = zoneAt(point);
+  if (under !== null) {
+    if (!(selection.kind === 'zone' && selection.zone === under)) selectZone(under);
+    op = { type: 'area', zone: under, handle: 'move', start: point, rect: geo.areas[under].slice(), size: clone(zoneOwn(under).button_size || null) };
+    capture(event); return;
   }
   if (selection.kind !== 'screen') selectScreen();
 });
@@ -491,38 +579,47 @@ $('overlay').addEventListener('pointermove', (event) => {
   const point = canvasPoint(event);
   const [W, H] = previewSize();
   if (!op) {
-    // Curseur : poignees, bord de la zone, bouton a deplacer
+    // Curseur : poignees, zone, version, bouton a deplacer
     const geo = lastDraw && lastDraw.geometry;
     if (!geo) return;
     let cursor = 'default';
     const id = currentId();
+    const zoneArea = selection.kind === 'zone' ? (geo.areas || {})[selection.zone] : (screen === 'games' && selection.kind === 'screen' ? geo.area : null);
     const handle = (id && geo.rects[id] && resizable(id) && handleAt(geo.rects[id], point)) ||
-                   (selection.kind === 'screen' && geo.area && handleAt(geo.area, point));
-    const over = GAME_SCREENS.includes(screen) ? null : buttonAt(point);
+                   (zoneArea && handleAt(zoneArea, point)) || (selection.kind === 'version' && geo.version && handleAt(geo.version, point));
+    let over = GAME_SCREENS.includes(screen) ? null : buttonAt(point);
+    if (!over && geo.version && inside(point, geo.version)) over = '__version';
     if (handle) cursor = CURSORS[handle];
-    else if (over && resizable(over)) cursor = 'move';
+    else if (over === '__version' || (over && resizable(over))) cursor = 'move';
     else if (over) cursor = 'pointer';
-    else if (selection.kind === 'screen' && geo.area && onEdge(geo.area, point)) cursor = 'move';
+    else if (!GAME_SCREENS.includes(screen) && zoneAt(point) !== null) cursor = 'move';
+    else if (zoneArea && onEdge(zoneArea, point)) cursor = 'move';
     $('overlay').style.cursor = cursor;
     if (over !== hover) { hover = over; drawOverlay(); }
     return;
   }
   const dx = point[0] - op.start[0], dy = point[1] - op.start[1];
+  const moved = (rect) => [Math.round(clamp(rect[0] + dx, 0, W - rect[2])), Math.round(clamp(rect[1] + dy, 0, H - rect[3])), rect[2], rect[3]];
   if (op.type === 'move') {
     if (!op.started) {
       if (Math.hypot(dx, dy) < 4 * overlayScale()) return;
       op.started = true;
       ensureStyled(screen);
       const info = menuInfo(screen);
-      op.area = metrics(info.menu, info.listed).area;
+      op.areas = {};
+      for (const zone of zoneNames(info.menu)) op.areas[zone] = metrics(info.menu, info.listed, zone).area;
     }
-    let rect = [Math.round(clamp(op.rect[0] + dx, 0, W - op.rect[2])), Math.round(clamp(op.rect[1] + dy, 0, H - op.rect[3])), op.rect[2], op.rect[3]];
-    // Lache dans la zone des boutons : il sera fixe sur la case visee (en vert) ; ailleurs
-    // il est place librement, aimante par les reperes d'alignement
+    let rect = moved(op.rect);
+    // Lache dans une zone de boutons : il y sera fixe sur la case visee, ou a cote d'un bouton
+    // (en vert) ; ailleurs il est place librement, aimante par les reperes d'alignement
     op.drop = [rect[0] + rect[2] / 2, rect[1] + rect[3] / 2];
-    if (inside(op.drop, op.area)) {
-      dropZone = op.area;
-      dropCell = cellAt(op.drop, op.id);
+    let target = null;
+    for (const [zone, area] of Object.entries(op.areas)) {
+      if (inside(op.drop, area) && (target === null || area[2] * area[3] < op.areas[target][2] * op.areas[target][3])) target = zone;
+    }
+    if (target !== null) {
+      dropZone = op.areas[target];
+      dropCell = cellAt(op.drop, op.id, target);
       guides = [];
     } else {
       dropZone = dropCell = null;
@@ -533,27 +630,33 @@ $('overlay').addEventListener('pointermove', (event) => {
   } else if (op.type === 'resize') {
     op.current = snap(resized(op.rect, op.handle, dx, dy), op.handle, [op.id], event.altKey);
     if (op.free) { setPlace(op.id, op.current); schedule(); } else {
-      // Montre combien de cases de la disposition il prendrait seul (reponse « Non »)
-      const [c, r] = cellsFor(op.current);
+      // Montre la largeur et les rangees qu'il prendrait seul (reponse « Non »)
+      const [units, rows] = cellsFor(op.current, op.zone);
       ghost = op.current.slice();
-      ghost.label = t('span-label', { c: c, r: r });
+      ghost.label = t('span-label', { c: fractionLabel(units), r: rows });
       drawOverlay();
     }
   } else if (op.type === 'area') {
+    if (!op.moved && Math.hypot(dx, dy) < 4 * overlayScale()) return;
     op.moved = true;
-    let rect = op.handle === 'move' ? [Math.round(clamp(op.rect[0] + dx, 0, W - op.rect[2])), Math.round(clamp(op.rect[1] + dy, 0, H - op.rect[3])), op.rect[2], op.rect[3]]
-      : resized(op.rect, op.handle, dx, dy);
-    // La zone s'aligne sur l'ecran et sur les boutons places librement (pas sur les siens)
-    const inArea = (lastDraw.geometry.listed || []).filter(id => !isFree(id));
-    rect = snap(rect, op.handle, inArea, event.altKey, true);
+    let rect = op.handle === 'move' ? moved(op.rect) : resized(op.rect, op.handle, dx, dy);
+    // La zone s'aligne sur l'ecran, les autres zones et les boutons hors d'elle (pas sur les siens)
+    const own = (lastDraw.geometry.listed || []).filter(id => !isFree(id) && zoneOfButton(id) === op.zone);
+    rect = snap(rect, op.handle, own, event.altKey, op.zone);
     if (screen === 'games') setPath(userMenu('games', true), ['area'], { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') });
     else {
       // Les boutons suivent la zone pendant qu'on la tire : leur taille d'avant, reduite
       // si elle ne tient plus (jamais de deuxieme page)
-      setPath(userMenu(screen, true), ['button_size'], op.size ? clone(op.size) : undefined);
-      setArea(rect);
+      setPath(zoneOwn(op.zone, true), ['button_size'], op.size ? clone(op.size) : undefined);
+      setArea(rect, op.zone);
       fitNotice = fitOnScreen(screen);
     }
+    schedule();
+  } else if (op.type === 'version') {
+    if (!op.moved && Math.hypot(dx, dy) < 4 * overlayScale()) return;
+    op.moved = true;
+    const rect = snap(op.handle === 'move' ? moved(op.rect) : resized(op.rect, op.handle, dx, dy), op.handle, ['__version'], event.altKey);
+    setVersion(rect);
     schedule();
   }
 });
@@ -568,17 +671,19 @@ $('overlay').addEventListener('pointerup', async () => {
     if (cell) setCell(done.id, cell);
     changed(true);
   }
-  else if (done.type === 'area' && done.moved) changed(true);
+  else if ((done.type === 'area' || done.type === 'version') && done.moved) changed(true);
   else if (done.type === 'resize' && !done.current && done.before) { user = JSON.parse(done.before); schedule(); }
   else if (done.type === 'resize' && done.current) {
     if (done.free) { changed(true); return; }
-    const answer = await ask(t('ask-resize'), t('ask-resize-sub'), [['all', t('yes')], ['one', t('no')], ['cancel', t('cancel')]]);
+    // La reponse retenue (« Se souvenir de mon choix »), sinon la question
+    const answer = stored('resize-choice') || await ask(t('ask-resize'), t('ask-resize-sub'),
+      [['all', t('yes')], ['one', t('no')], ['cancel', t('cancel')]], 'resize-choice');
     ghost = null;
     if (answer === 'all') {
       ensureStyled(screen);
       const info = menuInfo(screen);
-      const m = metrics(info.menu, info.listed);
-      const own = userMenu(screen, true);
+      const m = metrics(info.menu, info.listed, done.zone);
+      const own = zoneOwn(done.zone, true);
       const [W] = previewSize();
       const rect = done.current;
       setPath(own, ['button_size', 'height'], pxToFile(rect[3], 'y'));
@@ -597,15 +702,16 @@ $('overlay').addEventListener('pointerup', async () => {
       } else setPath(own, ['button_size', 'width'], Math.round(rect[2] / m.columnW * 1000) / 1000);
       changed(true);
     } else if (answer === 'one') {
-      // Lui seul : des cases entieres de la disposition, les autres se rangent autour
+      // Lui seul : sa largeur en parts de colonne et ses rangees, les autres se rangent autour
       ensureStyled(screen);
-      const [c, r] = cellsFor(done.current);
-      editButton(done.id, b => { if (c === 1 && r === 1) delete b.span; else b.span = Object.assign({}, c > 1 ? { columns: c } : {}, r > 1 ? { rows: r } : {}); });
+      const [units, rows] = cellsFor(done.current, done.zone);
+      editButton(done.id, b => setSpan(b, units, rows));
       changed(true);
     } else {
       user = JSON.parse(done.before);
       schedule();
     }
+    updateChoiceNote();
   }
 });
 $('overlay').addEventListener('pointerleave', () => { if (hover) { hover = null; drawOverlay(); } });
@@ -616,12 +722,18 @@ $('overlay').addEventListener('keydown', (event) => {
   if (!moves[event.key]) return;
   event.preventDefault();
   const geo = lastDraw && lastDraw.geometry;
+  const step = event.shiftKey ? 10 : 1;
+  const [dx, dy] = moves[event.key];
   if (id && isFree(id) && geo && geo.rects[id]) {
     // Bouton place librement : les fleches le deplacent (Maj : 10 fois plus)
-    const step = event.shiftKey ? 10 : 1;
-    const [dx, dy] = moves[event.key];
     const r = geo.rects[id];
     setPlace(id, [r[0] + dx * step, r[1] + dy * step, r[2], r[3]]);
+    changed(true);
+    return;
+  }
+  if (selection.kind === 'version' && geo && geo.version) {
+    const r = geo.version;
+    setVersion([r[0] + dx * step, r[1] + dy * step, r[2], r[3]]);
     changed(true);
     return;
   }
@@ -633,20 +745,45 @@ $('overlay').addEventListener('keydown', (event) => {
   if (GAME_SCREENS.includes(screen)) { selected = next + 1; schedule(); } else selectButton(ids[next]);
 });
 window.addEventListener('resize', () => drawOverlay());
-function ask(text, sub, choices) {
-  // Question a choix dans la page (Oui / Non / Annuler)
+function ask(text, sub, choices, rememberKey) {
+  // Question a choix dans la page (Oui / Non / Annuler) ; rememberKey : une case « Se souvenir
+  // de mon choix », la reponse gardee sous ce nom (sauf Annuler)
   return new Promise((resolve) => {
     const dialog = $('ask');
     $('ask-text').textContent = text;
     $('ask-sub').textContent = sub || '';
     const row = $('ask-buttons');
     row.innerHTML = '';
+    const box = el('input', { type: 'checkbox' });
+    const keep = rememberKey ? el('label', { class: 'inline' }, [box, el('span', { text: t('remember-choice') })]) : null;
+    let done = false;
+    const answer = (value) => {
+      if (done) return;
+      done = true;
+      if (rememberKey && box.checked && value !== 'cancel') store(rememberKey, value);
+      resolve(value);
+    };
     choices.forEach(([value, label], i) => {
-      row.appendChild(el('button', { class: i === 0 ? 'main' : 'ghost', text: label, onclick: () => { dialog.close(); resolve(value); } }));
+      row.appendChild(el('button', { class: i === 0 ? 'main' : 'ghost', text: label, onclick: () => { answer(value); dialog.close(); } }));
     });
-    dialog.onclose = () => resolve('cancel');
+    $('ask-keep').innerHTML = '';
+    if (keep) $('ask-keep').appendChild(keep);
+    dialog.onclose = () => answer('cancel');
     dialog.showModal();
   });
+}
+function updateChoiceNote() {
+  // Sous l'aide de l'apercu : le choix retenu pour la question de taille, et de quoi la reposer
+  const note = $('choice-note');
+  note.innerHTML = '';
+  const choice = stored('resize-choice');
+  if (!choice) { note.classList.add('hidden'); return; }
+  note.classList.remove('hidden');
+  note.appendChild(el('span', { text: t(choice === 'all' ? 'choice-note-all' : 'choice-note-one') + ' ' }));
+  note.appendChild(el('button', { class: 'tiny', text: t('choice-ask-again'), onclick: () => {
+    try { localStorage.removeItem('raspydarts-menus-resize-choice'); } catch (e) { /* prive */ }
+    updateChoiceNote();
+  } }));
 }
 
 // ------------------------------------------------------------------ selection
@@ -663,8 +800,21 @@ function selectScreen() {
   if (!GAME_SCREENS.includes(screen)) selected = 0;
   buildPanel(); schedule();
 }
+function selectZone(zone) {
+  selection = { kind: 'zone', zone: zone };
+  selected = 0;
+  showTab('edit');
+  buildPanel(); schedule();
+}
+function selectVersion() {
+  selection = { kind: 'version' };
+  showTab('edit');
+  buildPanel(); schedule();
+}
 function validateSelection() {
   if (selection.kind === 'button' && !buttonOf(selection.id)) selection = { kind: 'screen' };
+  if (selection.kind === 'zone' && (GAME_SCREENS.includes(screen) || !zoneNames(menuInfo(screen).menu).includes(selection.zone))) selection = { kind: 'screen' };
+  if (selection.kind === 'version' && !((merged().menus || {})[screen] || {}).show_version) selection = { kind: 'screen' };
 }
 
 // ------------------------------------------------------------------ champs des formulaires
@@ -777,8 +927,17 @@ function colorInput(get, set) {
   wrap.appendChild(text); wrap.appendChild(picker);
   return wrap;
 }
+function imageKnown(path) {
+  // L'image est-elle dans le theme choisi ou le jeu (elle sera sur la borne) ?
+  if (!path) return true;
+  const variants = [String(path)];
+  if (!String(path).startsWith('images/')) variants.push('images/' + path);
+  const owners = themeName() === 'own' ? ['official'] : [themeName(), 'official'];
+  return variants.some(v => owners.some(o => ((DATA.images || {})[o] || {})[v]) || (ownTheme && ownTheme.images[v]));
+}
 function imageInput(get, set) {
-  // Image : celles du theme, du jeu et celles chargees (liste), ou un chemin
+  // Image : celles du theme, du jeu et celles chargees (liste), ou un chemin ; « Charger… »
+  // prend une image de l'ordinateur ; en rouge, ou la copier sur la borne pour qu'elle apparaisse
   const listId = 'image-paths';
   let list = $(listId);
   if (!list) { list = el('datalist', { id: listId }); document.body.appendChild(list); }
@@ -789,8 +948,32 @@ function imageInput(get, set) {
   [...paths].sort().forEach(p => list.appendChild(el('option', { value: p })));
   const input = textInput(get, set, 'images/...');
   input.setAttribute('list', listId);
-  input.style.width = '100%';
-  return input;
+  input.style.flex = '1';
+  input.style.minWidth = '0';
+  const note = el('p', { class: 'image-note' });
+  const refresh = () => {
+    const path = input.value.trim();
+    note.textContent = '';
+    if (!path || imageKnown(path)) return;
+    const file = path.split('/').pop();
+    const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : 'images';
+    note.textContent = t(ownImages[path] ? 'image-copy' : 'image-missing',
+      { file: file, folder: folder, theme: themeName() === 'own' ? '<thème>' : themeName() });
+  };
+  input.addEventListener('change', refresh);
+  const picker = el('input', { type: 'file', accept: 'image/*', class: 'hidden' });
+  picker.addEventListener('change', () => {
+    const file = picker.files[0];
+    if (!file) return;
+    const path = `images/menus/${file.name.replace(/[^A-Za-z0-9_.-]/g, '_')}`;
+    ownImages[path] = URL.createObjectURL(file);
+    buildImages();
+    input.value = path;
+    input.dispatchEvent(new Event('change'));
+  });
+  const load = el('button', { class: 'tiny', text: t('image-load'), type: 'button', onclick: () => picker.click() });
+  refresh();
+  return el('div', {}, [el('div', { style: 'display:flex;gap:6px;align-items:center' }, [input, load, picker]), note]);
 }
 function rectInputs(parent, get, set, rebuild) {
   // x, y, largeur, hauteur : en % ou en pixels selon la resolution
@@ -869,7 +1052,10 @@ function buildPanel() {
   const panel = $('tab-edit');
   const scroll = $('side').scrollTop;
   panel.innerHTML = '';
-  if (selection.kind === 'button') buildButtonPanel(panel); else buildScreenPanel(panel);
+  if (selection.kind === 'button') buildButtonPanel(panel);
+  else if (selection.kind === 'zone') buildZonePanel(panel);
+  else if (selection.kind === 'version') buildVersionPanel(panel);
+  else buildScreenPanel(panel);
   $('side').scrollTop = scroll;
 }
 function buildScreenPanel(panel) {
@@ -882,7 +1068,7 @@ function buildScreenPanel(panel) {
   if (fitNotice) panel.appendChild(el('div', { class: 'note warn', text: t('fit-notice') }));
   field(panel, 'f-screen-style', selectInput(styleNames(), menuStyleName, set('style'), undefined, true),
         GAME_SCREENS.includes(name) ? 'f-style-hint-game' : null);
-  if (!GAME_SCREENS.includes(name)) buildLayoutFields(panel, name);
+  if (!GAME_SCREENS.includes(name)) buildZoneList(panel, name);
   else if (name === 'games') {
     const fs = fieldset(panel, t('f-layout-title'), true);
     field(fs, 'f-columns', numberInput(() => own().columns, set('columns'), 1, 1, 8));
@@ -897,7 +1083,8 @@ function buildScreenPanel(panel) {
   buildShortcutFields(panel, name);
   const effective = () => ((merged().menus || {})[name]) || {};
   const fsInfo = fieldset(panel, t('f-info'));
-  fsInfo.appendChild(checkInput('f-show-version', () => effective().show_version, v => set('show_version')(v || undefined)));
+  fsInfo.appendChild(checkInput('f-show-version', () => effective().show_version, v => set('show_version')(v || undefined), true));
+  if (effective().show_version) fsInfo.appendChild(el('button', { class: 'tiny', text: t('version-edit'), onclick: selectVersion }));
   for (const item of ['version', 'rpi_version', 'ips']) {
     fsInfo.appendChild(checkInput('info-' + item, () => [].concat(effective().info || []).includes(item), v => {
       const list = [].concat(effective().info || []).filter(i => i !== item);
@@ -908,40 +1095,146 @@ function buildScreenPanel(panel) {
   fsInfo.appendChild(checkInput('f-remember', () => effective().remember, v => set('remember')(v ? true : null)));
   buildButtonList(panel, name);
 }
-function buildLayoutFields(panel, name) {
+function buildZoneList(panel, name) {
+  // Les zones de boutons de l'ecran : chacune se choisit (ou se clique dans l'apercu)
+  const fs = fieldset(panel, t('zones-title'), true);
+  const info = menuInfo(name);
+  if (!info.styled) fs.appendChild(el('p', { class: 'hint', text: t('drawing-classic') }));
+  const list = el('ul', { class: 'buttons' });
+  for (const zone of zoneNames(info.menu)) {
+    const count = info.listed.filter(b => !b.place && String(b.zone || '') === zone ||
+      (!b.place && zone === '' && !zoneNames(info.menu).includes(String(b.zone || '')))).length;
+    list.appendChild(el('li', { onclick: () => { ensureStyled(name); selectZone(zone); } }, [
+      el('span', { class: 'name', text: zoneLabel(zone) }), el('span', { class: 'tag', text: t('zone-count', { n: count }) })]));
+  }
+  fs.appendChild(list);
+  fs.appendChild(el('div', { class: 'row' }, [el('button', { class: 'tiny', text: t('zone-add'), onclick: addZone })]));
+  fs.appendChild(el('p', { class: 'hint', text: t('zones-hint') }));
+}
+function addZone() {
+  // Une nouvelle zone a droite de l'ecran, avec la taille des boutons de la premiere
+  ensureStyled(screen);
+  const info = menuInfo(screen);
+  const m = metrics(info.menu, info.listed, '');
+  const menu = userMenu(screen, true);
+  if (!L.isDict(menu.zones)) menu.zones = {};
+  let n = 2;
+  while (zoneNames(info.menu).includes('zone' + n) || menu.zones['zone' + n]) n++;
+  // Dans le plus grand espace libre a cote de la premiere zone, a sa hauteur
+  const [W] = previewSize();
+  const margin = W * 0.02;
+  const right = W - (m.area[0] + m.area[2]), left = m.area[0];
+  const width = Math.max(W * 0.1, Math.min(W * 0.25, Math.max(right, left) - 2 * margin));
+  const x = right >= left ? Math.min(W - width, m.area[0] + m.area[2] + margin) : Math.max(0, m.area[0] - margin - width);
+  menu.zones['zone' + n] = { layout: 'list', area: { x: pxToFile(x, 'x'), y: pxToFile(m.area[1], 'y'), width: pxToFile(width, 'x'), height: pxToFile(m.area[3], 'y') },
+                             button_size: { height: m.size.height !== null && m.size.height !== undefined ? m.size.height : '9%' } };
+  selection = { kind: 'zone', zone: 'zone' + n };
+  changed(true);
+}
+function deleteZone(zone) {
+  // Ses boutons rejoignent la premiere zone ; la premiere supprimee : la suivante prend sa place
+  if (!confirm(t('zone-delete-confirm'))) return;
+  const info = menuInfo(screen);
+  const names = zoneNames(info.menu);
+  const menu = userMenu(screen, true);
+  if (zone) {
+    if (L.isDict(menu.zones)) delete menu.zones[zone];
+    if (menuButtons(screen).some(b => b.zone === zone)) ownButtons(screen).forEach(b => { if (b.zone === zone) { delete b.zone; delete b.cell; } });
+  } else {
+    const next = names[1];
+    if (!next) return;
+    const settings = clone(zoneSettings(info.menu, next));
+    for (const key of ['layout', 'area', 'columns', 'button_size', 'gap', 'align', 'overflow']) {
+      if (key in settings) menu[key] = settings[key]; else delete menu[key];
+    }
+    if (L.isDict(menu.zones)) delete menu.zones[next];
+    ownButtons(screen).forEach(b => {
+      if (b.zone === next) delete b.zone;
+      else if (!b.zone && !b.place) delete b.cell;
+    });
+  }
+  if (L.isDict(menu.zones) && !Object.keys(menu.zones).length) delete menu.zones;
+  selection = { kind: 'screen' };
+  changed(true);
+}
+function buildZonePanel(panel) {
+  const zone = selection.zone;
+  const info = menuInfo(screen);
+  panel.appendChild(el('a', { class: 'back', text: t('back-screen'), onclick: selectScreen }));
+  panel.appendChild(el('h2', { text: zoneLabel(zone) }));
+  panel.appendChild(el('p', { class: 'hint', text: t('zone-hint') }));
+  if (fitNotice) panel.appendChild(el('div', { class: 'note warn', text: t('fit-notice') }));
+  buildLayoutFields(panel, screen, zone);
+  const several = zoneNames(info.menu).length > 1;
+  const row = el('div', { class: 'row', style: 'margin-top:10px' });
+  const remove = el('button', { class: 'tiny', text: t('zone-delete'), onclick: () => deleteZone(zone) });
+  if (!several) remove.disabled = true;
+  row.appendChild(remove);
+  panel.appendChild(row);
+  if (!several) panel.appendChild(el('p', { class: 'hint', text: t('zone-only') }));
+}
+function buildVersionPanel(panel) {
+  // La version (V4.6) : sa place et son aspect
+  const current = () => ((merged().menus || {})[screen] || {}).show_version;
+  const look = () => (L.isDict(current()) ? current() : {});
+  const write = (key, value) => {
+    const block = clone(look());
+    const rect = lastDraw && lastDraw.geometry && lastDraw.geometry.version;
+    if (rect && !L.isDict(current())) Object.assign(block, { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') });
+    if (isEmpty(value)) delete block[key]; else block[key] = value;
+    userMenu(screen, true).show_version = Object.keys(block).length ? block : true;
+  };
+  panel.appendChild(el('a', { class: 'back', text: t('back-screen'), onclick: selectScreen }));
+  panel.appendChild(el('h2', { text: t('version-title') }));
+  panel.appendChild(el('p', { class: 'hint', text: t('version-hint') }));
+  const rect = (lastDraw && lastDraw.geometry && lastDraw.geometry.version) || [0, 0, 0, 0];
+  const now = { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') };
+  rectInputs(panel, k => (look()[k] !== undefined ? look()[k] : now[k]), (k, v) => write(k, v));
+  const grid = el('div', { class: 'grid2' });
+  cell(grid, t('f-color'), colorInput(() => look().color, v => write('color', v)));
+  cell(grid, t('f-font'), selectInput(Object.keys(DATA.fonts), () => look().font, v => write('font', v), ''));
+  panel.appendChild(grid);
+  panel.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [
+    el('button', { class: 'tiny', text: t('version-reset'), onclick: () => { userMenu(screen, true).show_version = true; changed(true); } }),
+    el('button', { class: 'tiny', text: t('version-hide'), onclick: () => { delete userMenu(screen, true).show_version;
+      if (((merged().menus || {})[screen] || {}).show_version) userMenu(screen, true).show_version = false; selection = { kind: 'screen' }; changed(true); } })]));
+}
+function buildLayoutFields(panel, name, zone) {
+  zone = zone || '';
   const fs = fieldset(panel, t('f-layout-title'), true);
   const info = menuInfo(name);
-  const own = () => userMenu(name);
-  const m = metrics(info.menu, info.listed);
+  const settings = zoneSettings(info.menu, zone);
+  const own = () => zoneOwn(zone);
+  const m = metrics(info.menu, info.listed, zone);
   if (!info.styled) fs.appendChild(el('p', { class: 'hint', text: t('drawing-classic') }));
   // Chaque reglage de la disposition fait passer l'ecran au dessin par la disposition
-  const write = (path, value) => { ensureStyled(name); setPath(userMenu(name, true), path, value); };
+  const write = (path, value) => { ensureStyled(name); setPath(zoneOwn(zone, true), path, value); };
   const grid = el('div', { class: 'grid2' });
   // Les valeurs en vigueur (celles du jeu tant que le fichier n'en dit rien)
   cell(grid, t('f-layout'), selectInput([['list', t('layout-list')], ['grid', t('layout-grid')], ['tiles', t('layout-tiles')]],
     () => m.kind, v => write(['layout'], v), undefined, true));
-  cell(grid, t('f-align'), selectInput([['center', t('align-center')], ['top', t('align-top')]], () => info.menu.align || 'center',
+  cell(grid, t('f-align'), selectInput([['center', t('align-center')], ['top', t('align-top')]], () => settings.align || 'center',
     v => write(['align'], v)));
   const columns = el('input', { type: 'number', min: 1, max: 8, step: 1, value: m.columns });
   columns.addEventListener('change', () => {
     const n = Math.max(1, parseInt(columns.value, 10) || 1);
     write(['columns'], n);
-    if (n > 1 && String(info.menu.layout || 'list') === 'list') write(['layout'], 'grid');
+    if (n > 1 && m.kind === 'list') write(['layout'], 'grid');
     changed(true);
   });
   const rows = el('input', { type: 'number', min: 1, max: 20, step: 1, value: m.rows });
   rows.addEventListener('change', () => {
-    // Le nombre de lignes donne celui des colonnes (tous les boutons de la disposition y tiennent)
+    // Le nombre de lignes donne celui des colonnes (tous les boutons de la zone y tiennent)
     const n = Math.max(1, parseInt(rows.value, 10) || 1);
     const cols = Math.max(1, Math.ceil(m.flowing.length / n));
     write(['columns'], cols);
-    if (cols > 1 && String(info.menu.layout || 'list') === 'list') write(['layout'], 'grid');
+    if (cols > 1 && m.kind === 'list') write(['layout'], 'grid');
     changed(true);
   });
   cell(grid, t('f-columns'), columns);
   cell(grid, t('f-rows'), rows);
   cell(grid, t('f-size-width'), numberInput(() => m.size.width, v => write(['button_size', 'width'], v), 0.05, 0.1, 1));
-  cell(grid, t('u-height') + (reference() ? ' (px)' : ' (%)'), unitInput(() => getPath(info.menu, ['button_size', 'height']),
+  cell(grid, t('u-height') + (reference() ? ' (px)' : ' (%)'), unitInput(() => m.size.height,
     v => write(['button_size', 'height'], v), 'y', true));
   fs.appendChild(grid);
   fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'tiny', text: t('fit-area'), onclick: () => {
@@ -953,7 +1246,7 @@ function buildLayoutFields(panel, name) {
   fs.appendChild(el('label', { text: t('f-gap') }));
   const gaps = el('div', { class: 'grid2' });
   for (const [key, axis] of [['x', 'x'], ['y', 'y']]) {
-    cell(gaps, t('u-' + key) + (reference() ? ' (px)' : ' (%)'), unitInput(() => getPath(info.menu, ['gap', key]) !== undefined ? getPath(info.menu, ['gap', key]) : L.GAP_DEFAULT[key],
+    cell(gaps, t('u-' + key) + (reference() ? ' (px)' : ' (%)'), unitInput(() => getPath(settings, ['gap', key]) !== undefined ? getPath(settings, ['gap', key]) : L.GAP_DEFAULT[key],
       v => write(['gap', key], v), axis));
   }
   fs.appendChild(gaps);
@@ -961,12 +1254,13 @@ function buildLayoutFields(panel, name) {
   rectInputs(fs, k => getPath(own(), ['area', k]) !== undefined ? getPath(own(), ['area', k]) : ((L.LAYOUT_DEFAULTS[m.kind] || L.LAYOUT_DEFAULTS.list).area[k]),
     (k, v) => write(['area', k], v));
   fs.appendChild(el('p', { class: 'hint', text: t('area-hint') }));
-  if (info.styled) {
+  if (info.styled && !zone && zoneNames(info.menu).length === 1) {
     fs.appendChild(el('button', { class: 'tiny', text: t('layout-remove'), onclick: () => {
       if (!confirm(t('layout-remove-confirm'))) return;
       const menu = userMenu(name, true);
       for (const key of ['layout', 'area', 'columns', 'button_size', 'gap', 'align', 'overflow']) delete menu[key];
-      if (menuButtons(name).some(b => b.place)) ownButtons(name).forEach(b => delete b.place);
+      if (menuButtons(name).some(b => b.place || b.cell || b.span)) ownButtons(name).forEach(b => { delete b.place; delete b.cell; delete b.span; });
+      selection = { kind: 'screen' };
       changed(true);
     } }));
   }
@@ -1083,10 +1377,7 @@ function buildButtonPanel(panel) {
     editButton(id, b => { if (v) b.id = v; else delete b.id; });
     selection.id = v || button.action;
   }), 'f-id-hint');
-  const grid = el('div', { class: 'grid2' });
-  cell(grid, t('f-space-before'), numberInput(() => button.space_before, set('space_before'), 0.5, 0, 10));
-  cell(grid, t('f-footer'), selectInput([['left', t('pos-left')], ['center', t('pos-center')], ['right', t('pos-right')]], () => button.footer, set('footer'), '', true));
-  more.appendChild(grid);
+  field(more, 'f-footer', selectInput([['left', t('pos-left')], ['center', t('pos-center')], ['right', t('pos-right')]], () => button.footer, set('footer'), '', true));
   field(more, 'f-logo', textInput(() => button.logo, set('logo'), 'menu_classic'), 'f-logo-hint');
   // Position, taille et ordre
   if (!isFooter(id)) {
@@ -1114,17 +1405,20 @@ function buildButtonPanel(panel) {
         fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'tiny', text: t('cell-free'),
           onclick: () => { editButton(id, b => delete b.cell); changed(true); } })]));
       }
+      // Largeur en parts de colonne (¼, ⅓, ½...) ou en colonnes, et rangees
       fs.appendChild(el('label', { text: t('f-span') }));
       const grid = el('div', { class: 'grid2' });
       const span = () => (L.isDict(button.span) ? button.span : {});
-      for (const key of ['columns', 'rows']) {
-        cell(grid, t('span-' + key), numberInput(() => span()[key] || 1, v => editButton(id, b => {
-          const next = Object.assign({}, L.isDict(b.span) ? b.span : {});
-          if (!v || v <= 1) delete next[key]; else next[key] = Math.round(v);
-          if (Object.keys(next).length) b.span = next; else delete b.span;
-        }), 1, 1, 8));
-      }
+      const S = L.SUBCELLS;
+      const widths = Object.keys(FRACTIONS).map(Number).concat([1, 2, 3, 4].map(n => n * S));
+      const unitsNow = Math.round((parseFloat(span().columns) || 1) * S);
+      cell(grid, t('span-columns'), selectInput(widths.map(u => [String(u), fractionLabel(u)]), () => String(unitsNow),
+        v => editButton(id, b => setSpan(b, parseInt(v, 10) || S, (L.isDict(b.span) && b.span.rows) || 1)), undefined, true));
+      cell(grid, t('span-rows'), numberInput(() => span().rows || 1, v => editButton(id, b => setSpan(b,
+        Math.round((parseFloat((L.isDict(b.span) ? b.span : {}).columns) || 1) * S), Math.round(v || 1))), 1, 1, 8));
       fs.appendChild(grid);
+      // L'ecart au-dessus de sa rangee (en hauteurs de bouton)
+      field(fs, 'f-space-before', numberInput(() => button.space_before, set('space_before'), 0.5, 0, 10), 'f-space-hint');
     }
     fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('span', { text: t('order') }),
       el('button', { class: 'tiny', text: '▲', onclick: () => moveButton(id, -1) }),
@@ -1258,37 +1552,76 @@ function buildLookFields(parent, id) {
     fs.appendChild(gs);
   }
 }
-function cellAt(point, id) {
-  // La case de la zone des boutons sous ce point, pour ce bouton (ses cases prises) : rangee
-  // et colonne depuis 0, et son rectangle a l'ecran
+function cellAt(point, id, zone) {
+  // Ou le bouton glisse irait dans cette zone : a cote d'un bouton (pres de son bord gauche ou
+  // droit : ils se partagent sa largeur), sinon la case sous le point (a sa taille) ; avec le
+  // rectangle a surligner
   const info = menuInfo(screen);
-  const g = L.layout(info.menu, info.listed, previewSize(), reference(), 1).grid;
+  const m = metrics(info.menu, info.listed, zone);
+  const S = L.SUBCELLS, unit = (m.columnW + m.gapX) / S;
+  for (const index of m.members) {
+    const other = info.listed[index - 1];
+    const r = m.rects[index], c = m.cells[index];
+    if (R.buttonId(other) === id || !r || !c || !inside(point, r)) continue;
+    const rel = (point[0] - r[0]) / r[2];
+    if ((rel < 0.3 || rel > 0.7) && c[2] % 2 === 0) {
+      const right = rel > 0.7;
+      return { side: right ? 'right' : 'left', target: R.buttonId(other), zone: zone, row: c[0], start: c[1], half: c[2] / 2, high: c[3],
+               rect: right ? [r[0] + r[2] / 2, r[1], r[2] / 2, r[3]] : [r[0], r[1], r[2] / 2, r[3]] };
+    }
+  }
   const button = buttonOf(id) || {};
   const span = L.isDict(button.span) ? button.span : {};
-  const wide = Math.min(Math.max(1, parseInt(span.columns || 1, 10)), g.columns), high = Math.max(1, parseInt(span.rows || 1, 10));
-  const stepX = g.columnW + g.gapX, stepY = g.buttonH + g.gapY;
-  const cellsW = wide * g.columnW + (wide - 1) * g.gapX, cellsH = high * g.buttonH + (high - 1) * g.gapY;
-  const column = clamp(Math.round((point[0] - g.areaX - cellsW / 2) / stepX), 0, g.columns - wide);
-  // Haut d'une rangee : celui de la grille affichee, sinon a la suite (ou depuis le haut de la zone)
-  const known = Object.keys(g.tops).map(Number).sort((a, b) => a - b);
+  const total = m.columns * S;
+  const width = Math.min(Math.max(1, Math.round((parseFloat(span.columns) || 1) * S)), total);
+  const high = Math.max(1, parseInt(span.rows || 1, 10));
+  const step = width % S === 0 ? S : (function gcd(a, b) { return b ? gcd(b, a % b) : a; })(width, S);
+  const cellsW = width % S === 0 ? (width / S) * m.columnW + (width / S - 1) * m.gapX : width * unit - m.gapX;
+  const cellsH = high * m.buttonH + (high - 1) * m.gapY;
+  const start = clamp(Math.round((point[0] - m.area[0] - cellsW / 2) / unit / step) * step, 0, total - width);
+  // Rangee : celle de la grille affichee, ou la suivante (jamais de rangee vide entre deux)
+  const known = Object.keys(m.tops).map(Number).sort((a, b) => a - b);
+  const stepY = m.buttonH + m.gapY;
   const top = (row) => {
-    if (row in g.tops) return g.tops[row];
+    if (row in m.tops) return m.tops[row];
     const last = known.filter(r => r < row).pop();
-    return last !== undefined ? g.tops[last] + (row - last) * stepY : g.areaY + row * stepY;
+    return last !== undefined ? m.tops[last] + (row - last) * stepY : m.area[1] + row * stepY;
   };
   let row = 0, best = Infinity;
-  const limit = (known.length ? known[known.length - 1] : 0) + 4;
+  const limit = m.flowing.length ? m.rows : 0;
   for (let r = 0; r <= limit; r++) {
     const d = Math.abs(top(r) + cellsH / 2 - point[1]);
     if (d < best) { best = d; row = r; }
   }
-  return { row: row, column: column, rect: [g.areaX + column * stepX, top(row), cellsW, cellsH] };
+  const x = m.area[0] + Math.floor(start / S) * (m.columnW + m.gapX) + (start % S) * unit;
+  return { row: row, column: round4(start / S), zone: zone, rect: [x, top(row), cellsW, cellsH] };
 }
 function setCell(id, cell) {
-  // Le bouton fixe sur cette case de la disposition ; celui qui l'avait se range avec les autres
+  // Le bouton fixe sur cette case de sa zone (sans ecart au-dessus) ; celui qui l'avait se range
+  // avec les autres. A cote d'un bouton : les deux se partagent sa largeur, chacun sur sa moitie
+  const S = L.SUBCELLS;
+  const putZone = (b) => { if (cell.zone) b.zone = cell.zone; else delete b.zone; };
   for (const b of ownButtons(screen)) {
-    if (R.buttonId(b) === id) { delete b.place; b.cell = { row: cell.row, column: cell.column }; }
-    else if (L.isDict(b.cell) && b.cell.row === cell.row && b.cell.column === cell.column) delete b.cell;
+    const bid = R.buttonId(b);
+    if (cell.side) {
+      const left = cell.side === 'left';
+      if (bid === cell.target) {
+        b.cell = { row: cell.row, column: round4((cell.start + (left ? cell.half : 0)) / S) };
+        setSpan(b, cell.half, cell.high);
+        putZone(b);
+      } else if (bid === id) {
+        delete b.place; delete b.space_before;
+        b.cell = { row: cell.row, column: round4((cell.start + (left ? 0 : cell.half)) / S) };
+        setSpan(b, cell.half, cell.high);
+        putZone(b);
+      }
+    } else if (bid === id) {
+      delete b.place; delete b.space_before;
+      b.cell = { row: cell.row, column: cell.column };
+      putZone(b);
+    } else if (L.isDict(b.cell) && b.cell.row === cell.row && b.cell.column === cell.column && String(b.zone || '') === (cell.zone || '')) {
+      delete b.cell;
+    }
   }
 }
 function snap(rect, mode, exclude, off, area) {
@@ -1306,7 +1639,9 @@ function snap(rect, mode, exclude, off, area) {
     targets.y.push([r[1], false], [r[1] + r[3] / 2, false], [r[1] + r[3], false]);
   };
   for (const [id, r] of Object.entries(geo.rects)) if (!exclude.includes(id)) add(r);
-  if (geo.area && !area) add(geo.area);
+  // Les zones de boutons (sauf celle qu'on tire : area est son nom), la version
+  for (const [zone, a] of Object.entries(geo.areas || {})) if (area === undefined || area === false || zone !== area) add(a);
+  if (geo.version && !exclude.includes('__version')) add(geo.version);
   const result = rect.slice();
   for (const axis of ['x', 'y']) {
     const [p, size] = axis === 'x' ? [0, 2] : [1, 3];
@@ -1560,7 +1895,7 @@ function showTab(name) {
 }
 function buildAll() {
   writeYaml();
-  buildScreens(); buildResolution(); buildStart(); buildImages(); buildPanel();
+  buildScreens(); buildResolution(); buildStart(); buildImages(); buildPanel(); updateChoiceNote();
   schedule();
 }
 function translate() {

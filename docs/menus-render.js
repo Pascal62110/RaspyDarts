@@ -101,7 +101,8 @@
   }
   // Screen.menu_styled
   Renderer.prototype.styled = function (name, menu, items) {
-    if (String(menu.style || 'classic') !== 'classic' || menu.area || menu.layout === 'grid') return true;
+    if (String(menu.style || 'classic') !== 'classic' || menu.area || menu.layout === 'grid' || menu.zones ||
+        (menu.show_version && typeof menu.show_version === 'object')) return true;
     if (menu.background !== undefined && menu.background !== null) return true;
     if (Object.keys(this.textLook(name, 'title')[1]).length || Object.keys(this.textLook(name, 'subtitle')[1]).length) return true;
     if (['color', 'position', 'size', 'font', 'background'].some(k => k in (menu.shortcuts || {}))) return true;
@@ -166,9 +167,11 @@
     const subtitle = this.textLook(name, 'subtitle')[0];
     const info = asList(menu.info).map(String);
     const zones = {};
+    const units0 = new L.Units([ctx.width, ctx.height], this.menus.resolution);
+    let version = null;
     if (!this.styled(name, menu, items)) {
       ctx.background();
-      if (menu.show_version) ctx.version();
+      if (menu.show_version) version = ctx.version(menu.show_version, units0);
       if (title) ctx.classicHeader(title, subtitle);
       ctx.info(info);
       const layout = String(menu.layout || 'list');
@@ -187,7 +190,7 @@
       footers.forEach((button, i) => {
         zones[listed.length + i + 1] = ctx.footerButton(listed.length + i + 1 === selected, this.buttonText(button), FOOTERS[button.footer]);
       });
-      return { zones: zones, count: shown.length, styled: false };
+      return { zones: zones, count: shown.length, styled: false, version: version };
     }
     // Menu dessine par les styles (run_styled_menu)
     const units = new L.Units([ctx.width, ctx.height], this.menus.resolution);
@@ -195,8 +198,10 @@
     const pict = ctx.colors['main-sub-menu-shortcuts'];
     const shortcuts = L.merge({ show: pict !== null && pict !== undefined, format: '{key}',
                                 position: menu.layout === 'tiles' ? 'top_left' : 'left' }, menu.shortcuts || {});
+    // Le fond, puis la version (aussi sur un fond de menu)
     if (menu.background !== undefined && menu.background !== null) ctx.background(menu.background);
-    else { ctx.background(); if (menu.show_version) ctx.version(); }
+    else ctx.background();
+    if (menu.show_version) version = ctx.version(menu.show_version, units);
     this.styledTitle(name, title, subtitle, units);
     ctx.info(info);
     const result = L.layout(menu, listed, [ctx.width, ctx.height], this.menus.resolution, Math.max(1, Math.min(selected, listed.length || 1)));
@@ -226,7 +231,7 @@
     footers.forEach((button, i) => {
       zones[listed.length + i + 1] = ctx.footerButton(listed.length + i + 1 === selected, this.buttonText(button), FOOTERS[button.footer]);
     });
-    return { zones: zones, count: shown.length, styled: true, pages: result.pages, page: result.page };
+    return { zones: zones, count: shown.length, styled: true, pages: result.pages, page: result.page, version: version };
   };
   // Screen.styled_title
   Renderer.prototype.styledTitle = function (name, title, subtitle, units) {

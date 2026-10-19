@@ -285,7 +285,10 @@ menus:
         space_before: 1.5            # écart au-dessus, en hauteurs de bouton (dispositions auto)
 ```
 
-Propriétés d'un menu, en plus de l'aspect : `title`, `subtitle`, `show_version` (version
+Propriétés d'un menu, en plus de l'aspect : `title`, `subtitle`, `show_version` (`true` :
+la version à sa place habituelle, en bas à droite ; ou un bloc qui la place et l'habille :
+`{x, y, width, height, color, font}`, le texte remplit sa boîte ; dessinée aussi sur un fond
+de menu) (version
 en bas à droite du fond), `info` (informations écrites sur le fond : `ips`, `rpi_version`,
 `version`), `remember` (`true` : le menu rouvre sur le dernier bouton choisi de sa liste).
 
@@ -338,6 +341,22 @@ menus:
   aspect que `list`.
 - **`tiles`** : comme `grid`, mais boutons carrés ou rectangulaires plus grands, l'icône
   au-dessus du texte (`text.position: bottom` par défaut).
+
+**Plusieurs zones de boutons** : en plus de la sienne, un menu peut avoir d'autres zones,
+chacune avec sa disposition ; un bouton y va par `zone: <nom>` (sans `zone`, ou un nom
+inconnu : la première zone) :
+
+```yaml
+    zones:
+      gauche: {layout: list, area: {x: 0.04, y: 0.19, width: 0.25, height: 0.74},
+               button_size: {height: 0.067}}
+    buttons:
+      - {action: gallery, zone: gauche}
+```
+
+**Largeur d'un bouton en parts de colonne** : `span: {columns: 0.5}` (demi-colonne ; aussi
+`0.25`, `0.333`, `0.667`, `0.75`) ; deux demi-boutons tiennent côte à côte sur une ligne,
+même dans une liste.
 
 **Règle de placement** (identique dans le jeu et dans le configurateur, §12) : les boutons
 non placés librement et visibles sont rangés dans l'ordre de la liste, ligne par ligne ; la
@@ -459,8 +478,9 @@ Deux logiques :
 - **Flèches (haut, bas, gauche, droite) : géométrie.** On va au bouton le plus proche dans la
   direction demandée, d'après la position réelle des boutons à l'écran (placement libre
   compris). Candidats : les boutons dont le centre est du bon côté du centre du bouton
-  actuel. Note de chacun : `distance selon l'axe + 2 × écart perpendiculaire` ; le plus bas
-  l'emporte (égalité : le premier dans l'ordre logique). Aucun candidat : on fait le tour,
+  actuel ; ceux qui sont dans la direction à 45° près passent d'abord (à gauche : plus à
+  gauche qu'au-dessus ou au-dessous, une autre zone de boutons comprise). Note de chacun :
+  `distance selon l'axe + 2 × écart perpendiculaire` ; le plus bas l'emporte (égalité : le premier dans l'ordre logique). Aucun candidat : on fait le tour,
   vers le bouton le plus éloigné du côté opposé ayant le plus petit écart perpendiculaire.
 - **`next` / `previous` et l'encodeur : ordre logique.** L'ordre des boutons dans le fichier
   (ou `order:`), en passant d'une ligne à la suivante, et en faisant le tour au bout.
@@ -515,7 +535,8 @@ calculés des deux côtés (ils doivent être identiques au pixel).
    d'un bouton : `button_size.width × colonne`.
 4. Cases : les boutons à case fixe (`cell`) prennent d'abord la leur (une case déjà prise :
    le bouton se range avec les autres) ; puis chaque bouton prend `span.columns ×
-   span.rows` cases (1 × 1 par défaut), à la première place libre en lisant ligne par ligne depuis le haut (un bouton suivant peut
+   span.rows` cases (1 × 1 par défaut ; une colonne compte 12 parts : `0.5` en prend 6, et
+   un bouton commence sur ses pas, une demie sur une demie), à la première place libre en lisant ligne par ligne depuis le haut (un bouton suivant peut
    donc combler un trou laissé avant). `span.columns` plus grand que `columns` : il prend
    toutes les colonnes, et sa largeur reste celle de `span.columns` colonnes, centrée.
    Largeur d'un bouton sur `n` colonnes : `button_size.width × colonne + (n − 1) ×
@@ -527,6 +548,8 @@ calculés des deux côtés (ils doivent être identiques au pixel).
    `align: center`) ; une ligne de boutons d'une case, sans case fixe, remplie depuis la
    gauche et non traversée par un bouton de plusieurs lignes, est centrée (une dernière ligne
    incomplète aussi).
+   Les lignes restées vides sont retirées. Chaque zone (`zones`) se place de même, dans sa
+   propre `area`.
 7. Plus de lignes que n'en tient `area` : `overflow: pages` coupe en pages (les lignes
    reliées par un bouton de plusieurs lignes restent ensemble ; en bas à
    droite : la page affichée et des flèches vers les pages d'avant et d'après ; les

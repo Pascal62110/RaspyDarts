@@ -93,13 +93,59 @@ def round_half_up(value):
     return int(math.floor(value + 0.5))
 
 
+# Parts of a column : a button may take a half, a third, a quarter of a column (span.columns)
+SUBCELLS = 12
+
+
+def zones_of(menu, buttons):
+    """
+    The zones of buttons of a menu (section 7.4) : its own layout (name ''), then those of
+    zones: {name: {layout, area, columns...}}, with the indexes (from 1) of their buttons
+    (zone: name ; none or unknown : the first zone). Buttons placed freely are in none
+    """
+    extra = menu.get('zones') if isinstance(menu.get('zones'), dict) else {}
+    extra = {str(name): zone for name, zone in extra.items() if isinstance(zone, dict)}
+    members = {name: [] for name in [''] + list(extra)}
+    for index, button in enumerate(buttons, 1):
+        if button.get('place'):
+            continue
+        name = str(button.get('zone') or '')
+        members[name if name in members else ''].append(index)
+    return [('', menu, members[''])] + [(name, zone, members[name]) for name, zone in extra.items()]
+
+
 def layout(menu, buttons, screen_size, resolution=None, selected=1):
-    '''
-    Rectangles (x, y, width, height) of the buttons of a menu (section 12) : those of the
-    layout, page of the selected button only, then those placed freely.
-    Returns ({index : rect}, page, pages) ; index from 1 in the order of buttons
-    '''
+    """
+    Rectangles (x, y, width, height) of the buttons of a menu (section 12) : those of each zone
+    of buttons, page of the selected button only, then those placed freely.
+    Returns ({index : rect}, page, pages) ; index from 1 in the order of buttons ; page and
+    pages : those of the zone of the selected button (the first zone otherwise)
+    """
     units = Units(screen_size, resolution)
+    rects, page, pages = {}, 0, 0
+    for name, zone, members in zones_of(menu, buttons):
+        found, zone_page, zone_pages = layout_zone(zone, buttons, members, units, selected)
+        rects.update(found)
+        if name == '' or selected in members:
+            page, pages = zone_page, zone_pages
+
+    for index, button in enumerate(buttons, 1):
+        place = button.get('place')
+        if not isinstance(place, dict):
+            continue
+        width = units.length(place.get('width', '10%'), 'x')
+        height = units.length(place.get('height', '8%'), 'y')
+        anchor = ANCHORS.get(str(place.get('anchor') or 'top_left'), (0, 0))
+        pos_x = units.length(place.get('x', 0), 'x') - anchor[0] * width
+        pos_y = units.length(place.get('y', 0), 'y') - anchor[1] * height
+        rects[index] = (round_half_up(pos_x), round_half_up(pos_y), round_half_up(width), round_half_up(height))
+    return rects, page, pages
+
+
+def layout_zone(menu, buttons, flowing, units, selected=1):
+    """
+    Rectangles of the buttons of one zone (flowing : their indexes) : ({index : rect}, page, pages)
+    """
     kind = str(menu.get('layout') or 'list')
     defaults = LAYOUT_DEFAULTS.get(kind, LAYOUT_DEFAULTS['list'])
     area = merge(defaults['area'], menu.get('area') or {})
@@ -113,48 +159,60 @@ def layout(menu, buttons, screen_size, resolution=None, selected=1):
     column_w = (area_w - (columns - 1) * gap_x) / columns
     button_w = float(size['width']) * column_w
 
-    flowing = [index for index, button in enumerate(buttons, 1) if not button.get('place')]
     if size.get('height') is not None:
         button_h = units.length(size['height'], 'y')
     else:
         # Square tiles : as large as all their rows hold in the area (3 rows at least, then pages)
         needed = max(1, min(3, math.ceil(len(flowing) / columns)))
         button_w = button_h = min(button_w, (area_h - (needed - 1) * gap_y) / needed)
-    # Cells of the grid (section 12) : each button takes span.columns x span.rows cells (1 x 1
-    # by default), in the first free place in reading order ; wider than the columns : as
-    # many cells as there are, the button wider and centred on them
-    # A button with a cell of its own (cell: {row, column}, from 0) takes it first
+    # Cells of the grid (section 12), in parts of a column (SUBCELLS) : each button takes
+    # span.columns x span.rows cells (1 x 1 by default ; 0.5 : half a column), in the first
+    # free place in reading order ; wider than the columns : as many as there are, the button
+    # wider and centred on them. A button with a cell of its own (cell: {row, column}, from
+    # 0) takes it first ; rows left empty are removed
+    total = columns * SUBCELLS
     cells, taken = {}, set()
 
     def size_of(index):
         span = buttons[index - 1].get('span') or {}
-        wide = max(1, int(span.get('columns') or 1)) if isinstance(span, dict) else 1
-        high = max(1, int(span.get('rows') or 1)) if isinstance(span, dict) else 1
-        return wide, high, min(wide, columns)
+        span = span if isinstance(span, dict) else {}
+        wide = max(1, round_half_up(float(span.get('columns') or 1) * SUBCELLS))
+        high = max(1, int(span.get('rows') or 1))
+        return wide, high, min(wide, total)
+
+    def free(row, start, width, high):
+        wanted = {(row + r, start + c) for r in range(high) for c in range(width)}
+        return None if wanted & taken else wanted
 
     for index in flowing:
         cell = buttons[index - 1].get('cell')
         if not isinstance(cell, dict):
             continue
-        wide, high, width_cells = size_of(index)
+        wide, high, width = size_of(index)
         row = max(0, int(cell.get('row') or 0))
-        column = min(max(0, int(cell.get('column') or 0)), columns - width_cells)
-        wanted = {(row + r, column + c) for r in range(high) for c in range(width_cells)}
-        if not wanted & taken:
-            cells[index] = (row, column, width_cells, high, wide)
+        start = min(max(0, round_half_up(float(cell.get('column') or 0) * SUBCELLS)), total - width)
+        wanted = free(row, start, width, high)
+        if wanted:
+            cells[index] = (row, start, width, high, wide)
             taken |= wanted
     for index in flowing:
-        wide, high, width_cells = size_of(index)
+        wide, high, width = size_of(index)
+        # A button starts on its own steps : a whole column at the start of a column, a half
+        # at a half...
+        step = SUBCELLS if width % SUBCELLS == 0 else math.gcd(width, SUBCELLS)
         row = 0
         while index not in cells:
-            for column in range(columns - width_cells + 1):
-                wanted = {(row + r, column + c) for r in range(high) for c in range(width_cells)}
-                if not wanted & taken:
-                    cells[index] = (row, column, width_cells, high, wide)
+            for start in range(0, total - width + 1, step):
+                wanted = free(row, start, width, high)
+                if wanted:
+                    cells[index] = (row, start, width, high, wide)
                     taken |= wanted
                     break
             row += 1
-    count = max([row + high for row, _, _, high, _ in cells.values()] or [0])
+    used = sorted({row + r for row, _, _, high, _ in cells.values() for r in range(high)})
+    compact = {row: position for position, row in enumerate(used)}
+    cells = {index: (compact[row],) + cell[1:] for index, cell in cells.items() for row in [cell[0]]}
+    count = len(used)
     rows = [[index for index in flowing if cells[index][0] == row] for row in range(count)]
     # Rows tied by a button on several rows stay on the same page
     blocks, end_row = [], -1
@@ -167,14 +225,21 @@ def layout(menu, buttons, screen_size, resolution=None, selected=1):
     def space_of(row):
         return sum(float(buttons[index - 1].get('space_before', 0) or 0) for index in rows[row]) * button_h
 
+    def span_width(width):
+        # Width of cells : whole columns with their gaps, or parts of a column
+        if width % SUBCELLS == 0:
+            whole = width // SUBCELLS
+            return whole * column_w + (whole - 1) * gap_x
+        return width * (column_w + gap_x) / SUBCELLS - gap_x
+
     # Rows of each page : as many as the area holds (space_before included)
-    pages, page_rows, used = [], [], 0.0
+    pages, page_rows, used_h = [], [], 0.0
     for block in blocks:
         height = sum(space_of(row) for row in block) + len(block) * button_h + (len(block) - 1) * gap_y
-        if page_rows and used + height + gap_y > area_h + 0.5:
+        if page_rows and used_h + height + gap_y > area_h + 0.5:
             pages.append(page_rows)
-            page_rows, used = [], 0.0
-        used += height + (gap_y if page_rows else 0)
+            page_rows, used_h = [], 0.0
+        used_h += height + (gap_y if page_rows else 0)
         page_rows.extend(block)
     if page_rows:
         pages.append(page_rows)
@@ -195,7 +260,7 @@ def layout(menu, buttons, screen_size, resolution=None, selected=1):
         top = area_y + ((area_h - block_h) / 2 if str(menu.get('align') or 'center') == 'center' else 0)
         if str(menu.get('overflow') or 'pages') == 'scroll' and block_h > area_h:
             # The selected button stays in the area
-            row_of = next(position for position, row in enumerate(rows_of_page) if selected in rows[row])
+            row_of = next((position for position, row in enumerate(rows_of_page) if selected in rows[row]), 0)
             selected_bottom = sum(heights[:row_of + 1]) + (row_of + 1) * button_h
             top = area_y - max(0, selected_bottom - area_h)
         tops, pos_y = {}, top
@@ -204,34 +269,30 @@ def layout(menu, buttons, screen_size, resolution=None, selected=1):
             tops[row] = pos_y
             pos_y += button_h
         for row in rows_of_page:
-            # A row of buttons on one cell each (none in a cell of its own), filled from the
-            # left : centred in the area (a last row not full too)
-            alone = all(cells[index][2] == 1 and cells[index][3] == 1 and not isinstance(buttons[index - 1].get('cell'), dict)
-                        for index in rows[row]) and \
+            # A row of buttons on one row each (none in a cell of its own), filled from the
+            # left : centred in the area (a last row not full too, a button of 2/3...)
+            alone = all(cells[index][3] == 1 and not isinstance(buttons[index - 1].get('cell'), dict) for index in rows[row]) and \
                 not any(cells[other][0] < row < cells[other][0] + cells[other][3] for other in flowing)
-            filled = len(rows[row]) if alone and sorted(cells[index][1] for index in rows[row]) == \
-                list(range(len(rows[row]))) else columns
-            left = area_x + (area_w - (filled * column_w + (filled - 1) * gap_x)) / 2
+            ordered = sorted(rows[row], key=lambda index: cells[index][1])
+            starts = [sum(cells[index][2] for index in ordered[:position]) for position in range(len(ordered))]
+            used = sum(cells[index][2] for index in ordered) if alone and [cells[index][1] for index in ordered] == starts else total
+            if used % SUBCELLS == 0:
+                filled = used // SUBCELLS
+                left = area_x + (area_w - (filled * column_w + (filled - 1) * gap_x)) / 2
+            else:
+                left = area_x + (total - used) * (column_w + gap_x) / SUBCELLS / 2
             for index in rows[row]:
-                _, column, width_cells, high, wide = cells[index]
+                _, start, width_cells, high, wide = cells[index]
                 last = row + high - 1
                 bottom = tops[last] + button_h if last in tops else tops[row] + high * button_h + (high - 1) * gap_y
-                cells_w = width_cells * column_w + (width_cells - 1) * gap_x
-                width = button_w + (wide - 1) * (column_w + gap_x)
-                pos_x = left + column * (column_w + gap_x) + (cells_w - width) / 2
+                column, within = divmod(start, SUBCELLS)
+                cells_x = left + column * (column_w + gap_x) + within * (column_w + gap_x) / SUBCELLS
+                cells_w = span_width(width_cells)
+                width = button_w + (wide // SUBCELLS - 1) * (column_w + gap_x) if wide % SUBCELLS == 0 else \
+                    span_width(wide) - (column_w - button_w) * wide / SUBCELLS
+                pos_x = cells_x + (cells_w - width) / 2
                 rects[index] = (round_half_up(pos_x), round_half_up(tops[row]), round_half_up(width),
                                 round_half_up(bottom - tops[row]))
-
-    for index, button in enumerate(buttons, 1):
-        place = button.get('place')
-        if not isinstance(place, dict):
-            continue
-        width = units.length(place.get('width', '10%'), 'x')
-        height = units.length(place.get('height', '8%'), 'y')
-        anchor = ANCHORS.get(str(place.get('anchor') or 'top_left'), (0, 0))
-        pos_x = units.length(place.get('x', 0), 'x') - anchor[0] * width
-        pos_y = units.length(place.get('y', 0), 'y') - anchor[1] * height
-        rects[index] = (round_half_up(pos_x), round_half_up(pos_y), round_half_up(width), round_half_up(height))
     return rects, page, len(pages)
 
 

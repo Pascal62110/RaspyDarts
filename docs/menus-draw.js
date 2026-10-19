@@ -220,9 +220,17 @@
     const img = image(this.imageUrl(this.themeBackground));
     if (img) ctx.drawImage(img, 0, 0, this.width, this.height);
   };
-  Context.prototype.version = function () {
-    this.blitText('V4.6', this.width - this.res_x_16, Math.trunc(this.height * 3 / 4) - this.res_y_16,
-                  this.res_x_16, this.res_y_16, this.color('menu-text-white'), { font: 'Impact.ttf' });
+  // Screen.menu_version : show_version: true (a droite, comme toujours) ou un bloc de sa place
+  // et de son aspect ({x, y, width, height, color, font}) ; renvoie sa place
+  Context.prototype.version = function (show, units) {
+    const look = show && typeof show === 'object' ? show : {};
+    const w = look.width !== undefined ? Math.trunc(units.length(look.width, 'x')) : this.res_x_16;
+    const h = look.height !== undefined ? Math.trunc(units.length(look.height, 'y')) : this.res_y_16;
+    const x = look.x !== undefined ? Math.trunc(units.length(look.x, 'x')) : this.width - w;
+    const y = look.y !== undefined ? Math.trunc(units.length(look.y, 'y')) : Math.trunc(this.height * 3 / 4) - h;
+    const font = look.font ? String(look.font) : 'Impact.ttf';
+    this.blitText('V4.6', x, y, w, h, this.color(look.color, null) || this.color('menu-text-white'), { font: /\.(ttf|otf)$/i.test(font) ? font : font + '.ttf' });
+    return [x, y, w, h];
   };
   Context.prototype.info = function (items) {
     const c = this.color('menu-text-black');
