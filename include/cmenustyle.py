@@ -120,23 +120,46 @@ def layout(menu, buttons, screen_size, resolution=None, selected=1):
         # Square tiles : as large as all their rows hold in the area (3 rows at least, then pages)
         needed = max(1, min(3, math.ceil(len(flowing) / columns)))
         button_w = button_h = min(button_w, (area_h - (needed - 1) * gap_y) / needed)
-    rows = []
-    for position, index in enumerate(flowing):
-        if position % columns == 0:
-            rows.append([])
-        rows[-1].append(index)
+    # Cells of the grid (section 12) : each button takes span.columns x span.rows cells (1 x 1
+    # by default), in the first free place in reading order ; wider than the columns : as
+    # many cells as there are, the button wider and centred on them
+    cells, taken = {}, set()
+    for index in flowing:
+        span = buttons[index - 1].get('span') or {}
+        wide = max(1, int(span.get('columns') or 1)) if isinstance(span, dict) else 1
+        high = max(1, int(span.get('rows') or 1)) if isinstance(span, dict) else 1
+        width_cells = min(wide, columns)
+        row = 0
+        while index not in cells:
+            for column in range(columns - width_cells + 1):
+                wanted = {(row + r, column + c) for r in range(high) for c in range(width_cells)}
+                if not wanted & taken:
+                    cells[index] = (row, column, width_cells, high, wide)
+                    taken |= wanted
+                    break
+            row += 1
+    count = max([row + high for row, _, _, high, _ in cells.values()] or [0])
+    rows = [[index for index in flowing if cells[index][0] == row] for row in range(count)]
+    # Rows tied by a button on several rows stay on the same page
+    blocks, end_row = [], -1
+    for row in range(count):
+        if row > end_row:
+            blocks.append([])
+        blocks[-1].append(row)
+        end_row = max([end_row] + [cells[index][0] + cells[index][3] - 1 for index in rows[row]])
+
+    def space_of(row):
+        return sum(float(buttons[index - 1].get('space_before', 0) or 0) for index in rows[row]) * button_h
 
     # Rows of each page : as many as the area holds (space_before included)
     pages, page_rows, used = [], [], 0.0
-    for row in rows:
-        space = sum(float(buttons[index - 1].get('space_before', 0) or 0) for index in row) * button_h
-        height = space + button_h + (gap_y if page_rows else 0)
-        if page_rows and used + height > area_h + 0.5:
+    for block in blocks:
+        height = sum(space_of(row) for row in block) + len(block) * button_h + (len(block) - 1) * gap_y
+        if page_rows and used + height + gap_y > area_h + 0.5:
             pages.append(page_rows)
             page_rows, used = [], 0.0
-            height = space + button_h
-        page_rows.append(row)
-        used += height
+        used += height + (gap_y if page_rows else 0)
+        page_rows.extend(block)
     if page_rows:
         pages.append(page_rows)
     if str(menu.get('overflow') or 'pages') == 'scroll':
@@ -144,34 +167,41 @@ def layout(menu, buttons, screen_size, resolution=None, selected=1):
 
     page = 0
     for number, rows_of_page in enumerate(pages):
-        if any(selected in row for row in rows_of_page):
+        if any(selected in rows[row] for row in rows_of_page):
             page = number
 
     rects = {}
     if pages:
         rows_of_page = pages[page]
         # Above each row : its space_before, and a gap after the first row
-        heights = []
-        for position, row in enumerate(rows_of_page):
-            space = sum(float(buttons[index - 1].get('space_before', 0) or 0) for index in row) * button_h
-            heights.append(space + (gap_y if position else 0))
+        heights = [space_of(row) + (gap_y if position else 0) for position, row in enumerate(rows_of_page)]
         block_h = sum(heights) + len(rows_of_page) * button_h
         top = area_y + ((area_h - block_h) / 2 if str(menu.get('align') or 'center') == 'center' else 0)
         if str(menu.get('overflow') or 'pages') == 'scroll' and block_h > area_h:
             # The selected button stays in the area
-            row_of = next(position for position, row in enumerate(rows_of_page) if selected in row)
+            row_of = next(position for position, row in enumerate(rows_of_page) if selected in rows[row])
             selected_bottom = sum(heights[:row_of + 1]) + (row_of + 1) * button_h
             top = area_y - max(0, selected_bottom - area_h)
-        pos_y = top
+        tops, pos_y = {}, top
         for position, row in enumerate(rows_of_page):
             pos_y += heights[position]
-            # Columns of the row centred in the area (a last row not full too)
-            used_w = len(row) * column_w + (len(row) - 1) * gap_x
-            left = area_x + (area_w - used_w) / 2
-            for column, index in enumerate(row):
-                pos_x = left + column * (column_w + gap_x) + (column_w - button_w) / 2
-                rects[index] = (round_half_up(pos_x), round_half_up(pos_y), round_half_up(button_w), round_half_up(button_h))
+            tops[row] = pos_y
             pos_y += button_h
+        for row in rows_of_page:
+            # A row of buttons on one cell each, filled from the left : centred in the area
+            # (a last row not full too)
+            alone = all(cells[index][2] == 1 and cells[index][3] == 1 for index in rows[row]) and                 not any(cells[other][0] < row < cells[other][0] + cells[other][3] for other in flowing)
+            filled = len(rows[row]) if alone and sorted(cells[index][1] for index in rows[row]) ==                 list(range(len(rows[row]))) else columns
+            left = area_x + (area_w - (filled * column_w + (filled - 1) * gap_x)) / 2
+            for index in rows[row]:
+                _, column, width_cells, high, wide = cells[index]
+                last = row + high - 1
+                bottom = tops[last] + button_h if last in tops else tops[row] + high * button_h + (high - 1) * gap_y
+                cells_w = width_cells * column_w + (width_cells - 1) * gap_x
+                width = button_w + (wide - 1) * (column_w + gap_x)
+                pos_x = left + column * (column_w + gap_x) + (cells_w - width) / 2
+                rects[index] = (round_half_up(pos_x), round_half_up(tops[row]), round_half_up(width),
+                                round_half_up(bottom - tops[row]))
 
     for index, button in enumerate(buttons, 1):
         place = button.get('place')
@@ -514,8 +544,8 @@ class Painter:
             # Size : part of the height of the button (by default 0.4 on a side, 0.15 in a corner)
             part = shortcuts.get('size') or (0.4 if position in ('left', 'right') else 0.15)
             # On a side : a box of the height of the button, at most a quarter of its width
-            # (tall buttons, tiles)
-            tall = min(height, width // 4)
+            # and a tenth of the screen (tall buttons, tiles, buttons on several rows)
+            tall = min(height, width // 4, int(units.height / 10))
             side = int((tall if position in ('left', 'right') else height) * min(1.0, max(0.05, float(part))))
             # Its box : the colour of the shortcuts of the theme (null : the key alone)
             fill = shortcuts.get('background', 'menu-shortcut')

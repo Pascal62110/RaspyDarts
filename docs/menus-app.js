@@ -164,7 +164,9 @@ function metrics(menu, listed) {
   const rect = [units.length(area.x, 'x'), units.length(area.y, 'y'), units.length(area.width, 'x'), units.length(area.height, 'y')];
   const gapX = units.length(gap.x, 'x'), gapY = units.length(gap.y, 'y');
   const flowing = listed.filter(b => !b.place);
-  return { kind: kind, columns: columns, rows: Math.max(1, Math.ceil(flowing.length / columns)), area: rect, gapX: gapX, gapY: gapY,
+  // Rangees de la grille (boutons sur plusieurs cases compris)
+  const grid = L.layout(menu, listed, [W, H], reference(), 1);
+  return { kind: kind, columns: columns, rows: Math.max(1, grid.rows), cells: grid.cells, buttonH: grid.buttonH, area: rect, gapX: gapX, gapY: gapY,
            columnW: (rect[2] - (columns - 1) * gapX) / columns, flowing: flowing, size: L.merge(defaults.button_size, menu.button_size || {}) };
 }
 function ensureStyled(name) {
@@ -343,7 +345,15 @@ function drawOverlay() {
     frame(geo.area, '#ffd60a', 2, true);
     knobs(geo.area);
   }
-  if (ghost) frame(ghost, '#ffd60a', 2, true);
+  if (ghost) {
+    frame(ghost, '#ffd60a', 2, true);
+    if (ghost.label) {
+      g.font = `bold ${Math.round(16 * s)}px system-ui, sans-serif`;
+      const w = g.measureText(ghost.label).width + 12 * s;
+      g.fillStyle = 'rgba(0,0,0,0.75)'; g.fillRect(ghost[0], ghost[1] - 26 * s, w, 24 * s);
+      g.fillStyle = '#ffd60a'; g.fillText(ghost.label, ghost[0] + 6 * s, ghost[1] - 8 * s);
+    }
+  }
   if (dropZone) frame(dropZone, '#30d158', 3, true);
 }
 function canvasPoint(event) {
@@ -386,6 +396,14 @@ function setPlace(id, rect) {
     });
   });
 }
+function cellsFor(rect) {
+  // Nombre entier de colonnes et de rangees de la disposition le plus proche de ce rectangle
+  const info = menuInfo(screen);
+  const m = metrics(info.menu, info.listed);
+  const stepX = m.columnW + m.gapX, stepY = m.buttonH + m.gapY;
+  const baseW = (info.styled ? m.columnW * parseFloat(m.size.width || 1) : m.columnW);
+  return [Math.max(1, Math.round((rect[2] - baseW) / stepX) + 1), Math.max(1, Math.round((rect[3] - m.buttonH) / stepY) + 1)];
+}
 function setArea(rect) {
   setPath(userMenu(screen, true), ['area'], { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') });
 }
@@ -413,7 +431,14 @@ $('overlay').addEventListener('pointerdown', (event) => {
   const id = currentId();
   if (id && geo.rects[id] && resizable(id)) {
     const handle = handleAt(geo.rects[id], point);
-    if (handle) { op = { type: 'resize', id: id, handle: handle, start: point, rect: geo.rects[id].slice(), free: isFree(id) }; capture(event); return; }
+    if (handle) {
+      // Un ecran au dessin classique passe a la disposition des le debut (les cases montrees
+      // sont alors justes) ; Annuler le remet comme avant
+      const before = JSON.stringify(user);
+      if (!isFree(id)) ensureStyled(screen);
+      op = { type: 'resize', id: id, handle: handle, start: point, rect: geo.rects[id].slice(), free: isFree(id), before: before };
+      capture(event); return;
+    }
   }
   if (selection.kind === 'screen' && geo.area) {
     const handle = handleAt(geo.area, point);
@@ -474,7 +499,13 @@ $('overlay').addEventListener('pointermove', (event) => {
     schedule();
   } else if (op.type === 'resize') {
     op.current = resized(op.rect, op.handle, dx, dy);
-    if (op.free) { setPlace(op.id, op.current); schedule(); } else { ghost = op.current; drawOverlay(); }
+    if (op.free) { setPlace(op.id, op.current); schedule(); } else {
+      // Montre combien de cases de la disposition il prendrait seul (reponse « Non »)
+      const [c, r] = cellsFor(op.current);
+      ghost = op.current.slice();
+      ghost.label = t('span-label', { c: c, r: r });
+      drawOverlay();
+    }
   } else if (op.type === 'area') {
     op.moved = true;
     const rect = op.handle === 'move' ? [Math.round(clamp(op.rect[0] + dx, 0, W - op.rect[2])), Math.round(clamp(op.rect[1] + dy, 0, H - op.rect[3])), op.rect[2], op.rect[3]]
@@ -500,6 +531,7 @@ $('overlay').addEventListener('pointerup', async () => {
     changed(true);
   }
   else if (done.type === 'area' && done.moved) changed(true);
+  else if (done.type === 'resize' && !done.current && done.before) { user = JSON.parse(done.before); schedule(); }
   else if (done.type === 'resize' && done.current) {
     if (done.free) { changed(true); return; }
     const answer = await ask(t('ask-resize'), t('ask-resize-sub'), [['all', t('yes')], ['one', t('no')], ['cancel', t('cancel')]]);
@@ -527,10 +559,15 @@ $('overlay').addEventListener('pointerup', async () => {
       } else setPath(own, ['button_size', 'width'], Math.round(rect[2] / m.columnW * 1000) / 1000);
       changed(true);
     } else if (answer === 'one') {
+      // Lui seul : des cases entieres de la disposition, les autres se rangent autour
       ensureStyled(screen);
-      setPlace(done.id, done.current);
+      const [c, r] = cellsFor(done.current);
+      editButton(done.id, b => { if (c === 1 && r === 1) delete b.span; else b.span = Object.assign({}, c > 1 ? { columns: c } : {}, r > 1 ? { rows: r } : {}); });
       changed(true);
-    } else drawOverlay();
+    } else {
+      user = JSON.parse(done.before);
+      schedule();
+    }
   }
 });
 $('overlay').addEventListener('pointerleave', () => { if (hover) { hover = null; drawOverlay(); } });
@@ -1026,6 +1063,17 @@ function buildButtonPanel(panel) {
         onclick: () => { editButton(id, b => delete b.place); changed(true); } })]));
     } else {
       fs.appendChild(el('p', { class: 'hint', text: t('pos-grid-hint') }));
+      fs.appendChild(el('label', { text: t('f-span') }));
+      const grid = el('div', { class: 'grid2' });
+      const span = () => (L.isDict(button.span) ? button.span : {});
+      for (const key of ['columns', 'rows']) {
+        cell(grid, t('span-' + key), numberInput(() => span()[key] || 1, v => editButton(id, b => {
+          const next = Object.assign({}, L.isDict(b.span) ? b.span : {});
+          if (!v || v <= 1) delete next[key]; else next[key] = Math.round(v);
+          if (Object.keys(next).length) b.span = next; else delete b.span;
+        }), 1, 1, 8));
+      }
+      fs.appendChild(grid);
     }
     fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('span', { text: t('order') }),
       el('button', { class: 'tiny', text: '▲', onclick: () => moveButton(id, -1) }),
@@ -1165,11 +1213,11 @@ function reintegrate(id, point) {
   const info = menuInfo(screen);
   const result = L.layout(info.menu, info.listed, previewSize(), reference(), 1);
   let before = null;
-  info.listed.forEach((b, i) => {
-    const r = result.rects[i + 1];
-    if (before || b.place || R.buttonId(b) === id || !r) return;
-    if (point[1] < r[1] || (point[1] <= r[1] + r[3] && point[0] < r[0] + r[2] / 2)) before = R.buttonId(b);
-  });
+  const placed = info.listed.map((b, i) => [b, result.rects[i + 1]]).filter(([b, r]) => r && !b.place && R.buttonId(b) !== id)
+    .sort((x, y) => (x[1][1] - y[1][1]) || (x[1][0] - y[1][0]));
+  for (const [b, r] of placed) {
+    if (point[1] < r[1] || (point[1] <= r[1] + r[3] && point[0] < r[0] + r[2] / 2)) { before = R.buttonId(b); break; }
+  }
   const buttons = ownButtons(screen);
   const index = buttons.findIndex(b => R.buttonId(b) === id);
   if (index < 0) return;

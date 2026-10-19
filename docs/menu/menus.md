@@ -305,6 +305,7 @@ Propriétés d'un bouton :
 | `dmd` | texte envoyé sur l'afficheur DMD quand le bouton est sélectionné |
 | `order` | rang dans l'ordre logique (§9), par défaut sa place dans la liste |
 | `space_before` | écart au-dessus (dispositions `list` et `grid`) |
+| `span` | cases prises dans la disposition : `{columns: 2, rows: 1}` ; les autres boutons se rangent dans les cases libres (§12) |
 | `style`, et toute propriété de style | aspect de ce bouton seul ; l'aspect de son texte s'écrit `text: {text: game-type-local, size: 0.05}` (son texte dans `text`, comme les titres) et celui de son icône `icon: {image: images/icons/target.png, size: 0.6}` |
 
 Changer un bouton sans réécrire la liste (fichier de l'utilisateur ou du thème) :
@@ -509,10 +510,21 @@ calculés des deux côtés (ils doivent être identiques au pixel).
    logique.
 3. Largeur d'une colonne : `(area.width − (columns − 1) × gap.x) / columns` ; largeur
    d'un bouton : `button_size.width × colonne`.
-4. Ligne `i` : `y = area.y + Σ(hauteurs et écarts des lignes précédentes) + space_before`.
-5. Bloc entier centré dans `area` (horizontalement toujours, verticalement si
-   `align: center`).
-6. Plus de lignes que n'en tient `area` : `overflow: pages` coupe en pages (en bas à
+4. Cases : chaque bouton prend `span.columns × span.rows` cases (1 × 1 par défaut), à la
+   première place libre en lisant ligne par ligne depuis le haut (un bouton suivant peut
+   donc combler un trou laissé avant). `span.columns` plus grand que `columns` : il prend
+   toutes les colonnes, et sa largeur reste celle de `span.columns` colonnes, centrée.
+   Largeur d'un bouton sur `n` colonnes : `button_size.width × colonne + (n − 1) ×
+   (colonne + gap.x)` ; hauteur sur `m` lignes : du haut de sa première ligne au bas de
+   sa dernière.
+5. Ligne `i` : `y = area.y + Σ(hauteurs et écarts des lignes précédentes) + space_before`
+   (les `space_before` des boutons qui commencent sur cette ligne).
+6. Bloc entier centré dans `area` (horizontalement toujours, verticalement si
+   `align: center`) ; une ligne de boutons d'une case, remplie depuis la gauche et non
+   traversée par un bouton de plusieurs lignes, est centrée (une dernière ligne
+   incomplète aussi).
+7. Plus de lignes que n'en tient `area` : `overflow: pages` coupe en pages (les lignes
+   reliées par un bouton de plusieurs lignes restent ensemble ; en bas à
    droite : la page affichée et des flèches vers les pages d'avant et d'après ; les
    flèches du clavier passent d'une page à l'autre), `scroll` fait défiler pour garder le
    bouton sélectionné visible.

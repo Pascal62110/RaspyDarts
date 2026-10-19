@@ -531,7 +531,7 @@
       const position = String(shortcuts.position || 'left');
       const part = shortcuts.size || (['left', 'right'].includes(position) ? 0.4 : 0.15);
       // Sur un cote : une case de la hauteur du bouton, au plus le quart de sa largeur (boutons hauts, tuiles)
-      const tall = Math.min(h, Math.floor(w / 4));
+      const tall = Math.min(h, Math.floor(w / 4), Math.trunc(units.height / 10));
       const side = Math.trunc((['left', 'right'].includes(position) ? tall : h) * Math.min(1, Math.max(0.05, parseFloat(part))));
       // Sa case : la couleur des raccourcis du theme (null : la touche seule)
       const fill = shortcuts.background === undefined ? 'menu-shortcut' : shortcuts.background;

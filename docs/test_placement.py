@@ -38,6 +38,13 @@ def cases():
                                                                              'anchor': 'top_right'}},
                                                        {'id': 'e', 'place': {'x': 512, 'y': 300, 'width': 100, 'height': 50,
                                                                              'anchor': 'center'}}]},
+        # Boutons sur plusieurs cases (span) : les autres se rangent autour
+        {'layout': 'grid', 'columns': 3, 'buttons': [{'id': 'a'}, {'id': 'b', 'span': {'columns': 2}}, {'id': 'c'},
+                                                       {'id': 'd', 'span': {'columns': 2, 'rows': 2}}, {'id': 'e'},
+                                                       {'id': 'f'}, {'id': 'g', 'space_before': 0.5}, {'id': 'h'}]},
+        {'layout': 'list', 'buttons': nine[:4] + [{'id': 'w', 'span': {'columns': 2, 'rows': 2}}] + nine[4:7]},
+        {'layout': 'tiles', 'columns': 3, 'buttons': [{'id': 't1', 'span': {'columns': 3}}] + nine[:5]},
+        {'layout': 'grid', 'columns': 2, 'buttons': [{'id': 'r', 'span': {'rows': 3}}] + nine * 2},
     ]
     result = []
     for menu in menus:
@@ -60,7 +67,7 @@ def main():
         expected.append({'rects': {str(index): list(rect) for index, rect in rects.items()}, 'page': page, 'pages': pages})
     script = (
         "const L = require(process.argv[1]); const tests = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
-        "console.log(JSON.stringify(tests.map(t => L.layout(t.menu, t.buttons, t.screen, t.resolution, t.selected))));"
+        "console.log(JSON.stringify(tests.map(t => { const r = L.layout(t.menu, t.buttons, t.screen, t.resolution, t.selected); return { rects: r.rects, page: r.page, pages: r.pages }; })));"
     )
     run = subprocess.run(['node', '-e', script, os.path.join(ROOT, 'docs', 'menus-layout.js')],
                          input=json.dumps(tests), capture_output=True, text=True, check=True)

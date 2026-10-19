@@ -97,25 +97,49 @@
       const needed = Math.max(1, Math.min(3, Math.ceil(flowing.length / columns)));
       buttonW = buttonH = Math.min(buttonW, (areaH - (needed - 1) * gapY) / needed);
     }
+    // Cases de la grille (section 12) : chaque bouton prend span.columns x span.rows cases (1 x 1
+    // par defaut), a la premiere place libre dans l'ordre de lecture ; plus large que les
+    // colonnes : autant de cases qu'il y en a, le bouton plus large et centre dessus
+    const cells = {}, taken = new Set();
+    for (const index of flowing) {
+      const span = isDict(buttons[index - 1].span) ? buttons[index - 1].span : {};
+      const wide = Math.max(1, parseInt(span.columns || 1, 10)), high = Math.max(1, parseInt(span.rows || 1, 10));
+      const widthCells = Math.min(wide, columns);
+      for (let row = 0; !(index in cells); row++) {
+        for (let column = 0; column <= columns - widthCells; column++) {
+          const wanted = [];
+          for (let r = 0; r < high; r++) for (let c = 0; c < widthCells; c++) wanted.push(`${row + r},${column + c}`);
+          if (!wanted.some(k => taken.has(k))) {
+            cells[index] = [row, column, widthCells, high, wide];
+            wanted.forEach(k => taken.add(k));
+            break;
+          }
+        }
+      }
+    }
+    const count = Math.max(0, ...Object.values(cells).map(c => c[0] + c[3]));
     const rows = [];
-    flowing.forEach((index, position) => {
-      if (position % columns === 0) rows.push([]);
-      rows[rows.length - 1].push(index);
-    });
+    for (let row = 0; row < count; row++) rows.push(flowing.filter(index => cells[index][0] === row));
+    // Les rangees liees par un bouton sur plusieurs rangees restent sur la meme page
+    const blocks = [];
+    let endRow = -1;
+    for (let row = 0; row < count; row++) {
+      if (row > endRow) blocks.push([]);
+      blocks[blocks.length - 1].push(row);
+      endRow = Math.max(endRow, ...rows[row].map(index => cells[index][0] + cells[index][3] - 1));
+    }
+    const spaceOf = (row) => rows[row].reduce((sum, index) => sum + num(buttons[index - 1].space_before, 0), 0) * buttonH;
 
-    const spaceOf = (row) => row.reduce((sum, index) => sum + num(buttons[index - 1].space_before, 0), 0) * buttonH;
     let pages = [], pageRows = [], used = 0;
-    for (const row of rows) {
-      const space = spaceOf(row);
-      let height = space + buttonH + (pageRows.length ? gapY : 0);
-      if (pageRows.length && used + height > areaH + 0.5) {
+    for (const block of blocks) {
+      const height = block.reduce((sum, row) => sum + spaceOf(row), 0) + block.length * buttonH + (block.length - 1) * gapY;
+      if (pageRows.length && used + height + gapY > areaH + 0.5) {
         pages.push(pageRows);
         pageRows = [];
         used = 0;
-        height = space + buttonH;
       }
-      pageRows.push(row);
-      used += height;
+      used += height + (pageRows.length ? gapY : 0);
+      pageRows.push(...block);
     }
     if (pageRows.length) pages.push(pageRows);
     const scroll = String(menu.overflow || 'pages') === 'scroll';
@@ -123,7 +147,7 @@
 
     let page = 0;
     pages.forEach((rowsOfPage, number) => {
-      if (rowsOfPage.some(row => row.includes(selected))) page = number;
+      if (rowsOfPage.some(row => rows[row].includes(selected))) page = number;
     });
 
     const rects = {};
@@ -133,21 +157,35 @@
       const blockH = heights.reduce((a, b) => a + b, 0) + rowsOfPage.length * buttonH;
       let top = areaY + (String(menu.align || 'center') === 'center' ? (areaH - blockH) / 2 : 0);
       if (scroll && blockH > areaH) {
-        const rowOf = rowsOfPage.findIndex(row => row.includes(selected));
+        const rowOf = rowsOfPage.findIndex(row => rows[row].includes(selected));
         const selectedBottom = heights.slice(0, rowOf + 1).reduce((a, b) => a + b, 0) + (rowOf + 1) * buttonH;
         top = areaY - Math.max(0, selectedBottom - areaH);
       }
+      const tops = {};
       let posY = top;
       rowsOfPage.forEach((row, position) => {
         posY += heights[position];
-        const usedW = row.length * columnW + (row.length - 1) * gapX;
-        const left = areaX + (areaW - usedW) / 2;
-        row.forEach((index, column) => {
-          const posX = left + column * (columnW + gapX) + (columnW - buttonW) / 2;
-          rects[index] = [roundHalfUp(posX), roundHalfUp(posY), roundHalfUp(buttonW), roundHalfUp(buttonH)];
-        });
+        tops[row] = posY;
         posY += buttonH;
       });
+      for (const row of rowsOfPage) {
+        // Une rangee de boutons d'une case chacun, remplie depuis la gauche : centree dans la
+        // zone (une derniere rangee incomplete aussi)
+        const alone = rows[row].every(index => cells[index][2] === 1 && cells[index][3] === 1) &&
+          !flowing.some(other => cells[other][0] < row && row < cells[other][0] + cells[other][3]);
+        const sortedColumns = rows[row].map(index => cells[index][1]).sort((a, b) => a - b);
+        const filled = alone && sortedColumns.every((c, i) => c === i) ? rows[row].length : columns;
+        const left = areaX + (areaW - (filled * columnW + (filled - 1) * gapX)) / 2;
+        for (const index of rows[row]) {
+          const [, column, widthCells, high, wide] = cells[index];
+          const last = row + high - 1;
+          const bottom = last in tops ? tops[last] + buttonH : tops[row] + high * buttonH + (high - 1) * gapY;
+          const cellsW = widthCells * columnW + (widthCells - 1) * gapX;
+          const width = buttonW + (wide - 1) * (columnW + gapX);
+          const posX = left + column * (columnW + gapX) + (cellsW - width) / 2;
+          rects[index] = [roundHalfUp(posX), roundHalfUp(tops[row]), roundHalfUp(width), roundHalfUp(bottom - tops[row])];
+        }
+      }
     }
 
     buttons.forEach((button, i) => {
@@ -160,7 +198,7 @@
       const posY = units.length(place.y !== undefined ? place.y : 0, 'y') - anchor[1] * height;
       rects[i + 1] = [roundHalfUp(posX), roundHalfUp(posY), roundHalfUp(width), roundHalfUp(height)];
     });
-    return { rects: rects, page: page, pages: pages.length };
+    return { rects: rects, page: page, pages: pages.length, rows: count, cells: cells, columnW: columnW, buttonH: buttonH };
   }
 
   const api = { merge: merge, roundHalfUp: roundHalfUp, roundHalfEven: roundHalfEven, Units: Units, layout: layout, ANCHORS: ANCHORS,
