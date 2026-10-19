@@ -9,6 +9,16 @@
 > sont celles du jeu, vérifiées par `python docs/test_placement.py` (identiques au pixel en
 > 1024×600 et en 1920×1080). Ses données et images viennent de `python docs/generer_menus.py`,
 > à relancer quand `menus/defaults.yaml`, un thème ou un logo change.
+>
+> Dans l'aperçu, on clique un bouton pour le choisir, on le glisse (il passe en placement
+> libre, §7.5) et on tire ses poignées pour le redimensionner (un bouton de la disposition :
+> « tous les boutons » change `button_size`, sinon lui seul devient libre). Le panneau de
+> gauche montre ce qui est choisi : l'écran (disposition, colonnes, lignes, zone des boutons
+> à poignées, titres, fond, raccourcis) ou le bouton (texte, action, position, aspect écrit
+> sur ce bouton seul ou dans le style de l'écran). Un écran reste un seul écran : si ses
+> boutons dépassent leur zone, le configurateur réduit `button_size.height`. Changer la
+> disposition d'un menu au dessin classique la fait partir de la place qu'avaient ses
+> boutons.
 
 ## 1. Ce que le fichier décrit, et ce qu'il ne décrit pas
 
@@ -150,7 +160,7 @@ defaults:
   title:    {font: Kamikzon.ttf, size: 0.06, color: menu-header, bold: true,
              background: '#00000080'}      # bande derrière le titre (§7.3 bis)
   subtitle: {size: 0.035, color: menu-text}
-  shortcuts: {show: true, format: '{key}', color: menu-shortcut, position: left}
+  shortcuts: {show: true, format: '{key}', background: menu-shortcut, color: menu-text-black, position: left}
 ```
 
 **Titre et sous-titre** : dans un menu, `title` et `subtitle` s'écrivent soit comme un
@@ -162,11 +172,14 @@ par défaut le titre est en haut et le sous-titre juste dessous). Sans aspect do
 bandeau de titre habituel du thème est gardé.
 
 **Raccourcis** : `shortcuts.show: false` n'affiche plus les F1, F2… (ils restent actifs).
-`format` permet `'> '` ou `'[{key}]'`. Dans les menus dessinés par un style (§7.2) :
-`color`, `font`, `bold`, `position` (`left` ou `right` : sur le côté, le texte du bouton à
-côté ; `top_left`, `top_right`, `bottom_left`, `bottom_right` : dans un coin ; par défaut
-`left`, et `top_left` pour les tuiles) et `size` (part de la hauteur du bouton : 0.4 sur un
-côté, 0.15 dans un coin par défaut).
+`format` permet `'> '` ou `'[{key}]'`. Dans les menus dessinés par un style (§7.2), la
+touche est dans sa propre case, comme sur les boutons classiques : `background` (couleur de
+la case, `menu-shortcut` par défaut ; `null` : la touche seule, sans case), `color` (couleur
+de la touche : `menu-text-black` dans une case, `menu-shortcut` sans case), `font`, `bold`,
+`position` (`left` ou `right` : sur le côté, le texte du bouton à côté ; `top_left`,
+`top_right`, `bottom_left`, `bottom_right` : dans un coin ; par défaut `left`, et `top_left`
+pour les tuiles) et `size` (part de la hauteur du bouton : 0.4 sur un côté, 0.15 dans un
+coin par défaut).
 
 ### 7.2 Styles et états
 
@@ -275,12 +288,12 @@ Propriétés d'un bouton :
 | `confirm` | texte d'une confirmation Oui/Non avant l'action |
 | `place` | placement libre (§7.5) ; sinon placé par la disposition du menu |
 | `footer` | bouton du bas de l'écran : `left`, `center` ou `right` (comme Retour, Enregistrer) |
-| `logo` | image du dossier `images/logos_menu` du thème (disposition `tiles` du style `classic`) ; un dossier de ce nom contenant plusieurs images : l'une d'elles au hasard |
+| `logo` | image du dossier `images/logos_menu` du thème (disposition `tiles` du style `classic`) ; un dossier de ce nom contenant plusieurs images : l'une d'elles au hasard. Dans un menu dessiné par un style, il sert d'icône au bouton qui n'en a pas (et un bouton à logo sans `text` ne montre que son logo) |
 | `requires` | condition d'affichage : `favorite_games` (seulement s'il existe des jeux favoris) |
 | `dmd` | texte envoyé sur l'afficheur DMD quand le bouton est sélectionné |
 | `order` | rang dans l'ordre logique (§9), par défaut sa place dans la liste |
 | `space_before` | écart au-dessus (dispositions `list` et `grid`) |
-| `style`, et toute propriété de style | aspect de ce bouton seul |
+| `style`, et toute propriété de style | aspect de ce bouton seul ; l'aspect de son texte s'écrit `text: {text: game-type-local, size: 0.05}` (son texte dans `text`, comme les titres) et celui de son icône `icon: {image: images/icons/target.png, size: 0.6}` |
 
 Changer un bouton sans réécrire la liste (fichier de l'utilisateur ou du thème) :
 

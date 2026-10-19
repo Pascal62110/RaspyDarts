@@ -519,12 +519,16 @@
     if (shortcut) {
       const position = String(shortcuts.position || 'left');
       const part = shortcuts.size || (['left', 'right'].includes(position) ? 0.4 : 0.15);
-      const side = Math.trunc(h * Math.min(1, Math.max(0.05, parseFloat(part))));
+      // Sur un cote : une case de la hauteur du bouton, au plus le quart de sa largeur (boutons hauts, tuiles)
+      const tall = Math.min(h, Math.floor(w / 4));
+      const side = Math.trunc((['left', 'right'].includes(position) ? tall : h) * Math.min(1, Math.max(0.05, parseFloat(part))));
+      // Sa case : la couleur des raccourcis du theme (null : la touche seule)
+      const fill = shortcuts.background === undefined ? 'menu-shortcut' : shortcuts.background;
       const label = { size: side / units.height, font: shortcuts.font, bold: shortcuts.bold,
-                      color: shortcuts.color || 'menu-shortcut', position: 'center' };
+                      color: shortcuts.color || (fill ? 'menu-text-black' : 'menu-shortcut'), position: 'center' };
       let box;
       if (position === 'left' || position === 'right') {
-        box = [0, 0, Math.trunc(h * 1.1), h];
+        box = [0, Math.floor((h - tall) / 2), Math.trunc(tall * 1.1), tall];
         if (position === 'right') { box[0] = w - box[2]; textRect = [rect[0], rect[1], box[0], h]; }
         else textRect = [rect[0] + box[2], rect[1], w - box[2], h];
       } else {
@@ -532,16 +536,27 @@
         box = [0, 0, Math.trunc(side * 2.2), Math.trunc(side * 1.3)];
         box[0] = Math.trunc((w - box[2]) * anchor[0]); box[1] = Math.trunc((h - box[3]) * anchor[1]);
       }
+      if (fill) {
+        const inset = Math.max(1, Math.floor(box[3] / 10));
+        const cell = [rect[0] + box[0] + inset, rect[1] + box[1] + inset, box[2] - 2 * inset, box[3] - 2 * inset];
+        this.paintBackground({ color: fill }, cell, Math.floor(radius * cell[3] / Math.max(1, h)),
+                             ['none', 'pill'].includes(shape) ? 'rounded' : shape);
+      }
       this.styledText(shortcut, [rect[0] + box[0], rect[1] + box[1], box[2], box[3]], label, new L.Units([units.width, units.height]));
     }
     const img = icon ? image(this.imageUrl(icon)) : null;
     if (icon) {
       const settings = values.icon || {};
-      const side = Math.trunc(Math.min(w, h) * parseFloat(settings.size || 0.7));
+      let side = Math.trunc(Math.min(w, h) * parseFloat(settings.size || 0.7));
       const position = String(settings.position || 'left');
       let bx, by;
       const tx = textRect[0] - rect[0];
-      if (position === 'top') { bx = Math.trunc(w / 2) - Math.trunc(side / 2); by = Math.trunc(h * 0.06); textRect = [rect[0], rect[1] + by + side, w, h - by - side]; }
+      if (!text) {
+        // Une icone seule (un logo) : au milieu de la place laissee par le raccourci
+        side = Math.trunc(Math.min(textRect[2], textRect[3]) * parseFloat(settings.size || 0.7));
+        bx = tx + Math.floor(textRect[2] / 2) - Math.floor(side / 2);
+        by = textRect[1] - rect[1] + Math.floor(textRect[3] / 2) - Math.floor(side / 2);
+      } else if (position === 'top') { bx = Math.trunc(w / 2) - Math.trunc(side / 2); by = Math.trunc(h * 0.06); textRect = [rect[0], rect[1] + by + side, w, h - by - side]; }
       else if (position === 'center') { bx = Math.trunc(w / 2) - Math.trunc(side / 2); by = Math.trunc(h / 2) - Math.trunc(side / 2); }
       else if (position === 'right') { bx = w - Math.trunc(h * 0.1) - side; by = Math.trunc(h / 2) - Math.trunc(side / 2); textRect = [rect[0], rect[1], bx, h]; }
       else { bx = tx + Math.trunc(h * 0.1); by = Math.trunc(h / 2) - Math.trunc(side / 2); textRect = [rect[0] + bx + side, rect[1], textRect[0] + textRect[2] - (rect[0] + bx + side), h]; }

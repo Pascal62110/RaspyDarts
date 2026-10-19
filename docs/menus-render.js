@@ -69,7 +69,8 @@
   };
   Renderer.prototype.buttonText = function (button) {
     let text = button.text !== undefined ? button.text : buttonId(button);
-    if (L.isDict(text) && !Object.keys(text).every(k => LANGUAGES.includes(k))) return buttonId(button);
+    // Aspect du texte (taille, police...) : son texte dans 'text' (comme les titres), sinon le nom du bouton
+    if (L.isDict(text) && !Object.keys(text).every(k => LANGUAGES.includes(k))) text = text.text !== undefined ? text.text : buttonId(button);
     if (L.isDict(text)) text = text[this.language] || text.en || Object.values(text)[0] || '';
     return String(text);
   };
@@ -88,16 +89,22 @@
     const inline = {};
     for (const key of STYLE_KEYS) if (key in button) inline[key] = button[key];
     if ('color' in button) inline.background = L.merge(inline.background || {}, { color: button.color });
-    if (L.isDict(button.text) && !Object.keys(button.text).every(k => LANGUAGES.includes(k))) inline.text = button.text;
-    if (L.isDict(button.icon)) inline.icon = button.icon;
+    const without = (block, key) => { const copy = Object.assign({}, block); delete copy[key]; return copy; };
+    if (L.isDict(button.text) && !Object.keys(button.text).every(k => LANGUAGES.includes(k))) inline.text = without(button.text, 'text');
+    if (L.isDict(button.icon)) inline.icon = without(button.icon, 'image');
     return L.merge(style, inline);
   };
+  // Screen.button_icon : l'image de l'icone (chemin, ou icon: {image: ...}), sinon le logo du jeu
+  function buttonIcon(button) {
+    const icon = L.isDict(button.icon) ? button.icon.image : button.icon;
+    return typeof icon === 'string' ? icon : (button.game_logo || null);
+  }
   // Screen.menu_styled
   Renderer.prototype.styled = function (name, menu, items) {
     if (String(menu.style || 'classic') !== 'classic' || menu.area || menu.layout === 'grid') return true;
     if (menu.background !== undefined && menu.background !== null) return true;
     if (Object.keys(this.textLook(name, 'title')[1]).length || Object.keys(this.textLook(name, 'subtitle')[1]).length) return true;
-    if (['color', 'position', 'size', 'font'].some(k => k in (menu.shortcuts || {}))) return true;
+    if (['color', 'position', 'size', 'font', 'background'].some(k => k in (menu.shortcuts || {}))) return true;
     for (const button of items) {
       if (FOOTERS[button.footer]) continue;
       if (button.place || String(button.style || 'classic') !== 'classic' || STYLE_KEYS.concat(['color']).some(k => k in button) ||
@@ -153,7 +160,8 @@
     const listed = items.filter(b => !FOOTERS[b.footer]);
     const footers = items.filter(b => FOOTERS[b.footer]);
     const shown = listed.concat(footers);
-    if (!(selected >= 1 && selected <= shown.length)) selected = 1;
+    // 0 : aucun bouton dans l'etat choisi (le configurateur montre l'aspect normal)
+    if (!(selected >= 0 && selected <= shown.length)) selected = 1;
     const title = this.textLook(name, 'title')[0];
     const subtitle = this.textLook(name, 'subtitle')[0];
     const info = asList(menu.info).map(String);
@@ -183,20 +191,21 @@
     }
     // Menu dessine par les styles (run_styled_menu)
     const units = new L.Units([ctx.width, ctx.height], this.menus.resolution);
-    const shortcuts = L.merge({ show: true, format: '{key}', color: 'menu-shortcut',
+    const shortcuts = L.merge({ show: true, format: '{key}',
                                 position: menu.layout === 'tiles' ? 'top_left' : 'left' }, menu.shortcuts || {});
     if (menu.background !== undefined && menu.background !== null) ctx.background(menu.background);
     else { ctx.background(); if (menu.show_version) ctx.version(); }
     this.styledTitle(name, title, subtitle, units);
     ctx.info(info);
-    const result = L.layout(menu, listed, [ctx.width, ctx.height], this.menus.resolution, Math.min(selected, listed.length || 1));
+    const result = L.layout(menu, listed, [ctx.width, ctx.height], this.menus.resolution, Math.max(1, Math.min(selected, listed.length || 1)));
     const order = Object.keys(result.rects).map(Number).sort((a, b) => (a === selected) - (b === selected));
     for (const index of order) {
       const button = listed[index - 1];
       const state = index === selected ? 'selected' : (button.unavailable ? 'disabled' : 'normal');
       const style = this.buttonStyle(menu, button);
-      const text = button.text !== null ? ctx.translate(this.buttonText(button)) : '';
-      const icon = typeof button.icon === 'string' ? button.icon : (button.game_logo || null);
+      // Sans icone, son logo (comme les tuiles classiques) ; avec un logo et sans texte, le logo seul
+      const text = button.text === null || (button.text === undefined && button.logo) ? '' : ctx.translate(this.buttonText(button));
+      const icon = buttonIcon(button) || (button.logo ? this.logoPath(button.logo) : null);
       zones[index] = ctx.styledButton(result.rects[index], style, text, icon, state, units, this.buttonLabel(button, menu), shortcuts);
     }
     if (result.pages > 1) {
@@ -399,5 +408,6 @@
     });
   };
 
-  root.MenusRender = { Renderer: Renderer, combine: combine, merge: merge, buttonId: buttonId, FOOTERS: FOOTERS, LANGUAGES: LANGUAGES };
+  root.MenusRender = { Renderer: Renderer, combine: combine, merge: merge, buttonId: buttonId, buttonIcon: buttonIcon, FOOTERS: FOOTERS,
+                       LANGUAGES: LANGUAGES, STYLE_KEYS: STYLE_KEYS };
 })(typeof window !== 'undefined' ? window : globalThis);

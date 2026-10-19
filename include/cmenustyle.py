@@ -460,8 +460,8 @@ class Painter:
         A button in a state (normal, selected, disabled, pressed) drawn on an opaque surface
         (its piece of background) : shadow, background, border, shortcut, icon, text.
         rect : its place in the normal state (the state may enlarge it, see placed).
-        shortcut : text of its key (F1...), drawn as the menu says (shortcuts : colour,
-        position, size, font)
+        shortcut : text of its key (F1...), in its own box as on the classic buttons, drawn as
+        the menu says (shortcuts : background of the box, colour, position, size, font)
         '''
         import pygame
         shortcuts = shortcuts or {}
@@ -495,11 +495,16 @@ class Painter:
             position = str(shortcuts.get('position') or 'left')
             # Size : part of the height of the button (by default 0.4 on a side, 0.15 in a corner)
             part = shortcuts.get('size') or (0.4 if position in ('left', 'right') else 0.15)
-            side = int(height * min(1.0, max(0.05, float(part))))
+            # On a side : a box of the height of the button, at most a quarter of its width
+            # (tall buttons, tiles)
+            tall = min(height, width // 4)
+            side = int((tall if position in ('left', 'right') else height) * min(1.0, max(0.05, float(part))))
+            # Its box : the colour of the shortcuts of the theme (null : the key alone)
+            fill = shortcuts.get('background', 'menu-shortcut')
             label = {'size': side / units.height, 'font': shortcuts.get('font'), 'bold': shortcuts.get('bold'),
-                     'color': shortcuts.get('color') or 'menu-shortcut', 'position': 'center'}
+                     'color': shortcuts.get('color') or ('menu-text-black' if fill else 'menu-shortcut'), 'position': 'center'}
             if position in ('left', 'right'):
-                box = pygame.Rect(0, 0, int(height * 1.1), height)
+                box = pygame.Rect(0, (height - tall) // 2, int(tall * 1.1), tall)
                 if position == 'right':
                     box.right = width
                     text_rect = pygame.Rect(0, 0, box.x, height)
@@ -510,13 +515,23 @@ class Painter:
                 box = pygame.Rect(0, 0, int(side * 2.2), int(side * 1.3))
                 box.x = int((width - box.width) * anchor[0])
                 box.y = int((height - box.height) * anchor[1])
+            if fill:
+                inset = max(1, box.height // 10)
+                cell = box.inflate(-2 * inset, -2 * inset)
+                self.blend(dest, self.background({'color': fill}, cell.size, radius * cell.height // max(1, height),
+                                                 'rounded' if shape in ('none', 'pill') else shape), cell.move(rect.topleft).topleft)
             self.text(dest, shortcut, box.move(rect.topleft), label, Units((units.width, units.height)))
         if icon and self.image(icon) is not None:
             settings = values.get('icon') or {}
             side = int(min(width, height) * float(settings.get('size') or 0.7))
             position = str(settings.get('position') or 'left')
             box = pygame.Rect(0, 0, side, side)
-            if position == 'top':
+            if not text:
+                # An icon alone (a logo) : in the middle of the place left by the shortcut
+                side = int(min(text_rect.width, text_rect.height) * float(settings.get('size') or 0.7))
+                box = pygame.Rect(0, 0, side, side)
+                box.center = text_rect.center
+            elif position == 'top':
                 box.midtop = (width // 2, int(height * 0.06))
                 text_rect = pygame.Rect(0, box.bottom, width, height - box.bottom)
             elif position == 'center':

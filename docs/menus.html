@@ -32,10 +32,19 @@ nav.menu select { padding: 3px 6px; margin-left: 6px; }
 nav.menu a { border: 1px solid transparent; color: var(--text); padding: 4px 12px; border-radius: 999px; text-decoration: none; }
 nav.menu .active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 nav.menu a:hover { border-color: var(--line); }
-main { display: grid; grid-template-columns: minmax(330px, 440px) 1fr; gap: 16px; padding: 16px; max-width: 1700px; margin: 0 auto; }
-@media (max-width: 900px) { main { grid-template-columns: 1fr; } #preview-pane { position: static !important; } }
-#editor { min-width: 0; }
-#preview-pane { position: sticky; top: 10px; align-self: start; min-width: 0; }
+main { display: grid; grid-template-columns: minmax(320px, 400px) 1fr; gap: 16px; padding: 16px; max-width: 1800px; margin: 0 auto; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } #stage { position: static !important; order: -1; } #side { max-height: none !important; } }
+#side { min-width: 0; position: sticky; top: 10px; align-self: start; max-height: calc(100vh - 20px); overflow-y: auto; padding-right: 4px; }
+#stage { position: sticky; top: 10px; align-self: start; min-width: 0; }
+.tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.tabs button { flex: 1; border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 8px; padding: 5px 8px; }
+.tabs button.active { border-color: var(--accent); color: var(--text); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin: 6px 0; }
+.seg button { flex: 1; border: 0; background: var(--bg); color: var(--muted); padding: 5px 6px; font-size: .88rem; }
+.seg button.active { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+a.back { display: inline-block; margin-bottom: 4px; color: var(--accent); cursor: pointer; font-size: .9rem; }
+dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text); max-width: 440px; }
+dialog::backdrop { background: rgba(0,0,0,.45); }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; }
 details.panel > summary { cursor: pointer; font-weight: 700; font-size: 1.02rem; }
 details.panel[open] > summary { margin-bottom: 8px; }
@@ -60,7 +69,8 @@ button:disabled { opacity: .45; cursor: default; }
 #screens { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
 #screens button { border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 3px 11px; font-size: .88rem; }
 #screens button.active { border-color: var(--accent); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
-#canvas-wrap { background: #000; border-radius: 8px; overflow: hidden; line-height: 0; }
+#canvas-wrap { background: #000; border-radius: 8px; overflow: hidden; line-height: 0; position: relative; }
+canvas#overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; outline: none; touch-action: none; }
 canvas#preview { width: 100%; height: auto; display: block; cursor: default; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: .9rem; }
 ul.buttons { list-style: none; padding: 0; margin: 6px 0; }
@@ -68,6 +78,9 @@ ul.buttons li { display: flex; align-items: center; gap: 4px; padding: 3px 5px; 
 ul.buttons li.active { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
 ul.buttons li .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 ul.buttons li .tag { font-size: .75rem; color: var(--muted); }
+details.group { border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; padding: 4px 10px 8px; }
+details.group > summary { cursor: pointer; font-weight: 700; font-size: .92rem; }
+details.group[open] > summary { margin-bottom: 4px; }
 fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; padding: 2px 10px 10px; }
 legend { font-weight: 700; padding: 0 5px; font-size: .9rem; }
 textarea#yaml { width: 100%; min-height: 220px; font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
@@ -93,100 +106,74 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 10
 </header>
 
 <main>
-  <div id="editor">
-    <div class="panel">
-      <h2 data-t="intro-title"></h2>
-      <p class="hint" data-t="intro"></p>
-      <div class="row">
-        <button class="ghost" id="new-file" data-t="new-file"></button>
-        <label class="ghost" style="display:inline;margin:0"><input type="file" id="open-file" accept=".yaml,.yml" class="hidden"><span class="button ghost" style="border:1px solid var(--line);border-radius:8px;padding:4px 10px;cursor:pointer;display:inline-block;font-weight:400" data-t="open-file"></span></label>
-        <button class="main" id="download" data-t="download"></button>
-      </div>
-      <p class="errors" id="file-errors"></p>
+  <aside id="side">
+    <div class="tabs">
+      <button id="tab-edit-btn" class="active" data-t="tab-edit"></button>
+      <button id="tab-file-btn" data-t="tab-file"></button>
     </div>
-
-    <details class="panel" open>
-      <summary data-t="screen-title"></summary>
-      <label data-t="resolution-mode"></label>
-      <label class="inline"><input type="radio" name="resmode" value="auto"> <span data-t="res-auto"></span></label>
-      <label class="inline"><input type="radio" name="resmode" value="known"> <span data-t="res-known"></span></label>
-      <div id="res-known-box" class="row hidden">
-        <select id="res-ref"></select>
-        <input type="number" id="res-w" min="320" max="7680" style="width:80px"> × <input type="number" id="res-h" min="240" max="4320" style="width:80px">
+    <div id="tab-edit" class="panel"></div>
+    <div id="tab-file" class="hidden">
+      <div class="panel">
+        <h2 data-t="intro-title"></h2>
+        <p class="hint" data-t="intro"></p>
+        <div class="row">
+          <button class="ghost" id="new-file" data-t="new-file"></button>
+          <label class="ghost" style="display:inline;margin:0"><input type="file" id="open-file" accept=".yaml,.yml" class="hidden"><span class="button ghost" style="border:1px solid var(--line);border-radius:8px;padding:4px 10px;cursor:pointer;display:inline-block;font-weight:400" data-t="open-file"></span></label>
+          <button class="main" id="download" data-t="download"></button>
+        </div>
       </div>
-      <p class="hint" id="res-hint"></p>
-      <label for="start" data-t="start"></label>
-      <select id="start"></select>
-      <p class="hint" data-t="start-hint"></p>
-    </details>
+      <details class="panel" open>
+        <summary data-t="screen-title"></summary>
+        <label data-t="resolution-mode"></label>
+        <label class="inline"><input type="radio" name="resmode" value="auto"> <span data-t="res-auto"></span></label>
+        <label class="inline"><input type="radio" name="resmode" value="known"> <span data-t="res-known"></span></label>
+        <div id="res-known-box" class="row hidden">
+          <select id="res-ref"></select>
+          <input type="number" id="res-w" min="320" max="7680" style="width:80px"> × <input type="number" id="res-h" min="240" max="4320" style="width:80px">
+        </div>
+        <p class="hint" id="res-hint"></p>
+        <label for="start" data-t="start"></label>
+        <select id="start"></select>
+        <p class="hint" data-t="start-hint"></p>
+      </details>
+      <details class="panel" open>
+        <summary data-t="theme-title"></summary>
+        <select id="theme"></select>
+        <div id="own-theme" class="hidden">
+          <label data-t="own-theme-load"></label>
+          <input type="file" id="theme-folder" webkitdirectory directory multiple>
+          <p class="hint" id="own-theme-info"></p>
+        </div>
+        <div class="note warn" data-t="theme-note"></div>
+      </details>
+      <details class="panel">
+        <summary data-t="images-title"></summary>
+        <p class="hint" data-t="images-hint"></p>
+        <input type="file" id="images-load" accept="image/*" multiple>
+        <ul class="buttons" id="images"></ul>
+      </details>
+      <details class="panel">
+        <summary data-t="yaml-title"></summary>
+        <p class="hint" data-t="yaml-hint"></p>
+        <textarea id="yaml" readonly></textarea>
+      </details>
+    </div>
+  </aside>
 
-    <details class="panel" open>
-      <summary data-t="theme-title"></summary>
-      <select id="theme"></select>
-      <div id="own-theme" class="hidden">
-        <label data-t="own-theme-load"></label>
-        <input type="file" id="theme-folder" webkitdirectory directory multiple>
-        <p class="hint" id="own-theme-info"></p>
-      </div>
-      <div class="note warn" data-t="theme-note"></div>
-    </details>
-
-    <details class="panel" open id="menu-panel">
-      <summary><span data-t="menu-title"></span> : <span id="menu-name"></span></summary>
-      <div id="menu-form"></div>
-    </details>
-
-    <details class="panel" open id="buttons-panel">
-      <summary data-t="buttons-title"></summary>
-      <ul class="buttons" id="buttons"></ul>
-      <div class="row">
-        <button class="tiny" id="btn-add" data-t="btn-add"></button>
-        <button class="tiny" id="btn-up">▲</button>
-        <button class="tiny" id="btn-down">▼</button>
-        <button class="tiny" id="btn-del" data-t="btn-del"></button>
-        <button class="tiny" id="btn-reset" data-t="btn-reset"></button>
-      </div>
-      <div id="button-form"></div>
-    </details>
-
-    <details class="panel" id="styles-panel">
-      <summary data-t="styles-title"></summary>
-      <p class="hint" data-t="styles-hint"></p>
-      <div class="row">
-        <select id="style-name"></select>
-        <button class="tiny" id="style-del" data-t="btn-del"></button>
-      </div>
-      <div class="row" style="margin-top:6px">
-        <input type="text" id="style-new" style="width:140px">
-        <button class="tiny" id="style-add" data-t="style-add"></button>
-      </div>
-      <div id="style-form"></div>
-    </details>
-
-    <details class="panel" id="images-panel">
-      <summary data-t="images-title"></summary>
-      <p class="hint" data-t="images-hint"></p>
-      <input type="file" id="images-load" accept="image/*" multiple>
-      <ul class="buttons" id="images"></ul>
-    </details>
-
-    <details class="panel">
-      <summary data-t="yaml-title"></summary>
-      <p class="hint" data-t="yaml-hint"></p>
-      <textarea id="yaml" readonly></textarea>
-    </details>
-  </div>
-
-  <div id="preview-pane">
+  <div id="stage">
     <div id="screens"></div>
-    <div id="canvas-wrap"><canvas id="preview" width="1920" height="1080"></canvas></div>
+    <div id="canvas-wrap"><canvas id="preview" width="1920" height="1080"></canvas><canvas id="overlay" width="1920" height="1080" tabindex="0"></canvas></div>
     <div class="bar">
+      <button class="ghost" id="undo" disabled data-t="undo"></button>
       <span data-t="preview-size"></span> <select id="preview-res"></select>
       <label class="inline"><input type="checkbox" id="fav-games"> <span data-t="fav-games"></span></label>
-      <span class="hint" data-t="preview-hint" style="margin:0"></span>
+      <button class="main" id="download2" data-t="download"></button>
     </div>
+    <p class="hint" data-t="preview-hint"></p>
+    <p class="errors" id="file-errors"></p>
   </div>
 </main>
+<dialog id="ask"><p id="ask-text"></p><p class="hint" id="ask-sub"></p><div class="row" id="ask-buttons"></div></dialog>
 <footer data-t="footer"></footer>
 
 <script src="vendor/js-yaml.min.js"></script>

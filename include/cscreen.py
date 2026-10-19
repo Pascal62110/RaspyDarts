@@ -6720,8 +6720,9 @@ class Screen(pygame.Surface):
         '''
         text = button.get('text', self.menus().button_id(button))
         if isinstance(text, dict) and not set(text) <= self.LANGUAGES:
-            # Look of the text (size, font...), not its translations : the name of the button
-            return self.menus().button_id(button)
+            # Look of the text (size, font...), not its translations : its text in 'text' (as
+            # the titles), otherwise the name of the button
+            text = text.get('text', self.menus().button_id(button))
         if isinstance(text, dict):
             language = str(self.config.get_value('SectionGlobals', 'locale', False) or 'en')[:2]
             text = text.get(language) or text.get('en') or next(iter(text.values()), '')
@@ -6824,10 +6825,26 @@ class Screen(pygame.Surface):
         if 'color' in button:
             inline['background'] = cmenustyle.merge(inline.get('background') or {}, {'color': button['color']})
         if isinstance(button.get('text'), dict) and not set(button['text']) <= self.LANGUAGES:
-            inline['text'] = button['text']
+            inline['text'] = {key: value for key, value in button['text'].items() if key != 'text'}
         if isinstance(button.get('icon'), dict):
-            inline['icon'] = button['icon']
+            inline['icon'] = {key: value for key, value in button['icon'].items() if key != 'image'}
         return cmenustyle.merge(style, inline)
+
+    def button_icon(self, button):
+        '''
+        Image of the icon of a button : its path, or the image of its look (icon: {image:
+        ..., size: ...}), otherwise the logo of its game (favorites), otherwise its logo
+        (logos_menu of the theme, as the classic tiles : the same image all along the menu)
+        '''
+        icon = button.get('icon')
+        icon = icon.get('image') if isinstance(icon, dict) else icon
+        if isinstance(icon, str):
+            return icon
+        if button.get('game_logo') or not button.get('logo'):
+            return button.get('game_logo')
+        if 'logo_image' not in button:
+            button['logo_image'] = self.file_class.get_full_filename(f"logos_menu/{button['logo']}", 'images')
+        return button['logo_image']
 
     def menu_styled(self, name, menu, items):
         '''
@@ -6840,7 +6857,7 @@ class Screen(pygame.Surface):
         if menu.get('background') is not None or self.menu_text_look(name, 'title')[1] or \
                 self.menu_text_look(name, 'subtitle')[1]:
             return True
-        if any(key in (menu.get('shortcuts') or {}) for key in ('color', 'position', 'size', 'font')):
+        if any(key in (menu.get('shortcuts') or {}) for key in ('color', 'position', 'size', 'font', 'background')):
             return True
         for button in items:
             if button.get('footer') in self.FOOTERS:
@@ -7128,7 +7145,7 @@ class Screen(pygame.Surface):
         units = cmenustyle.Units(self.screen.get_size(), resolution)
         title = title or self.menu_text_look(name, 'title')[0]
         subtitle = subtitle or self.menu_text_look(name, 'subtitle')[0]
-        shortcuts = cmenustyle.merge({'show': True, 'format': '{key}', 'color': 'menu-shortcut',
+        shortcuts = cmenustyle.merge({'show': True, 'format': '{key}',
                                       'position': 'top_left' if menu.get('layout') == 'tiles' else 'left'},
                                      menu.get('shortcuts') or {})
         show_version = bool(menu.get('show_version'))
@@ -7192,8 +7209,9 @@ class Screen(pygame.Surface):
             button = listed[index - 1]
             patch = pristine.subsurface(target).copy()
             painter.draw_button(patch, rect.move(-target.x, -target.y), styles[index - 1],
-                                self.lang.translate(self.button_text(button)) if button.get('text', True) is not None else '',
-                                button.get('icon') if isinstance(button.get('icon'), str) else button.get('game_logo'), look, units,
+                                '' if button.get('text', True) is None or ('text' not in button and button.get('logo')) else
+                                self.lang.translate(self.button_text(button)),
+                                self.button_icon(button), look, units,
                                 shortcut=self.button_label(button, menu), shortcuts=shortcuts)
             return patch
 
