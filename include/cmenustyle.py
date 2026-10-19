@@ -123,12 +123,28 @@ def layout(menu, buttons, screen_size, resolution=None, selected=1):
     # Cells of the grid (section 12) : each button takes span.columns x span.rows cells (1 x 1
     # by default), in the first free place in reading order ; wider than the columns : as
     # many cells as there are, the button wider and centred on them
+    # A button with a cell of its own (cell: {row, column}, from 0) takes it first
     cells, taken = {}, set()
-    for index in flowing:
+
+    def size_of(index):
         span = buttons[index - 1].get('span') or {}
         wide = max(1, int(span.get('columns') or 1)) if isinstance(span, dict) else 1
         high = max(1, int(span.get('rows') or 1)) if isinstance(span, dict) else 1
-        width_cells = min(wide, columns)
+        return wide, high, min(wide, columns)
+
+    for index in flowing:
+        cell = buttons[index - 1].get('cell')
+        if not isinstance(cell, dict):
+            continue
+        wide, high, width_cells = size_of(index)
+        row = max(0, int(cell.get('row') or 0))
+        column = min(max(0, int(cell.get('column') or 0)), columns - width_cells)
+        wanted = {(row + r, column + c) for r in range(high) for c in range(width_cells)}
+        if not wanted & taken:
+            cells[index] = (row, column, width_cells, high, wide)
+            taken |= wanted
+    for index in flowing:
+        wide, high, width_cells = size_of(index)
         row = 0
         while index not in cells:
             for column in range(columns - width_cells + 1):
@@ -188,10 +204,13 @@ def layout(menu, buttons, screen_size, resolution=None, selected=1):
             tops[row] = pos_y
             pos_y += button_h
         for row in rows_of_page:
-            # A row of buttons on one cell each, filled from the left : centred in the area
-            # (a last row not full too)
-            alone = all(cells[index][2] == 1 and cells[index][3] == 1 for index in rows[row]) and                 not any(cells[other][0] < row < cells[other][0] + cells[other][3] for other in flowing)
-            filled = len(rows[row]) if alone and sorted(cells[index][1] for index in rows[row]) ==                 list(range(len(rows[row]))) else columns
+            # A row of buttons on one cell each (none in a cell of its own), filled from the
+            # left : centred in the area (a last row not full too)
+            alone = all(cells[index][2] == 1 and cells[index][3] == 1 and not isinstance(buttons[index - 1].get('cell'), dict)
+                        for index in rows[row]) and \
+                not any(cells[other][0] < row < cells[other][0] + cells[other][3] for other in flowing)
+            filled = len(rows[row]) if alone and sorted(cells[index][1] for index in rows[row]) == \
+                list(range(len(rows[row]))) else columns
             left = area_x + (area_w - (filled * column_w + (filled - 1) * gap_x)) / 2
             for index in rows[row]:
                 _, column, width_cells, high, wide = cells[index]

@@ -301,7 +301,9 @@ function shownIds() { return (lastDraw && lastDraw.geometry && lastDraw.geometry
 
 // ------------------------------------------------------------------ calque de selection
 let ghost = null;     // taille en cours d'un bouton de la disposition (avant la question)
-let dropZone = null;  // zone des boutons ou le bouton glisse reprendra sa place
+let dropZone = null;  // zone des boutons ou le bouton glisse sera fixe
+let dropCell = null;  // case de la zone visee : {row, column, rect}
+let guides = [];      // reperes d'alignement montres pendant un geste : {axis, pos, center}
 let hover = null;
 function overlayScale() {
   const canvas = $('preview');
@@ -355,6 +357,29 @@ function drawOverlay() {
     }
   }
   if (dropZone) frame(dropZone, '#30d158', 3, true);
+  if (dropCell) {
+    g.fillStyle = 'rgba(48,209,88,0.35)';
+    g.fillRect(...dropCell.rect);
+    frame(dropCell.rect, '#30d158', 3, false);
+  }
+  // Reperes d'alignement (comme un editeur d'interface) : centre de l'ecran en cyan
+  for (const guide of guides) {
+    g.save();
+    g.lineWidth = 2 * s;
+    g.strokeStyle = guide.center ? '#00e5ff' : '#ff2d95';
+    g.setLineDash(guide.center ? [10 * s, 6 * s] : []);
+    g.beginPath();
+    if (guide.axis === 'x') { g.moveTo(guide.pos, 0); g.lineTo(guide.pos, overlay.height); }
+    else { g.moveTo(0, guide.pos); g.lineTo(overlay.width, guide.pos); }
+    g.stroke();
+    if (guide.center) {
+      g.font = 'bold ' + Math.round(14 * s) + 'px system-ui, sans-serif';
+      g.fillStyle = '#00e5ff';
+      if (guide.axis === 'x') g.fillText(t('guide-center'), guide.pos + 6 * s, 18 * s);
+      else g.fillText(t('guide-center'), 6 * s, guide.pos - 6 * s);
+    }
+    g.restore();
+  }
 }
 function canvasPoint(event) {
   const canvas = $('preview');
@@ -491,14 +516,22 @@ $('overlay').addEventListener('pointermove', (event) => {
       const info = menuInfo(screen);
       op.area = metrics(info.menu, info.listed).area;
     }
-    const rect = [Math.round(clamp(op.rect[0] + dx, 0, W - op.rect[2])), Math.round(clamp(op.rect[1] + dy, 0, H - op.rect[3])), op.rect[2], op.rect[3]];
-    setPlace(op.id, rect);
-    // Lache dans la zone des boutons : il y reprendra sa place (zone en vert)
+    let rect = [Math.round(clamp(op.rect[0] + dx, 0, W - op.rect[2])), Math.round(clamp(op.rect[1] + dy, 0, H - op.rect[3])), op.rect[2], op.rect[3]];
+    // Lache dans la zone des boutons : il sera fixe sur la case visee (en vert) ; ailleurs
+    // il est place librement, aimante par les reperes d'alignement
     op.drop = [rect[0] + rect[2] / 2, rect[1] + rect[3] / 2];
-    dropZone = inside(op.drop, op.area) ? op.area : null;
+    if (inside(op.drop, op.area)) {
+      dropZone = op.area;
+      dropCell = cellAt(op.drop, op.id);
+      guides = [];
+    } else {
+      dropZone = dropCell = null;
+      rect = snap(rect, 'move', [op.id], event.altKey);
+    }
+    setPlace(op.id, rect);
     schedule();
   } else if (op.type === 'resize') {
-    op.current = resized(op.rect, op.handle, dx, dy);
+    op.current = snap(resized(op.rect, op.handle, dx, dy), op.handle, [op.id], event.altKey);
     if (op.free) { setPlace(op.id, op.current); schedule(); } else {
       // Montre combien de cases de la disposition il prendrait seul (reponse « Non »)
       const [c, r] = cellsFor(op.current);
@@ -508,8 +541,11 @@ $('overlay').addEventListener('pointermove', (event) => {
     }
   } else if (op.type === 'area') {
     op.moved = true;
-    const rect = op.handle === 'move' ? [Math.round(clamp(op.rect[0] + dx, 0, W - op.rect[2])), Math.round(clamp(op.rect[1] + dy, 0, H - op.rect[3])), op.rect[2], op.rect[3]]
+    let rect = op.handle === 'move' ? [Math.round(clamp(op.rect[0] + dx, 0, W - op.rect[2])), Math.round(clamp(op.rect[1] + dy, 0, H - op.rect[3])), op.rect[2], op.rect[3]]
       : resized(op.rect, op.handle, dx, dy);
+    // La zone s'aligne sur l'ecran et sur les boutons places librement (pas sur les siens)
+    const inArea = (lastDraw.geometry.listed || []).filter(id => !isFree(id));
+    rect = snap(rect, op.handle, inArea, event.altKey, true);
     if (screen === 'games') setPath(userMenu('games', true), ['area'], { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') });
     else {
       // Les boutons suivent la zone pendant qu'on la tire : leur taille d'avant, reduite
@@ -524,10 +560,12 @@ $('overlay').addEventListener('pointermove', (event) => {
 $('overlay').addEventListener('pointerup', async () => {
   const done = op;
   op = null;
-  if (!done) return;
+  guides = [];
+  if (!done) { drawOverlay(); return; }
   if (done.type === 'move' && done.started) {
-    dropZone = null;
-    if (done.drop && inside(done.drop, done.area)) reintegrate(done.id, done.drop);
+    const cell = dropCell;
+    dropZone = dropCell = null;
+    if (cell) setCell(done.id, cell);
     changed(true);
   }
   else if (done.type === 'area' && done.moved) changed(true);
@@ -1063,6 +1101,19 @@ function buildButtonPanel(panel) {
         onclick: () => { editButton(id, b => delete b.place); changed(true); } })]));
     } else {
       fs.appendChild(el('p', { class: 'hint', text: t('pos-grid-hint') }));
+      if (L.isDict(button.cell)) {
+        // Case fixe : rangee et colonne comptees depuis 1 a l'ecran, depuis 0 dans le fichier
+        fs.appendChild(el('label', { text: t('cell-title') }));
+        const fixed = el('div', { class: 'grid2' });
+        for (const key of ['row', 'column']) {
+          cell(fixed, t('cell-' + key), numberInput(() => (button.cell[key] || 0) + 1, v => editButton(id, b => {
+            b.cell = Object.assign({}, b.cell, { [key]: Math.max(0, Math.round(v || 1) - 1) });
+          }), 1, 1, 20));
+        }
+        fs.appendChild(fixed);
+        fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'tiny', text: t('cell-free'),
+          onclick: () => { editButton(id, b => delete b.cell); changed(true); } })]));
+      }
       fs.appendChild(el('label', { text: t('f-span') }));
       const grid = el('div', { class: 'grid2' });
       const span = () => (L.isDict(button.span) ? button.span : {});
@@ -1207,29 +1258,83 @@ function buildLookFields(parent, id) {
     fs.appendChild(gs);
   }
 }
-function reintegrate(id, point) {
-  // Le bouton lache dans la zone des boutons reprend sa place dans la disposition, a
-  // l'endroit ou il est lache (ordre de lecture : ligne, puis colonne)
+function cellAt(point, id) {
+  // La case de la zone des boutons sous ce point, pour ce bouton (ses cases prises) : rangee
+  // et colonne depuis 0, et son rectangle a l'ecran
   const info = menuInfo(screen);
-  const result = L.layout(info.menu, info.listed, previewSize(), reference(), 1);
-  let before = null;
-  const placed = info.listed.map((b, i) => [b, result.rects[i + 1]]).filter(([b, r]) => r && !b.place && R.buttonId(b) !== id)
-    .sort((x, y) => (x[1][1] - y[1][1]) || (x[1][0] - y[1][0]));
-  for (const [b, r] of placed) {
-    if (point[1] < r[1] || (point[1] <= r[1] + r[3] && point[0] < r[0] + r[2] / 2)) { before = R.buttonId(b); break; }
+  const g = L.layout(info.menu, info.listed, previewSize(), reference(), 1).grid;
+  const button = buttonOf(id) || {};
+  const span = L.isDict(button.span) ? button.span : {};
+  const wide = Math.min(Math.max(1, parseInt(span.columns || 1, 10)), g.columns), high = Math.max(1, parseInt(span.rows || 1, 10));
+  const stepX = g.columnW + g.gapX, stepY = g.buttonH + g.gapY;
+  const cellsW = wide * g.columnW + (wide - 1) * g.gapX, cellsH = high * g.buttonH + (high - 1) * g.gapY;
+  const column = clamp(Math.round((point[0] - g.areaX - cellsW / 2) / stepX), 0, g.columns - wide);
+  // Haut d'une rangee : celui de la grille affichee, sinon a la suite (ou depuis le haut de la zone)
+  const known = Object.keys(g.tops).map(Number).sort((a, b) => a - b);
+  const top = (row) => {
+    if (row in g.tops) return g.tops[row];
+    const last = known.filter(r => r < row).pop();
+    return last !== undefined ? g.tops[last] + (row - last) * stepY : g.areaY + row * stepY;
+  };
+  let row = 0, best = Infinity;
+  const limit = (known.length ? known[known.length - 1] : 0) + 4;
+  for (let r = 0; r <= limit; r++) {
+    const d = Math.abs(top(r) + cellsH / 2 - point[1]);
+    if (d < best) { best = d; row = r; }
   }
-  const buttons = ownButtons(screen);
-  const index = buttons.findIndex(b => R.buttonId(b) === id);
-  if (index < 0) return;
-  const [button] = buttons.splice(index, 1);
-  delete button.place;
-  let at = before ? buttons.findIndex(b => R.buttonId(b) === before) : -1;
-  if (at < 0) {
-    // Apres le dernier bouton de la disposition (avant ceux du bas de l'ecran)
-    at = 0;
-    buttons.forEach((b, i) => { if (!b.footer && !b.place && b.visible !== false) at = i + 1; });
+  return { row: row, column: column, rect: [g.areaX + column * stepX, top(row), cellsW, cellsH] };
+}
+function setCell(id, cell) {
+  // Le bouton fixe sur cette case de la disposition ; celui qui l'avait se range avec les autres
+  for (const b of ownButtons(screen)) {
+    if (R.buttonId(b) === id) { delete b.place; b.cell = { row: cell.row, column: cell.column }; }
+    else if (L.isDict(b.cell) && b.cell.row === cell.row && b.cell.column === cell.column) delete b.cell;
   }
-  buttons.splice(at, 0, button);
+}
+function snap(rect, mode, exclude, off, area) {
+  // Aimante le rectangle (deplace : bords et centre ; redimensionne : le bord tire) sur le
+  // centre de l'ecran, les bords et centres des autres boutons et de la zone ; garde les
+  // reperes a montrer. Alt : sans aimant
+  guides = [];
+  if (off || !lastDraw || !lastDraw.geometry) return rect;
+  const [W, H] = previewSize();
+  const geo = lastDraw.geometry;
+  const reach = 8 * overlayScale();
+  const targets = { x: [[W / 2, true]], y: [[H / 2, true]] };
+  const add = (r) => {
+    targets.x.push([r[0], false], [r[0] + r[2] / 2, false], [r[0] + r[2], false]);
+    targets.y.push([r[1], false], [r[1] + r[3] / 2, false], [r[1] + r[3], false]);
+  };
+  for (const [id, r] of Object.entries(geo.rects)) if (!exclude.includes(id)) add(r);
+  if (geo.area && !area) add(geo.area);
+  const result = rect.slice();
+  for (const axis of ['x', 'y']) {
+    const [p, size] = axis === 'x' ? [0, 2] : [1, 3];
+    const low = axis === 'x' ? 'w' : 'n', high = axis === 'x' ? 'e' : 's';
+    // Les bords concernes : tous en deplacement, celui de la poignee sinon
+    const edges = mode === 'move' ? [[0, 'move'], [0.5, 'move'], [1, 'move']] :
+      [].concat(mode.includes(low) ? [[0, 'start']] : [], mode.includes(high) ? [[1, 'end']] : []);
+    let best = null;
+    for (const [part, how] of edges) {
+      const value = rect[p] + rect[size] * part;
+      for (const [pos] of targets[axis]) {
+        const d = pos - value;
+        if (Math.abs(d) <= reach && (!best || Math.abs(d) < Math.abs(best.d))) best = { d: d, how: how };
+      }
+    }
+    if (!best) continue;
+    if (best.how === 'move') result[p] = Math.round(rect[p] + best.d);
+    else if (best.how === 'start') { result[p] = Math.round(rect[p] + best.d); result[size] = Math.round(rect[size] - best.d); }
+    else result[size] = Math.round(rect[size] + best.d);
+    // Les reperes : chaque bord ou centre du rectangle aimante qui tombe sur une cible
+    for (const part of [0, 0.5, 1]) {
+      const value = result[p] + result[size] * part;
+      for (const [pos, center] of targets[axis]) {
+        if (Math.abs(pos - value) < 1 && !guides.some(gd => gd.axis === axis && Math.abs(gd.pos - pos) < 1)) guides.push({ axis: axis, pos: pos, center: center });
+      }
+    }
+  }
+  return result;
 }
 function addButton() {
   const buttons = ownButtons(screen);

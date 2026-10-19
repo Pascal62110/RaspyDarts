@@ -45,6 +45,11 @@ def cases():
         {'layout': 'list', 'buttons': nine[:4] + [{'id': 'w', 'span': {'columns': 2, 'rows': 2}}] + nine[4:7]},
         {'layout': 'tiles', 'columns': 3, 'buttons': [{'id': 't1', 'span': {'columns': 3}}] + nine[:5]},
         {'layout': 'grid', 'columns': 2, 'buttons': [{'id': 'r', 'span': {'rows': 3}}] + nine * 2},
+        # Cases fixes (cell) : placees d'abord, les autres autour
+        {'layout': 'grid', 'columns': 3, 'buttons': [{'id': 'a'}, {'id': 'z', 'cell': {'row': 1, 'column': 2}}, {'id': 'b'},
+                                                       {'id': 'y', 'cell': {'row': 3, 'column': 0}, 'span': {'columns': 2}},
+                                                       {'id': 'c'}, {'id': 'x', 'cell': {'row': 1, 'column': 2}}]},
+        {'layout': 'list', 'buttons': nine[:3] + [{'id': 'k', 'cell': {'row': 5, 'column': 4}}]},
     ]
     result = []
     for menu in menus:

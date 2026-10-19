@@ -100,11 +100,28 @@
     // Cases de la grille (section 12) : chaque bouton prend span.columns x span.rows cases (1 x 1
     // par defaut), a la premiere place libre dans l'ordre de lecture ; plus large que les
     // colonnes : autant de cases qu'il y en a, le bouton plus large et centre dessus
+    // Un bouton a case fixe (cell: {row, column}, depuis 0) la prend d'abord
     const cells = {}, taken = new Set();
-    for (const index of flowing) {
+    const sizeOf = (index) => {
       const span = isDict(buttons[index - 1].span) ? buttons[index - 1].span : {};
       const wide = Math.max(1, parseInt(span.columns || 1, 10)), high = Math.max(1, parseInt(span.rows || 1, 10));
-      const widthCells = Math.min(wide, columns);
+      return [wide, high, Math.min(wide, columns)];
+    };
+    for (const index of flowing) {
+      const cell = buttons[index - 1].cell;
+      if (!isDict(cell)) continue;
+      const [wide, high, widthCells] = sizeOf(index);
+      const row = Math.max(0, parseInt(cell.row || 0, 10));
+      const column = Math.min(Math.max(0, parseInt(cell.column || 0, 10)), columns - widthCells);
+      const wanted = [];
+      for (let r = 0; r < high; r++) for (let c = 0; c < widthCells; c++) wanted.push(`${row + r},${column + c}`);
+      if (!wanted.some(k => taken.has(k))) {
+        cells[index] = [row, column, widthCells, high, wide];
+        wanted.forEach(k => taken.add(k));
+      }
+    }
+    for (const index of flowing) {
+      const [wide, high, widthCells] = sizeOf(index);
       for (let row = 0; !(index in cells); row++) {
         for (let column = 0; column <= columns - widthCells; column++) {
           const wanted = [];
@@ -171,7 +188,7 @@
       for (const row of rowsOfPage) {
         // Une rangee de boutons d'une case chacun, remplie depuis la gauche : centree dans la
         // zone (une derniere rangee incomplete aussi)
-        const alone = rows[row].every(index => cells[index][2] === 1 && cells[index][3] === 1) &&
+        const alone = rows[row].every(index => cells[index][2] === 1 && cells[index][3] === 1 && !isDict(buttons[index - 1].cell)) &&
           !flowing.some(other => cells[other][0] < row && row < cells[other][0] + cells[other][3]);
         const sortedColumns = rows[row].map(index => cells[index][1]).sort((a, b) => a - b);
         const filled = alone && sortedColumns.every((c, i) => c === i) ? rows[row].length : columns;
@@ -198,7 +215,17 @@
       const posY = units.length(place.y !== undefined ? place.y : 0, 'y') - anchor[1] * height;
       rects[i + 1] = [roundHalfUp(posX), roundHalfUp(posY), roundHalfUp(width), roundHalfUp(height)];
     });
-    return { rects: rects, page: page, pages: pages.length, rows: count, cells: cells, columnW: columnW, buttonH: buttonH };
+    // Pour le configurateur : la grille de la page affichee (haut des rangees, colonnes)
+    const grid = { tops: {}, areaX: areaX, areaY: areaY, columnW: columnW, gapX: gapX, gapY: gapY, buttonH: buttonH, columns: columns };
+    if (pages.length) {
+      let y = null;
+      for (const row of pages[page]) {
+        const starting = rows[row].map(index => rects[index] && rects[index][1]).filter(v => v !== undefined);
+        grid.tops[row] = starting.length ? Math.min(...starting) : (y === null ? areaY : y);
+        y = grid.tops[row] + buttonH + gapY;
+      }
+    }
+    return { rects: rects, page: page, pages: pages.length, rows: count, cells: cells, columnW: columnW, buttonH: buttonH, grid: grid };
   }
 
   const api = { merge: merge, roundHalfUp: roundHalfUp, roundHalfEven: roundHalfEven, Units: Units, layout: layout, ANCHORS: ANCHORS,

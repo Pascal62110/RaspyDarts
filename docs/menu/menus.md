@@ -10,9 +10,11 @@
 > 1024×600 et en 1920×1080). Ses données et images viennent de `python docs/generer_menus.py`,
 > à relancer quand `menus/defaults.yaml`, un thème ou un logo change.
 >
-> Dans l'aperçu, on clique un bouton pour le choisir, on le glisse (il passe en placement
-> libre, §7.5) et on tire ses poignées pour le redimensionner (un bouton de la disposition :
-> « tous les boutons » change `button_size`, sinon lui seul devient libre). Le panneau de
+> Dans l'aperçu, on clique un bouton pour le choisir, on le glisse (lâché sur une case de
+> la zone des boutons : il y est fixé, `cell` ; ailleurs : placement libre, §7.5, avec des
+> repères d'alignement aimantés sur le centre de l'écran et les bords des autres boutons)
+> et on tire ses poignées pour le redimensionner (un bouton de la disposition : « tous les
+> boutons » change `button_size`, sinon lui seul prend des cases entières, `span`). Le panneau de
 > gauche montre ce qui est choisi : l'écran (disposition, colonnes, lignes, zone des boutons
 > à poignées, titres, fond, raccourcis) ou le bouton (texte, action, position, aspect écrit
 > sur ce bouton seul ou dans le style de l'écran). Un écran reste un seul écran : si ses
@@ -306,6 +308,7 @@ Propriétés d'un bouton :
 | `order` | rang dans l'ordre logique (§9), par défaut sa place dans la liste |
 | `space_before` | écart au-dessus (dispositions `list` et `grid`) |
 | `span` | cases prises dans la disposition : `{columns: 2, rows: 1}` ; les autres boutons se rangent dans les cases libres (§12) |
+| `cell` | case fixe dans la disposition : `{row: 1, column: 2}` (comptées depuis 0) ; le bouton y reste, les autres se rangent autour (§12) |
 | `style`, et toute propriété de style | aspect de ce bouton seul ; l'aspect de son texte s'écrit `text: {text: game-type-local, size: 0.05}` (son texte dans `text`, comme les titres) et celui de son icône `icon: {image: images/icons/target.png, size: 0.6}` |
 
 Changer un bouton sans réécrire la liste (fichier de l'utilisateur ou du thème) :
@@ -510,8 +513,9 @@ calculés des deux côtés (ils doivent être identiques au pixel).
    logique.
 3. Largeur d'une colonne : `(area.width − (columns − 1) × gap.x) / columns` ; largeur
    d'un bouton : `button_size.width × colonne`.
-4. Cases : chaque bouton prend `span.columns × span.rows` cases (1 × 1 par défaut), à la
-   première place libre en lisant ligne par ligne depuis le haut (un bouton suivant peut
+4. Cases : les boutons à case fixe (`cell`) prennent d'abord la leur (une case déjà prise :
+   le bouton se range avec les autres) ; puis chaque bouton prend `span.columns ×
+   span.rows` cases (1 × 1 par défaut), à la première place libre en lisant ligne par ligne depuis le haut (un bouton suivant peut
    donc combler un trou laissé avant). `span.columns` plus grand que `columns` : il prend
    toutes les colonnes, et sa largeur reste celle de `span.columns` colonnes, centrée.
    Largeur d'un bouton sur `n` colonnes : `button_size.width × colonne + (n − 1) ×
@@ -520,8 +524,8 @@ calculés des deux côtés (ils doivent être identiques au pixel).
 5. Ligne `i` : `y = area.y + Σ(hauteurs et écarts des lignes précédentes) + space_before`
    (les `space_before` des boutons qui commencent sur cette ligne).
 6. Bloc entier centré dans `area` (horizontalement toujours, verticalement si
-   `align: center`) ; une ligne de boutons d'une case, remplie depuis la gauche et non
-   traversée par un bouton de plusieurs lignes, est centrée (une dernière ligne
+   `align: center`) ; une ligne de boutons d'une case, sans case fixe, remplie depuis la
+   gauche et non traversée par un bouton de plusieurs lignes, est centrée (une dernière ligne
    incomplète aussi).
 7. Plus de lignes que n'en tient `area` : `overflow: pages` coupe en pages (les lignes
    reliées par un bouton de plusieurs lignes restent ensemble ; en bas à

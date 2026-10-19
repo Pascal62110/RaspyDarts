@@ -364,7 +364,7 @@ Object.assign(T.fr, {
   'ask-resize-sub': 'Non : seul ce bouton prend cette taille, et il devient placé librement.',
   'yes': 'Oui', 'no': 'Non', 'cancel': 'Annuler', 'btn-reset': 'Remettre l’écran du jeu',
   'game-screen-hint': 'Écran du jeu : ses boutons sont ceux du jeu. Réglez son style, son titre et son fond.',
-  'preview-hint': 'Cliquez un bouton pour le sélectionner, glissez-le pour le déplacer, tirez ses poignées pour le redimensionner. Ctrl+Z : annuler.',
+  'preview-hint': 'Cliquez un bouton pour le sélectionner, glissez-le pour le déplacer (Alt : sans aimant), tirez ses poignées pour le redimensionner. Ctrl+Z : annuler.',
   'f-screen-style': 'Style des boutons de cet écran'
 });
 Object.assign(T.en, {
@@ -479,3 +479,9 @@ Object.assign(T.en, { 'ask-resize-sub': 'No: only this button takes this size, i
 Object.assign(T.de, { 'ask-resize-sub': 'Nein: nur diese Taste bekommt diese Größe, in ganzen Feldern der Anordnung; die anderen Tasten ordnen sich darum herum an.', 'f-span': 'Belegte Felder der Anordnung', 'span-columns': 'Spalten', 'span-rows': 'Zeilen', 'span-label': '{c} × {r} Feld(er)' });
 Object.assign(T.es, { 'ask-resize-sub': 'No: solo este botón toma este tamaño, en casillas enteras de la disposición; los demás botones se colocan alrededor.', 'f-span': 'Casillas ocupadas en la disposición', 'span-columns': 'Columnas', 'span-rows': 'Filas', 'span-label': '{c} × {r} casilla(s)' });
 Object.assign(T.it, { 'ask-resize-sub': 'No: solo questo pulsante prende questa dimensione, in caselle intere della disposizione; gli altri pulsanti si dispongono intorno.', 'f-span': 'Caselle occupate nella disposizione', 'span-columns': 'Colonne', 'span-rows': 'Righe', 'span-label': '{c} × {r} casella/e' });
+// Cases fixes et reperes d'alignement
+Object.assign(T.fr, { 'pos-grid-hint': 'Rangé par la disposition de l’écran. Glissez-le sur une case de la zone (en vert) pour l’y fixer, ou hors de la zone pour le placer où vous voulez ; ses poignées changent sa taille.', 'cell-title': 'Case fixe dans la disposition', 'cell-row': 'Ligne', 'cell-column': 'Colonne', 'cell-free': 'Laisser se ranger avec les autres', 'guide-center': 'centre' });
+Object.assign(T.en, { 'pos-grid-hint': 'Arranged by the layout of the screen. Drag it onto a cell of the area (in green) to fix it there, or out of the area to put it where you want; its handles change its size.', 'cell-title': 'Fixed cell in the layout', 'cell-row': 'Row', 'cell-column': 'Column', 'cell-free': 'Let it flow with the others', 'guide-center': 'centre' });
+Object.assign(T.de, { 'pos-grid-hint': 'Von der Anordnung des Bildschirms platziert. Auf ein Feld des Bereichs ziehen (grün), um sie dort festzulegen, oder aus dem Bereich heraus, um sie frei zu platzieren; die Griffe ändern ihre Größe.', 'cell-title': 'Festes Feld in der Anordnung', 'cell-row': 'Zeile', 'cell-column': 'Spalte', 'cell-free': 'Mit den anderen anordnen lassen', 'guide-center': 'Mitte' });
+Object.assign(T.es, { 'pos-grid-hint': 'Colocado por la disposición de la pantalla. Arrástrelo a una casilla de la zona (en verde) para fijarlo ahí, o fuera de la zona para ponerlo donde quiera; sus tiradores cambian su tamaño.', 'cell-title': 'Casilla fija en la disposición', 'cell-row': 'Fila', 'cell-column': 'Columna', 'cell-free': 'Dejar que se coloque con los demás', 'guide-center': 'centro' });
+Object.assign(T.it, { 'pos-grid-hint': 'Posizionato dalla disposizione dello schermo. Trascinatelo su una casella della zona (in verde) per fissarlo lì, o fuori dalla zona per metterlo dove volete; le sue maniglie cambiano la dimensione.', 'cell-title': 'Casella fissa nella disposizione', 'cell-row': 'Riga', 'cell-column': 'Colonna', 'cell-free': 'Lasciarlo disporre con gli altri', 'guide-center': 'centro' });
