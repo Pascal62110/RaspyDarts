@@ -494,7 +494,6 @@ function show(index) {
   document.querySelectorAll('[data-move="1"]').forEach((button) => { button.disabled = step === STEPS; });
   buildSteps();
   updateMenus();
-  store('step', step);
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
@@ -925,7 +924,6 @@ function showCfg(index) {
   const last = cfgSlide === CFG_SLIDES.length - 1;
   $('cfg-next').textContent = last ? `${t('next-step')} ›` : '›';
   $('cfg-next').classList.toggle('wide', last);
-  store('cfg-slide', cfgSlide);
 }
 CFG_SLIDES.forEach((slide, number) => {
   const dot = document.createElement('button');
@@ -1139,11 +1137,13 @@ $('locale').value = LOCALES[lang];
 translate();
 restoreAnswers();
 update();
-showCfg(Number(stored('cfg-slide')) || 0);
+// A l'ouverture : la premiere question (les reponses donnees restent)
+showCfg(0);
 ownFile(stored('own') === '1');
 if (stored('menus-choice') === 'own' && menusData()) $('menus-own-info').textContent = t('sm-own-ok', {name: 'menus.yaml'});
 // index.html#3 : the step 3 directly
-show(Number(location.hash.slice(1)) || Number(stored('step')) || 1);
+// A l'ouverture : l'etape 1, sauf une adresse qui en nomme une (index.html#4)
+show(Number(location.hash.slice(1)) || 1);
 </script>
 </body>
 </html>
