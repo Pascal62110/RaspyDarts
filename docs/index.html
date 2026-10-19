@@ -103,6 +103,11 @@ pre#preview { background: var(--code); padding: 10px; border-radius: var(--radiu
 .savebar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
 #save-status { font-weight: 600; }
 footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18px 16px 30px; }
+.cfg-slide { display: none; min-height: 260px; }
+.cfg-slide.active { display: block; }
+.cfg-slide h3 { margin-top: 4px; }
+#tl-map { grid-template-columns: repeat(4, minmax(80px, 1fr)); }
+#tl-map .seg-name { font-weight: 600; }
 .choicebar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 14px 0; }
 .choicebar button.chosen { outline: 3px solid var(--accent); outline-offset: 2px; }
 #menus-frame { width: 100%; height: 600px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); display: block; }
@@ -195,14 +200,23 @@ body.wide main { max-width: 1800px; }
       <button class="main big" id="own-file-undo" data-t="own-file-undo"></button></div>
 
     <div id="config-form">
-    <label for="locale" data-t="f-locale"></label>
-    <select id="locale">
-      <option value="fr_FR">Français</option><option value="en_GB">English</option><option value="de_DE">Deutsch</option>
-      <option value="es_ES">Español</option><option value="it_IT">Italiano</option>
-    </select>
+    <!-- Une question par ecran (comme les captures de l'etape 2) -->
+    <div class="carousel-nav">
+      <button class="main arrow" id="cfg-prev" aria-label="‹">‹</button>
+      <div class="dots" id="cfg-dots"></div>
+      <button class="main arrow" id="cfg-next" aria-label="›">›</button>
+    </div>
 
-    <fieldset>
-      <legend data-t="f-target"></legend>
+    <div class="cfg-slide" data-q="lang">
+      <h3 data-t="q-lang"></h3>
+      <select id="locale">
+        <option value="fr_FR">Français</option><option value="en_GB">English</option><option value="de_DE">Deutsch</option>
+        <option value="es_ES">Español</option><option value="it_IT">Italiano</option>
+      </select>
+    </div>
+
+    <div class="cfg-slide" data-q="card">
+      <h3 data-t="f-target"></h3>
       <label for="card" data-t="f-card"></label>
       <select id="card"></select>
       <p class="hint" id="card-hint"></p>
@@ -213,34 +227,10 @@ body.wide main { max-width: 1800px; }
         <label data-t="f-inputs"></label>
         <div class="grid" id="inputs"></div>
       </div>
-    </fieldset>
+    </div>
 
-    <fieldset>
-      <legend data-t="f-leds"></legend>
-      <div class="choice">
-        <label><input type="checkbox" id="target-led"> <span data-t="f-target-led"></span></label>
-      </div>
-      <div id="target-led-fields" class="hidden">
-        <div class="grid">
-          <div><label for="tl-pin" data-t="f-gpio"></label><input type="number" id="tl-pin" min="1" max="27" value="21"></div>
-          <div><label for="tl-bri" data-t="f-bright"></label><input type="number" id="tl-bri" min="1" max="100" value="30"></div>
-          <div><label for="tl-typ" data-t="f-type"></label><select id="tl-typ"><option value="grb">GRB</option><option value="rgb">RGB</option></select></div>
-        </div>
-        <div class="choice"><label><input type="checkbox" id="raspyleds"> <span data-t="f-raspyleds"></span></label></div>
-      </div>
-      <div class="choice">
-        <label><input type="checkbox" id="strip-led"> <span data-t="f-strip-led"></span></label>
-      </div>
-      <div id="strip-led-fields" class="grid hidden">
-        <div><label for="sl-pin" data-t="f-gpio"></label><input type="number" id="sl-pin" min="1" max="27" value="12"></div>
-        <div><label for="sl-nbr" data-t="f-count"></label><input type="number" id="sl-nbr" min="1" max="1000" value="144"></div>
-        <div><label for="sl-bri" data-t="f-bright"></label><input type="number" id="sl-bri" min="1" max="100" value="30"></div>
-        <div><label for="sl-typ" data-t="f-type"></label><select id="sl-typ"><option value="grb">GRB</option><option value="rgb">RGB</option></select></div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend data-t="f-buttons"></legend>
+    <div class="cfg-slide" data-q="buttons">
+      <h3 data-t="f-buttons"></h3>
       <label for="mcp-count" data-t="f-mcp"></label>
       <p class="hint" data-t="f-mcp-hint"></p>
       <select id="mcp-count"></select>
@@ -250,16 +240,100 @@ body.wide main { max-width: 1800px; }
         <p class="hint" data-t="f-gpio-buttons-hint"></p>
         <div class="grid" id="gpio-buttons"></div>
       </details>
-    </fieldset>
-
-    <ul class="errors" id="errors"></ul>
-    <h3 data-t="f-file"></h3>
-    <pre id="preview"></pre>
-    <div class="savebar">
-      <button class="main ghost" id="cfg-copy" data-t="cfg-copy"></button>
-      <span id="cfg-copy-status"></span>
     </div>
-    <p class="hint" data-t="f-file-next"></p>
+
+    <div class="cfg-slide" data-q="target">
+      <h3 data-t="q-target"></h3>
+      <div class="choice">
+        <label><input type="radio" name="tl-kind" value="none" data-keep> <span data-t="q-target-none"></span></label>
+        <label><input type="radio" name="tl-kind" value="raspy" data-keep> <span data-t="q-target-raspy"></span></label>
+        <label><input type="radio" name="tl-kind" value="other" data-keep> <span data-t="q-target-other"></span></label>
+      </div>
+      <div id="target-led-fields" class="hidden">
+        <div class="grid">
+          <div><label for="tl-pin" data-t="f-gpio"></label><input type="number" id="tl-pin" min="1" max="27" value="21" data-keep></div>
+          <div><label for="tl-bri" data-t="f-bright"></label><input type="number" id="tl-bri" min="1" max="100" value="30" data-keep></div>
+          <div><label for="tl-typ" data-t="f-type"></label><select id="tl-typ" data-keep><option value="grb">GRB</option><option value="rgb">RGB</option></select></div>
+        </div>
+      </div>
+      <div id="target-other" class="hidden">
+        <p data-t="q-target-numbers"></p>
+        <div class="choice">
+          <label><input type="radio" name="tl-map" value="later" data-keep> <span data-t="q-target-later"></span></label>
+          <label><input type="radio" name="tl-map" value="manual" data-keep> <span data-t="q-target-manual"></span></label>
+        </div>
+        <div id="tl-map-fields" class="hidden">
+          <p class="hint" data-t="q-target-manual-hint"></p>
+          <div class="grid" id="tl-map"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-slide" data-q="strip">
+      <h3 data-t="q-strip"></h3>
+      <div class="choice">
+        <label><input type="checkbox" id="strip-led" data-keep> <span data-t="f-strip-led"></span></label>
+      </div>
+      <div id="strip-led-fields" class="grid hidden">
+        <div><label for="sl-pin" data-t="f-gpio"></label><input type="number" id="sl-pin" min="1" max="27" value="12" data-keep></div>
+        <div><label for="sl-nbr" data-t="f-count"></label><input type="number" id="sl-nbr" min="1" max="1000" value="144" data-keep></div>
+        <div><label for="sl-bri" data-t="f-bright"></label><input type="number" id="sl-bri" min="1" max="100" value="30" data-keep></div>
+        <div><label for="sl-typ" data-t="f-type"></label><select id="sl-typ" data-keep><option value="grb">GRB</option><option value="rgb">RGB</option></select></div>
+      </div>
+    </div>
+
+    <div class="cfg-slide" data-q="videos">
+      <h3 data-t="q-videos"></h3>
+      <div class="choice">
+        <label><input type="radio" name="videos" value="2" data-keep> <span data-t="q-videos-all"></span></label>
+        <label><input type="radio" name="videos" value="1" data-keep> <span data-t="q-videos-some"></span></label>
+        <label><input type="radio" name="videos" value="0" data-keep> <span data-t="q-videos-none"></span></label>
+      </div>
+    </div>
+
+    <div class="cfg-slide" data-q="sounds">
+      <h3 data-t="q-sounds"></h3>
+      <div class="choice">
+        <label><input type="radio" name="sounds" value="on" data-keep> <span data-t="q-sounds-on"></span></label>
+        <label><input type="radio" name="sounds" value="off" data-keep> <span data-t="q-sounds-off"></span></label>
+      </div>
+    </div>
+
+    <div class="cfg-slide" data-q="announce">
+      <h3 data-t="q-announce"></h3>
+      <p class="hint" data-t="q-announce-hint"></p>
+      <div class="choice">
+        <label><input type="radio" name="announce" value="on" data-keep> <span data-t="q-yes"></span></label>
+        <label><input type="radio" name="announce" value="off" data-keep> <span data-t="q-no"></span></label>
+      </div>
+    </div>
+
+    <div class="cfg-slide" data-q="camera">
+      <h3 data-t="q-camera"></h3>
+      <p class="hint" data-t="q-camera-hint"></p>
+      <div class="choice">
+        <label><input type="radio" name="camera" value="off" data-keep> <span data-t="q-camera-none"></span></label>
+        <label><input type="radio" name="camera" value="usb" data-keep> <span data-t="q-camera-usb"></span></label>
+      </div>
+    </div>
+
+    <div class="cfg-slide" data-q="players">
+      <h3 data-t="q-players"></h3>
+      <p class="hint" data-t="q-players-hint"></p>
+      <textarea id="players" rows="6" style="width:100%;max-width:420px" data-keep></textarea>
+    </div>
+
+    <div class="cfg-slide" data-q="end">
+      <h3 data-t="q-end"></h3>
+      <ul class="errors" id="errors"></ul>
+      <p id="cfg-review"></p>
+      <p class="note ok" id="cfg-ready" data-t="q-end-ok"></p>
+      <div class="savebar">
+        <button class="main ghost" id="cfg-copy" data-t="cfg-copy"></button>
+        <span id="cfg-copy-status"></span>
+      </div>
+      <p class="hint" data-t="f-file-next"></p>
+    </div>
     </div>
   </section>
 
@@ -526,6 +600,10 @@ function values(container) {
   return result;
 }
 
+function radio(name) {
+  const checked = document.querySelector(`input[name="${name}"]:checked`);
+  return checked ? checked.value : null;
+}
 function build() {
   const errors = [];
   const used = {};
@@ -561,7 +639,7 @@ function build() {
     outputs = {}; inputs = {}; keys = {};
     for (const [name, value] of Object.entries(values($('outputs')))) outputs[name] = gpio(`${t('f-outputs')} ${name}`, value, $(`out-${name}`));
     for (const [name, value] of Object.entries(values($('inputs')))) inputs[name] = gpio(`${t('f-inputs')} ${name}`, value, $(`in-${name}`));
-    if (!Object.values(outputs).some(Boolean) || !Object.values(inputs).some(Boolean)) errors.push(t('err-nopins'));
+    if (!Object.values(outputs).some(Boolean) || !Object.values(inputs).some(Boolean)) { errors.push(t('err-nopins')); marked.push($('card')); }
     // Segments learnt at the first start
     for (const key of PRESETS.keys) keys[key] = '';
   }
@@ -573,11 +651,23 @@ function build() {
 
   const leds = {PIN_TARGETLED: '0', BRI_TARGETLED: '0', TYP_TARGETLED: 'grb', PIN_STRIPLED: '0', NBR_STRIPLED: '0', BRI_STRIPLED: '0', TYP_STRIPLED: 'grb'};
   let targetMap = null;
-  if ($('target-led').checked) {
+  // LED dans la cible : non, des RaspyLeds (repartition connue), ou d'autres (numeros donnes
+  // ici, ou appris plus tard dans Parametres > Affectation des leds)
+  const kind = radio('tl-kind') || 'none';
+  if (kind !== 'none') {
     leds.PIN_TARGETLED = gpio(t('f-target-led'), $('tl-pin').value.trim(), $('tl-pin')) || '0';
     leds.BRI_TARGETLED = number(`${t('f-target-led')} : ${t('f-bright')}`, $('tl-bri'), 1, 100);
     leds.TYP_TARGETLED = $('tl-typ').value;
-    if ($('raspyleds').checked) targetMap = PRESETS.target_leds[card ? card.target_leds : 'ji'];
+    if (kind === 'raspy') targetMap = PRESETS.target_leds[card ? card.target_leds : 'ji'];
+    else if (radio('tl-map') === 'manual') {
+      targetMap = {};
+      $('tl-map').querySelectorAll('input').forEach((input) => {
+        const value = input.value.replace(/\s+/g, '');
+        if (!value) return;
+        if (!/^\d+(,\d+)*$/.test(value)) { errors.push(t('err-leds', {segment: input.dataset.segment})); marked.push(input); }
+        targetMap[input.dataset.segment] = value;
+      });
+    }
   }
   if ($('strip-led').checked) {
     leds.PIN_STRIPLED = gpio(t('f-strip-led'), $('sl-pin').value.trim(), $('sl-pin')) || '0';
@@ -606,7 +696,9 @@ function build() {
   const section = (name, entries) => `[${name}]\n` + Object.entries(entries).map(([key, value]) => `${key}:${value}`).join('\n') + '\n\n';
   let text = `# RaspyDarts : ${new Date().toISOString().slice(0, 10)}, ${location.href.split('#')[0]}\n`;
   text += `# ${card ? card.name : t('f-other')}\n\n`;
-  text += section('SectionGlobals', {locale: $('locale').value});
+  const globals = {locale: $('locale').value, videos: radio('videos') || '2', play_firstname: radio('announce') === 'off' ? 'False' : 'True'};
+  if (radio('sounds') === 'off') globals.soundvolume = '0';
+  text += section('SectionGlobals', globals);
   text += section('SectionAdvanced', {interior: card && card.interior ? 'True' : 'False'});
   text += section('Raspberry_BoardPinsOuts', outputs);
   text += section('Raspberry_BoardPinsIns', inputs);
@@ -614,6 +706,10 @@ function build() {
   text += section('Raspberry_Leds', leds);
   if (targetMap) text += section('LEDTarget', targetMap);
   text += section('Raspberry', extended);
+  // Camera USB (la premiere branchee) ou aucune ; joueurs favoris
+  text += section('Camera', {camera_id: radio('camera') === 'usb' ? '0' : '-1'});
+  const players = $('players').value.split(/[\n,]/).map((name) => name.trim()).filter(Boolean);
+  if (players.length) text += section('Favorites', {firstnames: players.join(',')});
   return {text, errors, marked, known: Boolean(card)};
 }
 
@@ -622,13 +718,27 @@ function update() {
   const code = $('card').value;
   $('custom-pins').classList.toggle('hidden', code !== 'Au');
   $('card-hint').textContent = t(code === 'Au' ? 'f-card-other' : 'f-card-known');
-  $('target-led-fields').classList.toggle('hidden', !$('target-led').checked);
+  const kind = radio('tl-kind') || 'none';
+  $('target-led-fields').classList.toggle('hidden', kind === 'none');
+  $('target-other').classList.toggle('hidden', kind !== 'other');
+  $('tl-map-fields').classList.toggle('hidden', kind !== 'other' || radio('tl-map') !== 'manual');
   $('strip-led-fields').classList.toggle('hidden', !$('strip-led').checked);
   document.querySelectorAll('.bad').forEach((element) => element.classList.remove('bad'));
   current = build();
   current.marked.forEach((element) => element.classList.add('bad'));
   $('errors').innerHTML = current.errors.map((error) => `<li>${error}</li>`).join('');
-  $('preview').textContent = current.text;
+  // Ecran de fin : pret, ou les questions a revoir
+  const review = [...new Set(current.marked.map((element) => element.closest('.cfg-slide')).filter(Boolean))];
+  $('cfg-review').innerHTML = '';
+  review.forEach((slide) => {
+    const button = document.createElement('button');
+    button.className = 'main ghost';
+    button.textContent = `↩ ${slide.querySelector('h3').textContent}`;
+    button.addEventListener('click', () => showCfg([...CFG_SLIDES].indexOf(slide)));
+    $('cfg-review').appendChild(button);
+  });
+  $('cfg-ready').classList.toggle('hidden', current.errors.length > 0);
+  keepAnswers();
   $('save-sd').disabled = $('download').disabled = current.errors.length > 0;
   $('save-errors').classList.toggle('hidden', current.errors.length === 0);
   $('s5-calibration').classList.toggle('hidden', current.known && stored('own') !== '1');
@@ -794,6 +904,71 @@ $('card').addEventListener('change', () => {
 $('mcp-count').addEventListener('change', () => { fillMcp(); update(); });
 document.querySelector('section[data-step="3"]').addEventListener('input', update);
 
+// ------------------------------------------------------------------ etape 3 : une question par ecran
+const CFG_SLIDES = document.querySelectorAll('.cfg-slide');
+let cfgSlide = 0;
+function showCfg(index) {
+  cfgSlide = Math.min(Math.max(index, 0), CFG_SLIDES.length - 1);
+  CFG_SLIDES.forEach((slide, number) => slide.classList.toggle('active', number === cfgSlide));
+  $('cfg-dots').querySelectorAll('button').forEach((dot, number) => dot.classList.toggle('active', number === cfgSlide));
+  $('cfg-prev').disabled = cfgSlide === 0;
+  // Derniere question : la fleche mene a l'etape suivante
+  const last = cfgSlide === CFG_SLIDES.length - 1;
+  $('cfg-next').textContent = last ? `${t('next-step')} ›` : '›';
+  $('cfg-next').classList.toggle('wide', last);
+  store('cfg-slide', cfgSlide);
+}
+CFG_SLIDES.forEach((slide, number) => {
+  const dot = document.createElement('button');
+  dot.textContent = number + 1;
+  dot.addEventListener('click', () => showCfg(number));
+  $('cfg-dots').appendChild(dot);
+});
+$('cfg-prev').addEventListener('click', () => showCfg(cfgSlide - 1));
+$('cfg-next').addEventListener('click', () => {
+  if (cfgSlide === CFG_SLIDES.length - 1) { offerCopy(); show(4); } else showCfg(cfgSlide + 1);
+});
+// Les numeros des LED de chaque segment (S, D, T, E de 1 a 20, puis SB et DB)
+(function buildLedMap() {
+  const segments = [];
+  for (let n = 1; n <= 20; n++) for (const kind of ['S', 'D', 'T', 'E']) segments.push(`${kind}${n}`);
+  segments.push('SB', 'DB');
+  for (const segment of segments) {
+    const box = document.createElement('div');
+    box.innerHTML = `<label class="seg-name" for="tlm-${segment}">${segment}</label><input type="text" id="tlm-${segment}" data-segment="${segment}" data-keep${segment === 'S1' ? ' placeholder="12,13,14"' : ''}>`;
+    $('tl-map').appendChild(box);
+  }
+})();
+// Les reponses gardees dans le navigateur (la page rouverte les retrouve)
+let answersReady = false;   // pas avant d'avoir relu celles gardees (sinon les defauts les effacent)
+function keepAnswers() {
+  if (!answersReady) return;
+  const answers = {};
+  document.querySelectorAll('#config-form [data-keep]').forEach((element) => {
+    if (element.type === 'radio') { if (element.checked) answers[`radio:${element.name}`] = element.value; }
+    else if (element.type === 'checkbox') answers[element.id] = element.checked;
+    else answers[element.id] = element.value;
+  });
+  store('cfg-answers', JSON.stringify(answers));
+}
+function restoreAnswers() {
+  let answers = {};
+  try { answers = JSON.parse(stored('cfg-answers') || '{}') || {}; } catch (error) { answers = {}; }
+  // Par defaut : les reglages du jeu (toutes les videos, le son, l'annonce, pas de camera, pas de LED)
+  const defaults = {'radio:tl-kind': 'none', 'radio:tl-map': 'later', 'radio:videos': '2', 'radio:sounds': 'on', 'radio:announce': 'on', 'radio:camera': 'off'};
+  answers = Object.assign({}, defaults, answers);
+  for (const [key, value] of Object.entries(answers)) {
+    if (key.startsWith('radio:')) {
+      const input = document.querySelector(`input[name="${key.slice(6)}"][value="${value}"]`);
+      if (input) input.checked = true;
+    } else if ($(key)) {
+      if ($(key).type === 'checkbox') $(key).checked = !!value; else $(key).value = value;
+    }
+  }
+  answersReady = true;
+}
+document.querySelector('section[data-step="3"]').addEventListener('change', update);
+
 // ------------------------------------------------------------------ menus (etape 4)
 // Le configurateur (menus.html) garde le fichier dans le navigateur (meme cle) : cette page le
 // lit pour en enregistrer une copie et le deposer sur la carte (.raspydarts/menus.yaml, que la
@@ -953,6 +1128,9 @@ lang = stored('lang') || (LANGS.includes(browser) ? browser : 'en');
 $('lang').value = lang;
 $('locale').value = LOCALES[lang];
 translate();
+restoreAnswers();
+update();
+showCfg(Number(stored('cfg-slide')) || 0);
 ownFile(stored('own') === '1');
 if (stored('menus-choice') === 'own' && menusData()) $('menus-own-info').textContent = t('sm-own-ok', {name: 'menus.yaml'});
 // index.html#3 : the step 3 directly
