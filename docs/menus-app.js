@@ -1620,6 +1620,18 @@ function setCell(id, cell) {
   // avec les autres. A cote d'un bouton : les deux se partagent sa largeur, chacun sur sa moitie
   const S = L.SUBCELLS;
   const putZone = (b) => { if (cell.zone) b.zone = cell.zone; else delete b.zone; };
+  // Les rangees du fichier d'abord ramenees a celles affichees (sans rangees vides) : la case
+  // visee et celles des boutons fixes parlent alors des memes rangees
+  const info = menuInfo(screen);
+  const shown = metrics(info.menu, info.listed, cell.zone || '');
+  const rowOf = {};
+  for (const index of shown.members) if (shown.cells[index]) rowOf[R.buttonId(info.listed[index - 1])] = shown.cells[index][0];
+  for (const b of ownButtons(screen)) {
+    const bid = R.buttonId(b);
+    if (bid !== id && L.isDict(b.cell) && !b.place && String(b.zone || '') === (cell.zone || '') && bid in rowOf) {
+      b.cell = Object.assign({}, b.cell, { row: rowOf[bid] });
+    }
+  }
   for (const b of ownButtons(screen)) {
     const bid = R.buttonId(b);
     if (cell.side) {
