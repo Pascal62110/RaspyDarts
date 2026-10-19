@@ -33,8 +33,8 @@ AlternateConfig = {}
 #    'solo': 2000,
 DefaultConfig['SectionGlobals'] = {
     'locale': 'fr_FR',
-    # Theme of the example configuration (~/.raspydarts/themes/remi) ; clear if missing
-    'colorset': 'remi',
+    # Theme of the example configuration (~/.raspydarts/themes/sombre) ; clear if missing
+    'colorset': 'sombre',
     'font': 'Fabrik.ttf',
     'soundvolume': 100,
     'videos': 2,
@@ -1697,6 +1697,9 @@ class Config:
         if key is None or section is None:
             return False
 
+        if section == 'SectionGlobals' and key == 'colorset' and key in self.config[section]:
+            return self.theme_name(self.config[section][key])
+
         if key in self.config[section]:
             if self.config[section][key] in ('True', 'False'):
                 return bool(self.config[section][key])
@@ -1715,6 +1718,20 @@ class Config:
             sys.exit(1)
 
         return default_value
+
+    # Themes renamed : remi is now sombre. A configuration naming one of them uses the folder
+    # which exists (an installation of before keeps its theme, a new one finds sombre)
+    RENAMED_THEMES = {'remi': 'sombre', 'sombre': 'remi'}
+
+    def theme_name(self, name):
+        '''
+        Name of the theme to use for this value of colorset
+        '''
+        other = self.RENAMED_THEMES.get(str(name))
+        themes = os.path.join(str(getattr(self, 'user_dir', '') or ''), 'themes')
+        if other and not os.path.isdir(os.path.join(themes, str(name))) and os.path.isdir(os.path.join(themes, other)):
+            return other
+        return name
 
     def get_players_names(self):
         """

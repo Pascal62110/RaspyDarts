@@ -139,7 +139,7 @@ function pxToFile(px, axis, floor) {
 }
 
 // ------------------------------------------------------------------ menus : boutons et disposition
-function themeName() { return $('theme').value || 'remi'; }
+function themeName() { return $('theme').value || 'sombre'; }
 function makeRenderer(ctx) {
   const favorites = $('fav-games').checked;
   return new R.Renderer(DATA, merged(), {
@@ -996,8 +996,8 @@ function imageInput(get, set) {
     if (!path || imageKnown(path)) return;
     const file = path.split('/').pop();
     const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : 'images';
-    note.textContent = t(ownImages[path] ? 'image-copy' : 'image-missing',
-      { file: file, folder: folder, theme: themeName() === 'own' ? '<thème>' : themeName() });
+    note.innerHTML = t(ownImages[path] ? 'image-copy' : 'image-missing',
+      { file: file, folder: folder, theme: themeName() === 'own' ? (stored('theme-name') || '&lt;thème&gt;') : themeName() });
   };
   input.addEventListener('change', refresh);
   const picker = el('input', { type: 'file', accept: 'image/*', class: 'hidden' });
@@ -2034,6 +2034,7 @@ async function loadTheme(files) {
   for (const file of files) {
     const parts = (file.webkitRelativePath || file.name).split('/');
     name = parts[0];
+    store('theme-name', name);
     const relative = parts.slice(1).join('/');
     if (/\.(png|jpe?g|webp)$/i.test(relative) && relative.startsWith('images/')) theme.images[relative] = URL.createObjectURL(file);
     if (/\.(ttf|otf)$/i.test(relative)) theme.fonts[parts[parts.length - 1]] = URL.createObjectURL(file);
@@ -2163,9 +2164,10 @@ function buildStart() {
 }
 function buildThemes() {
   const select = $('theme');
-  const keep = select.value || stored('theme') || 'remi';
+  // (remi : l'ancien nom du theme sombre)
+  const keep = select.value || (stored('theme') === 'remi' ? 'sombre' : stored('theme')) || 'sombre';
   select.innerHTML = '';
-  [['clear', 'clear'], ['remi', 'remi'], ['own', t('theme-own')]].forEach(([v, text]) => select.appendChild(el('option', { value: v, text: text })));
+  [['sombre', 'sombre'], ['clear', 'clear'], ['own', t('theme-own')]].forEach(([v, text]) => select.appendChild(el('option', { value: v, text: text })));
   select.value = keep;
   $('own-theme').classList.toggle('hidden', select.value !== 'own');
 }

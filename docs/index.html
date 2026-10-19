@@ -272,6 +272,14 @@ body.wide main { max-width: 1800px; }
       <button class="main big ghost" id="menus-have" data-t="sm-have"></button>
       <button class="main big ghost" id="menus-skip" data-t="sm-skip"></button>
     </div>
+    <div id="menus-theme-box" class="hidden">
+      <label for="menus-theme" data-t="sm-theme"></label>
+      <div class="savebar" style="margin:4px 0">
+        <select id="menus-theme"><option value="sombre">sombre</option><option value="clear">clear</option><option value="own" data-t="sm-theme-own"></option></select>
+        <input type="text" id="menus-theme-name" class="hidden" data-t-placeholder="sm-theme-name">
+      </div>
+      <p class="hint" data-t="sm-theme-hint"></p>
+    </div>
     <input type="file" id="menus-input" accept=".yaml,.yml" hidden>
     <p class="note ok hidden" id="menus-own-info"></p>
     <p class="errors hidden" id="menus-error"></p>
@@ -801,6 +809,13 @@ function menusYaml() {
   const body = Object.keys(data).length ? jsyaml.dump(data, {lineWidth: 140, noRefs: true}) : '';
   return `# ${t('sm-yaml-header')}\n# docs/menu/menus.md\nversion: 1\n` + body.replace(/^version: 1\n/m, '');
 }
+function menusTheme(raw) {
+  // Le theme de ces menus (choisi ici ou dans le configurateur) ; remi : l'ancien nom de sombre
+  let theme = stored('menus-theme') || 'sombre';
+  if (theme === 'remi') theme = 'sombre';
+  if (raw || theme !== 'own') return theme;
+  return (stored('menus-theme-name') || '').trim().replace(/[\\/:*?"<>|]/g, '_');
+}
 function cfgText() { return current && !current.errors.length && stored('own') !== '1' ? current.text : null; }
 function downloadText(text, name) {
   const link = document.createElement('a');
@@ -834,6 +849,11 @@ function updateMenus() {
   $('menus-editor').classList.toggle('hidden', choice !== 'make');
   if (choice === 'make' && !$('menus-frame').getAttribute('src')) $('menus-frame').setAttribute('src', 'menus.html?embedded=1');
   $('menus-savebar').classList.toggle('hidden', !['make', 'own'].includes(choice));
+  $('menus-theme-box').classList.toggle('hidden', !['make', 'own'].includes(choice));
+  $('menus-theme').value = menusTheme(true);
+  $('menus-theme-name').classList.toggle('hidden', menusTheme(true) !== 'own');
+  $('menus-theme-name').value = stored('menus-theme-name') || '';
+  $('menus-theme-name').placeholder = t('sm-theme-name');
   $('menus-skipped').classList.toggle('hidden', choice !== 'skip');
   $('menus-own-info').classList.toggle('hidden', choice !== 'own' || !menusData());
   document.body.classList.toggle('wide', step === 4 && choice === 'make');
@@ -842,7 +862,7 @@ function updateMenus() {
   $('menus-deposit').classList.toggle('hidden', !deposit);
   const picker = 'showDirectoryPicker' in window;
   $('menus-save-sd').classList.toggle('hidden', !picker);
-  $('menus-sd-hint').innerHTML = t(picker ? 'sd-menus-hint-ok' : 'sd-menus-hint-no');
+  $('menus-sd-hint').innerHTML = t(picker ? 'sd-menus-hint-ok' : 'sd-menus-hint-no', {theme: menusTheme() || '&lt;thème&gt;'});
 }
 $('menus-make').addEventListener('click', () => { store('menus-choice', 'make'); updateMenus(); });
 $('menus-skip').addEventListener('click', () => { store('menus-choice', 'skip'); updateMenus(); show(5); });
@@ -873,6 +893,13 @@ $('menus-input').addEventListener('change', async () => {
   updateMenus();
 });
 $('menus-copy').addEventListener('click', copyMenus);
+$('menus-theme').addEventListener('change', () => {
+  store('menus-theme', $('menus-theme').value);
+  // Le configurateur ouvert prend ce theme (une nouvelle adresse : permis meme hors serveur)
+  if ($('menus-frame').getAttribute('src')) $('menus-frame').setAttribute('src', `menus.html?embedded=1&t=${Date.now()}`);
+  updateMenus();
+});
+$('menus-theme-name').addEventListener('change', () => { store('menus-theme-name', $('menus-theme-name').value.trim()); updateMenus(); });
 // Le configurateur donne sa hauteur : le cadre l'affiche en entier (pas de barre de defilement)
 window.addEventListener('message', (event) => {
   if (event.data && event.data.menusHeight && event.source === $('menus-frame').contentWindow) {
@@ -890,13 +917,17 @@ async function writeFile(directory, name, data) {
 $('menus-save-sd').addEventListener('click', async () => {
   // La carte (bootfs) choisie : .raspydarts/menus.yaml et les images chargees dans le configurateur
   const status = $('menus-sd-status');
+  const theme = menusTheme();
+  if (!theme) { status.textContent = t('sm-theme-missing'); return; }
   try {
     const card = await window.showDirectoryPicker({id: 'bootfs', mode: 'readwrite'});
     let boot = true;
     try { await card.getFileHandle('config.txt'); } catch (error) { boot = false; }
     if (!boot && !confirm(t('sd-not-boot'))) return;
-    const folder = await card.getDirectoryHandle('.raspydarts', {create: true});
-    await writeFile(folder, 'menus.yaml', new Blob([menusYaml()], {type: 'text/yaml'}));
+    // .raspydarts/themes/<theme>/menu/menus.yaml, et les images dans le dossier du theme
+    let folder = await card.getDirectoryHandle('.raspydarts', {create: true});
+    folder = await (await folder.getDirectoryHandle('themes', {create: true})).getDirectoryHandle(theme, {create: true});
+    await writeFile(await folder.getDirectoryHandle('menu', {create: true}), 'menus.yaml', new Blob([menusYaml()], {type: 'text/yaml'}));
     let images = {};
     try { images = ($('menus-frame').contentWindow || {}).menusOwnImages || {}; } catch (error) { images = {}; }
     let count = 0;

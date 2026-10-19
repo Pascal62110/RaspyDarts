@@ -1,6 +1,6 @@
 """
-Menus described by files (docs/menu/menus.md) : the defaults of the game, the menus.yaml of
-the theme, then the one of the user. What a menu shows, in which order, with which look,
+Menus described by files (docs/menu/menus.md) : the defaults of the game, then the menus of
+the theme chosen (themes/<theme>/menu/menus.yaml). What a menu shows, in which order, with which look,
 which shortcuts, and the action of each button
 """
 
@@ -18,6 +18,9 @@ except ImportError:    # the menus of the game (defaults.yaml) cannot be read ei
 
 DEFAULTS_FILE = os.path.join(cpaths.ROOT_DIR, 'menus', 'defaults.yaml')
 FILE_NAME = 'menus.yaml'
+# The menus of a theme : in its folder menu (themes/<theme>/menu/menus.yaml), its images in
+# its folder images ; several themes, several menus
+THEME_FILE = os.path.join('menu', FILE_NAME)
 
 # Actions known by the game, and what the menu returns to the main loop for each of them.
 # A file cannot invent an action : an unknown one is ignored
@@ -124,7 +127,10 @@ class Menus:
         self.logs = logs
         self.errors = []
         self.data = {}
-        for path in (DEFAULTS_FILE, os.path.join(theme_dir or '', FILE_NAME), os.path.join(user_dir, FILE_NAME)):
+        paths = [DEFAULTS_FILE]
+        if theme_dir:
+            paths += [os.path.join(theme_dir, FILE_NAME), os.path.join(theme_dir, THEME_FILE)]
+        for path in paths:
             self.data = self.add_file(self.data, path)
         self.navigation = {name: [key_name(key) for key in as_list(keys)]
                            for name, keys in (self.data.get('navigation') or {}).items()}

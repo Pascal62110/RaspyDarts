@@ -40,9 +40,13 @@ Du plus prioritaire au moins prioritaire :
 
 | Fichier | Rôle |
 |---|---|
-| `~/.raspydarts/menus.yaml` | le fichier de l'utilisateur (fait par la page GitHub, ou à la main) |
-| `~/.raspydarts/themes/<thème>/menus.yaml` | le fichier fourni avec le thème choisi |
+| `~/.raspydarts/themes/<thème>/menu/menus.yaml` | les menus du thème choisi (faits par la page d'installation, étape Menus, ou à la main) ; ses images dans `~/.raspydarts/themes/<thème>/images/` |
 | `/raspydarts/menus/defaults.yaml` | les menus par défaut, livrés avec le jeu |
+
+Chaque thème a ses menus : changer de thème change de menus. Le thème par défaut s'appelle
+`sombre` (anciennement `remi` : une configuration qui nomme l'un prend le dossier qui existe).
+Un ancien `~/.raspydarts/themes/<thème>/menus.yaml` (sans le dossier `menu`) est encore lu,
+avant celui du dossier `menu`.
 
 Un fichier ne contient que ce qu'il change ; le reste vient du niveau suivant. Les règles de
 fusion :

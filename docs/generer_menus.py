@@ -1,11 +1,11 @@
 """
 Donnees et images du configurateur de menus (docs/menus.html), tirees du jeu :
 - docs/menus-data.js : menus par defaut (menus/defaults.yaml), actions, jeux par categorie,
-  textes traduits, couleurs et polices des themes clear et remi ;
+  textes traduits, couleurs et polices des themes clear et sombre ;
 - docs/assets/ : vignettes des fonds et des logos (images allegees), polices.
 A relancer quand defaults.yaml, un theme, un logo ou les traductions changent.
-Usage : python docs/generer_menus.py   (depuis la racine du depot ; le theme remi est lu dans
-.raspydarts_example/themes/remi)
+Usage : python docs/generer_menus.py   (depuis la racine du depot ; le theme sombre est lu dans
+.raspydarts_example/themes/sombre)
 """
 import ast
 import configparser
@@ -127,7 +127,7 @@ def main():
     if os.path.isdir(os.path.join(ASSETS, 'img')):
         shutil.rmtree(os.path.join(ASSETS, 'img'))
     sources = {'official': (ROOT, images_of(ROOT, 'official'))}
-    for theme in ('clear', 'remi'):
+    for theme in ('clear', 'sombre'):
         folder = os.path.join(EXAMPLE_THEMES, theme)
         sources[theme] = (folder, images_of(folder, theme) if os.path.isdir(folder) else {})
     images = {}
@@ -146,7 +146,7 @@ def main():
         thumbnail(full, target, BACKGROUND_SIZE, True)
         images['official'][f'images/{name}'] = os.path.relpath(target, DOCS).replace('\\', '/')
 
-    # Polices : celles du jeu et celle du theme remi
+    # Polices : celles du jeu et celle du theme sombre
     fonts_dir = os.path.join(ASSETS, 'fonts')
     os.makedirs(fonts_dir, exist_ok=True)
     fonts = {}
@@ -158,7 +158,7 @@ def main():
     # Themes : couleurs (clear, puis le Colorset.cfg du theme), police, fond
     clear = colorset_clear()
     themes = {}
-    for theme in ('clear', 'remi'):
+    for theme in ('clear', 'sombre'):
         colors = dict(clear)
         font = 'MaPolice.ttf'
         cfg = os.path.join(EXAMPLE_THEMES, theme, 'other', 'Colorset.cfg')
