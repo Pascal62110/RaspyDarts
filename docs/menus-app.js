@@ -101,7 +101,8 @@ function cleanUser() {
 function screens() {
   const menus = Object.keys(merged().menus || {}).filter(n => !['favorite_save', 'favorite_players', 'favorite_game', 'question'].includes(n));
   const own = menus.filter(n => !FILE_MENUS.includes(n) && !GAME_SCREENS.includes(n));
-  return FILE_MENUS.concat(own, GAME_SCREENS);
+  // Les ecrans du jeu (liste des jeux, options, joueurs) : plus tard
+  return FILE_MENUS.concat(own);
 }
 function isLook(text) {
   // Un bloc d'aspect (taille, police...) et non des traductions
@@ -626,6 +627,11 @@ $('overlay').addEventListener('pointermove', (event) => {
       op.started = true;
       ensureStyled(screen);
       const info = menuInfo(screen);
+      // Sa case avant le geste (pour refermer la place qu'il laisse)
+      const zone = zoneOfButton(op.id);
+      const index = info.listed.findIndex(b => R.buttonId(b) === op.id) + 1;
+      const from = metrics(info.menu, info.listed, zone).cells[index];
+      op.origin = from && !isFree(op.id) ? { zone: zone, row: from[0], high: from[3] } : null;
       op.areas = {};
       for (const zone of zoneNames(info.menu)) op.areas[zone] = metrics(info.menu, info.listed, zone).area;
     }
@@ -693,7 +699,8 @@ $('overlay').addEventListener('pointerup', async () => {
   if (done.type === 'move' && done.started) {
     const cell = dropCell;
     dropZone = dropCell = null;
-    if (cell) setCell(done.id, cell);
+    if (cell) setCell(done.id, Object.assign({}, cell, { origin: done.origin }));
+    else leaveRows(done.origin);
     changed(true);
   }
   else if ((done.type === 'area' || done.type === 'version') && done.moved) changed(true);
@@ -875,14 +882,17 @@ function changed(rebuild) {
   if (rebuild) buildPanel();
 }
 function field(parent, labelKey, input, hintKey) {
-  parent.appendChild(el('label', { text: t(labelKey) }));
-  parent.appendChild(input);
-  if (hintKey) parent.appendChild(el('p', { class: 'hint', text: t(hintKey) }));
-  return input;
+  const box = el('div', {}, [el('label', { text: t(labelKey) }), input, hintKey ? el('p', { class: 'hint', text: t(hintKey) }) : null]);
+  parent.appendChild(box);
+  return box;
 }
 function cell(parent, labelText, input) {
-  parent.appendChild(el('div', {}, [el('label', { text: labelText }), input]));
+  const box = el('div', {}, [el('label', { text: labelText }), input]);
+  parent.appendChild(box);
+  return box;
 }
+// Reglage du mode Avance seulement (cache en mode Basique)
+function adv(node) { if (node && node.classList) node.classList.add('adv'); return node; }
 function textInput(get, set, placeholder) {
   const input = el('input', { type: 'text', placeholder: placeholder || '' });
   input.value = get() === undefined || get() === null ? '' : (L.isDict(get()) ? '' : String(get()));
@@ -1007,6 +1017,7 @@ function rectInputs(parent, get, set, rebuild) {
     cell(grid, t('u-' + key) + (reference() ? ' (px)' : ' (%)'), unitInput(() => get(key), v => set(key, v), axis, rebuild));
   }
   parent.appendChild(grid);
+  return grid;
 }
 function fieldset(parent, legend, open) {
   const box = el('details', { class: 'group' });
@@ -1041,8 +1052,9 @@ function titleFields(parent, name, key) {
   cell(grid, t('f-font'), selectInput(Object.keys(DATA.fonts), () => look().font, setLook('font'), ''));
   cell(grid, t('f-color'), colorInput(() => look().color, setLook('color')));
   cell(grid, t('f-band'), colorInput(() => look().background, setLook('background')));
-  fs.appendChild(grid);
-  fs.appendChild(checkInput('f-bold', () => look().bold, setLook('bold')));
+  fs.appendChild(adv(grid));
+  fs.appendChild(adv(checkInput('f-bold', () => look().bold, setLook('bold'))));
+  return fs;
 }
 function backgroundFields(parent, get, set, legend, open) {
   // Fond : couleur et/ou image, et comment l'image remplit la place
@@ -1056,7 +1068,7 @@ function backgroundFields(parent, get, set, legend, open) {
   cell(grid, t('f-position'), selectInput(POSITIONS.map(p => [p, t('pos-' + p)]), () => block().position, put('position'), ''));
   cell(grid, t('f-opacity'), numberInput(() => block().opacity, put('opacity'), 0.05, 0, 1));
   cell(grid, t('f-slice'), numberInput(() => block().slice, put('slice'), 1, 1, 200));
-  fs.appendChild(grid);
+  fs.appendChild(adv(grid));
   return fs;
 }
 
@@ -1091,8 +1103,8 @@ function buildScreenPanel(panel) {
   if (GAME_SCREENS.includes(name)) panel.appendChild(el('p', { class: 'hint', text: t('game-screen-hint') }));
   else panel.appendChild(el('p', { class: 'hint', text: t('sel-screen-hint') }));
   if (fitNotice) panel.appendChild(el('div', { class: 'note warn', text: t('fit-notice') }));
-  field(panel, 'f-screen-style', selectInput(styleNames(), menuStyleName, set('style'), undefined, true),
-        GAME_SCREENS.includes(name) ? 'f-style-hint-game' : null);
+  adv(field(panel, 'f-screen-style', selectInput(styleNames(), menuStyleName, set('style'), undefined, true),
+        GAME_SCREENS.includes(name) ? 'f-style-hint-game' : null));
   if (!GAME_SCREENS.includes(name)) buildZoneList(panel, name);
   else if (name === 'games') {
     const fs = fieldset(panel, t('f-layout-title'), true);
@@ -1102,12 +1114,12 @@ function buildScreenPanel(panel) {
     fs.appendChild(el('p', { class: 'hint', text: t('area-hint') }));
   }
   titleFields(panel, name, 'title');
-  titleFields(panel, name, 'subtitle');
+  adv(titleFields(panel, name, 'subtitle'));
   backgroundFields(panel, () => own().background, set('background'), t('f-menu-background'));
   if (GAME_SCREENS.includes(name)) return;
   buildShortcutFields(panel, name);
   const effective = () => ((merged().menus || {})[name]) || {};
-  const fsInfo = fieldset(panel, t('f-info'));
+  const fsInfo = adv(fieldset(panel, t('f-info')));
   fsInfo.appendChild(checkInput('f-show-version', () => effective().show_version, v => set('show_version')(v || undefined), true));
   if (effective().show_version) fsInfo.appendChild(el('button', { class: 'tiny', text: t('version-edit'), onclick: selectVersion }));
   for (const item of ['version', 'rpi_version', 'ips']) {
@@ -1133,8 +1145,55 @@ function buildZoneList(panel, name) {
       el('span', { class: 'name', text: zoneLabel(zone) }), el('span', { class: 'tag', text: t('zone-count', { n: count }) })]));
   }
   fs.appendChild(list);
-  fs.appendChild(el('div', { class: 'row' }, [el('button', { class: 'tiny', text: t('zone-add'), onclick: addZone })]));
+  const actions = el('div', { class: 'row' }, [el('button', { class: 'tiny', text: t('zone-add'), onclick: addZone })]);
+  const copied = clipboardZone();
+  if (copied) actions.appendChild(el('button', { class: 'tiny', text: t('zone-paste', { n: copied.buttons.length, from: screenLabel(copied.from) }), onclick: pasteZone }));
+  fs.appendChild(actions);
   fs.appendChild(el('p', { class: 'hint', text: t('zones-hint') }));
+}
+// Copier une zone (sa disposition et ses boutons) pour la coller dans un autre ecran
+const ZONE_KEYS = ['layout', 'area', 'columns', 'button_size', 'gap', 'align', 'overflow'];
+function clipboardZone() {
+  try { const c = JSON.parse(stored('zone-copy') || 'null'); return c && Array.isArray(c.buttons) ? c : null; } catch (e) { return null; }
+}
+function copyZone(zone) {
+  ensureStyled(screen);
+  const info = menuInfo(screen);
+  const settings = zoneSettings(info.menu, zone);
+  const layout = {};
+  for (const key of ZONE_KEYS) if (settings[key] !== undefined) layout[key] = clone(settings[key]);
+  const names = zoneNames(info.menu);
+  const buttons = menuButtons(screen).filter(b => !b.place && !b.footer &&
+    (String(b.zone || '') === zone || (zone === '' && !names.includes(String(b.zone || ''))))).map(b => { const c = clone(b); delete c.zone; return c; });
+  store('zone-copy', JSON.stringify({ from: screen, layout: layout, buttons: buttons }));
+  buildPanel();
+  alert(t('zone-copied', { n: buttons.length }));
+}
+function pasteZone() {
+  // Une nouvelle zone de cet ecran, avec une copie des boutons (noms rendus uniques)
+  const copied = clipboardZone();
+  if (!copied) return;
+  ensureStyled(screen);
+  const menu = userMenu(screen, true);
+  if (!L.isDict(menu.zones)) menu.zones = {};
+  const info = menuInfo(screen);
+  let n = 2;
+  while (zoneNames(info.menu).includes('zone' + n) || menu.zones['zone' + n]) n++;
+  const name = 'zone' + n;
+  menu.zones[name] = clone(copied.layout);
+  const buttons = ownButtons(screen);
+  const footer = buttons.findIndex(b => b.footer);
+  const added = copied.buttons.map(b => {
+    const c = clone(b);
+    let id = R.buttonId(c), k = 2;
+    while (buttons.some(o => R.buttonId(o) === id)) id = `${R.buttonId(c)}-${k++}`;
+    if (id !== R.buttonId(c)) c.id = id;
+    c.zone = name;
+    return c;
+  });
+  buttons.splice(footer >= 0 ? footer : buttons.length, 0, ...added);
+  selection = { kind: 'zone', zone: name };
+  changed(true);
 }
 function addZone() {
   // Une nouvelle zone a droite de l'ecran, avec la taille des boutons de la premiere
@@ -1192,6 +1251,15 @@ function buildZonePanel(panel) {
   buildLayoutFields(panel, screen, zone);
   const several = zoneNames(info.menu).length > 1;
   const row = el('div', { class: 'row', style: 'margin-top:10px' });
+  row.appendChild(el('button', { class: 'tiny', text: t('zone-compact'), onclick: () => {
+    // Retirer les rangees vides de la zone
+    ensureStyled(screen);
+    freezeZone(zone);
+    const m = metrics(menuInfo(screen).menu, menuInfo(screen).listed, zone);
+    closeRows(zone, Array.from({ length: m.rows }, (_, i) => i));
+    changed(true);
+  } }));
+  row.appendChild(el('button', { class: 'tiny', text: t('zone-copy'), onclick: () => copyZone(zone) }));
   const remove = el('button', { class: 'tiny', text: t('zone-delete'), onclick: () => deleteZone(zone) });
   if (!several) remove.disabled = true;
   row.appendChild(remove);
@@ -1214,10 +1282,10 @@ function buildVersionPanel(panel) {
   panel.appendChild(el('p', { class: 'hint', text: t('version-hint') }));
   const rect = (lastDraw && lastDraw.geometry && lastDraw.geometry.version) || [0, 0, 0, 0];
   const now = { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') };
-  rectInputs(panel, k => (look()[k] !== undefined ? look()[k] : now[k]), (k, v) => write(k, v));
+  adv(rectInputs(panel, k => (look()[k] !== undefined ? look()[k] : now[k]), (k, v) => write(k, v)));
   const grid = el('div', { class: 'grid2' });
   cell(grid, t('f-color'), colorInput(() => look().color, v => write('color', v)));
-  cell(grid, t('f-font'), selectInput(Object.keys(DATA.fonts), () => look().font, v => write('font', v), ''));
+  adv(cell(grid, t('f-font'), selectInput(Object.keys(DATA.fonts), () => look().font, v => write('font', v), '')));
   panel.appendChild(grid);
   panel.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [
     el('button', { class: 'tiny', text: t('version-reset'), onclick: () => { userMenu(screen, true).show_version = true; changed(true); } }),
@@ -1238,8 +1306,8 @@ function buildLayoutFields(panel, name, zone) {
   // Les valeurs en vigueur (celles du jeu tant que le fichier n'en dit rien)
   cell(grid, t('f-layout'), selectInput([['list', t('layout-list')], ['grid', t('layout-grid')], ['tiles', t('layout-tiles')]],
     () => m.kind, v => write(['layout'], v), undefined, true));
-  cell(grid, t('f-align'), selectInput([['center', t('align-center')], ['top', t('align-top')]], () => settings.align || 'center',
-    v => write(['align'], v)));
+  adv(cell(grid, t('f-align'), selectInput([['center', t('align-center')], ['top', t('align-top')]], () => settings.align || 'center',
+    v => write(['align'], v))));
   const columns = el('input', { type: 'number', min: 1, max: 8, step: 1, value: m.columns });
   columns.addEventListener('change', () => {
     const n = Math.max(1, parseInt(columns.value, 10) || 1);
@@ -1258,9 +1326,9 @@ function buildLayoutFields(panel, name, zone) {
   });
   cell(grid, t('f-columns'), columns);
   cell(grid, t('f-rows'), rows);
-  cell(grid, t('f-size-width'), numberInput(() => m.size.width, v => write(['button_size', 'width'], v), 0.05, 0.1, 1));
-  cell(grid, t('u-height') + (reference() ? ' (px)' : ' (%)'), unitInput(() => m.size.height,
-    v => write(['button_size', 'height'], v), 'y', true));
+  adv(cell(grid, t('f-size-width'), numberInput(() => m.size.width, v => write(['button_size', 'width'], v), 0.05, 0.1, 1)));
+  adv(cell(grid, t('u-height') + (reference() ? ' (px)' : ' (%)'), unitInput(() => m.size.height,
+    v => write(['button_size', 'height'], v), 'y', true)));
   fs.appendChild(grid);
   fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'tiny', text: t('fit-area'), onclick: () => {
     // Hauteur des boutons : la zone remplie par leurs lignes
@@ -1275,23 +1343,23 @@ function buildLayoutFields(panel, name, zone) {
       v => write(['gap', key], v), axis));
   }
   fs.appendChild(gaps);
-  fs.appendChild(el('label', { text: t('f-area') }));
-  rectInputs(fs, k => getPath(own(), ['area', k]) !== undefined ? getPath(own(), ['area', k]) : ((L.LAYOUT_DEFAULTS[m.kind] || L.LAYOUT_DEFAULTS.list).area[k]),
-    (k, v) => write(['area', k], v));
+  adv(fs.appendChild(el('label', { text: t('f-area') })));
+  adv(rectInputs(fs, k => getPath(own(), ['area', k]) !== undefined ? getPath(own(), ['area', k]) : ((L.LAYOUT_DEFAULTS[m.kind] || L.LAYOUT_DEFAULTS.list).area[k]),
+    (k, v) => write(['area', k], v)));
   fs.appendChild(el('p', { class: 'hint', text: t('area-hint') }));
   if (info.styled && !zone && zoneNames(info.menu).length === 1) {
-    fs.appendChild(el('button', { class: 'tiny', text: t('layout-remove'), onclick: () => {
+    adv(fs.appendChild(el('button', { class: 'tiny', text: t('layout-remove'), onclick: () => {
       if (!confirm(t('layout-remove-confirm'))) return;
       const menu = userMenu(name, true);
       for (const key of ['layout', 'area', 'columns', 'button_size', 'gap', 'align', 'overflow']) delete menu[key];
       if (menuButtons(name).some(b => b.place || b.cell || b.span)) ownButtons(name).forEach(b => { delete b.place; delete b.cell; delete b.span; });
       selection = { kind: 'screen' };
       changed(true);
-    } }));
+    } })));
   }
 }
 function buildShortcutFields(panel, name) {
-  const fs = fieldset(panel, t('f-shortcuts'));
+  const fs = adv(fieldset(panel, t('f-shortcuts')));
   const sc = () => userMenu(name).shortcuts || {};
   const setSc = (k) => (v) => setPath(userMenu(name, true), ['shortcuts', k], v);
   // Par defaut comme les boutons classiques du theme
@@ -1395,9 +1463,9 @@ function buildButtonPanel(panel) {
   field(content, 'f-icon', imageInput(() => R.buttonIcon(Object.assign({}, button, { game_logo: undefined })) || undefined,
     v => editButton(id, b => { if (L.isDict(b.icon)) { if (v) b.icon.image = v; else delete b.icon.image; } else if (v) b.icon = v; else delete b.icon; })));
   content.appendChild(checkInput('f-visible', () => button.visible !== false, v => set('visible')(v ? undefined : false), true));
-  content.appendChild(checkInput('f-exhibition', () => !!button.exhibition, v => set('exhibition')(v || undefined)));
-  field(content, 'f-confirm', textInput(() => button.confirm, set('confirm')), 'f-confirm-hint');
-  const more = fieldset(content, t('more'));
+  adv(content.appendChild(checkInput('f-exhibition', () => !!button.exhibition, v => set('exhibition')(v || undefined))));
+  adv(field(content, 'f-confirm', textInput(() => button.confirm, set('confirm')), 'f-confirm-hint'));
+  const more = adv(fieldset(content, t('more')));
   field(more, 'f-id', textInput(() => button.id, v => {
     editButton(id, b => { if (v) b.id = v; else delete b.id; });
     selection.id = v || button.action;
@@ -1409,24 +1477,24 @@ function buildButtonPanel(panel) {
     const fs = fieldset(panel, t('pos-title'), true);
     if (L.isDict(button.place)) {
       fs.appendChild(el('p', { class: 'hint', text: t('pos-free-hint') }));
-      rectInputs(fs, k => button.place[k], (k, v) => editButton(id, b => { b.place = Object.assign({}, b.place); if (v === undefined) delete b.place[k]; else b.place[k] = v; }));
-      fs.appendChild(el('label', { text: t('f-anchor') }));
-      fs.appendChild(selectInput(POSITIONS.map(p => [p, t('pos-' + p)]), () => button.place.anchor,
-        v => editButton(id, b => { b.place = Object.assign({}, b.place); if (v) b.place.anchor = v; else delete b.place.anchor; }), ''));
+      adv(rectInputs(fs, k => button.place[k], (k, v) => editButton(id, b => { b.place = Object.assign({}, b.place); if (v === undefined) delete b.place[k]; else b.place[k] = v; })));
+      adv(fs.appendChild(el('label', { text: t('f-anchor') })));
+      adv(fs.appendChild(selectInput(POSITIONS.map(p => [p, t('pos-' + p)]), () => button.place.anchor,
+        v => editButton(id, b => { b.place = Object.assign({}, b.place); if (v) b.place.anchor = v; else delete b.place.anchor; }), '')));
       fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'tiny', text: t('pos-back-grid'),
         onclick: () => { editButton(id, b => delete b.place); changed(true); } })]));
     } else {
       fs.appendChild(el('p', { class: 'hint', text: t('pos-grid-hint') }));
       if (L.isDict(button.cell)) {
         // Case fixe : rangee et colonne comptees depuis 1 a l'ecran, depuis 0 dans le fichier
-        fs.appendChild(el('label', { text: t('cell-title') }));
+        adv(fs.appendChild(el('label', { text: t('cell-title') })));
         const fixed = el('div', { class: 'grid2' });
         for (const key of ['row', 'column']) {
           cell(fixed, t('cell-' + key), numberInput(() => (button.cell[key] || 0) + 1, v => editButton(id, b => {
             b.cell = Object.assign({}, b.cell, { [key]: Math.max(0, Math.round(v || 1) - 1) });
           }), 1, 1, 20));
         }
-        fs.appendChild(fixed);
+        fs.appendChild(adv(fixed));
         fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'tiny', text: t('cell-free'),
           onclick: () => { editButton(id, b => delete b.cell); changed(true); } })]));
       }
@@ -1443,6 +1511,22 @@ function buildButtonPanel(panel) {
       fs.appendChild(grid);
       // L'ecart au-dessus de sa rangee (en hauteurs de bouton)
       field(fs, 'f-space-before', numberInput(() => button.space_before, set('space_before'), 0.5, 0, 10), 'f-space-hint');
+      // L'ecart a sa gauche (en parts de colonne) : les boutons fixes qu'il chevaucherait se poussent
+      const zoneHere = zoneOfButton(id);
+      field(fs, 'f-space-left', numberInput(() => button.space_left, v => {
+        freezeZone(zoneHere);
+        set('space_left')(v ? round4(v) : undefined);
+        settleZone(zoneHere, id);
+      }, 0.25, 0, 4), 'f-space-left-hint');
+      // L'ecart entre tous les boutons de sa zone
+      const zs = zoneSettings(menuInfo(screen).menu, zoneHere);
+      fs.appendChild(el('label', { text: t('f-gap-zone') }));
+      const gaps = el('div', { class: 'grid2' });
+      for (const [key, axis] of [['x', 'x'], ['y', 'y']]) {
+        cell(gaps, t('u-' + key) + (reference() ? ' (px)' : ' (%)'), unitInput(() => (getPath(zs, ['gap', key]) !== undefined ? getPath(zs, ['gap', key]) : L.GAP_DEFAULT[key]),
+          v => { ensureStyled(screen); setPath(zoneOwn(zoneHere, true), ['gap', key], v); }, axis));
+      }
+      fs.appendChild(gaps);
     }
     fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('span', { text: t('order') }),
       el('button', { class: 'tiny', text: '▲', onclick: () => moveButton(id, -1) }),
@@ -1528,33 +1612,33 @@ function buildLookFields(parent, id) {
   const sizeIn = (path) => unitInput(get(path), set(path), 'y');
   const shape = el('div', { class: 'grid2' });
   cell(shape, t('f-shape'), selectInput(SHAPES.map(s => [s, t('shape-' + s)]), get(['shape']), set(['shape']), ''));
-  cell(shape, t('f-radius'), numberInput(get(['radius']), set(['radius']), 0.05, 0));
-  cell(shape, t('f-border-width'), numberInput(get(['border', 'width']), set(['border', 'width']), 1, 0, 30));
-  cell(shape, t('f-border-color'), colorInput(get(['border', 'color']), set(['border', 'color'])));
+  adv(cell(shape, t('f-radius'), numberInput(get(['radius']), set(['radius']), 0.05, 0)));
+  adv(cell(shape, t('f-border-width'), numberInput(get(['border', 'width']), set(['border', 'width']), 1, 0, 30)));
+  adv(cell(shape, t('f-border-color'), colorInput(get(['border', 'color']), set(['border', 'color']))));
   parent.appendChild(shape);
-  parent.appendChild(checkInput('f-shadow', get(['shadow']), v => set(['shadow'])(v || undefined)));
+  adv(parent.appendChild(checkInput('f-shadow', get(['shadow']), v => set(['shadow'])(v || undefined))));
   backgroundFields(parent, get(['background']), set(['background']), t('f-background'), true);
   const fsText = fieldset(parent, t('f-text-look'), true);
   const gt = el('div', { class: 'grid2' });
-  cell(gt, t('f-font'), selectInput(Object.keys(DATA.fonts), get(['text', 'font']), set(['text', 'font']), ''));
+  adv(cell(gt, t('f-font'), selectInput(Object.keys(DATA.fonts), get(['text', 'font']), set(['text', 'font']), '')));
   const autoSize = String(get(['text', 'size'])()).toLowerCase() === 'auto';
   const sizeInput = sizeIn(['text', 'size']);
   if (autoSize) { sizeInput.disabled = true; sizeInput.placeholder = 'auto'; }
   cell(gt, sizeLabel(), sizeInput);
   cell(gt, t('f-color'), colorInput(get(['text', 'color']), set(['text', 'color'])));
-  cell(gt, t('f-position'), selectInput(POSITIONS.slice(0, 5).map(p => [p, t('pos-' + p)]), get(['text', 'position']), set(['text', 'position']), ''));
-  cell(gt, t('f-text-align'), selectInput([['left', t('pos-left')], ['center', t('pos-center')], ['right', t('pos-right')]], get(['text', 'align']), set(['text', 'align']), ''));
+  adv(cell(gt, t('f-position'), selectInput(POSITIONS.slice(0, 5).map(p => [p, t('pos-' + p)]), get(['text', 'position']), set(['text', 'position']), '')));
+  adv(cell(gt, t('f-text-align'), selectInput([['left', t('pos-left')], ['center', t('pos-center')], ['right', t('pos-right')]], get(['text', 'align']), set(['text', 'align']), '')));
   fsText.appendChild(gt);
   fsText.appendChild(checkInput('f-text-auto', () => autoSize, v => set(['text', 'size'])(v ? 'auto' : '4.5%'), true));
-  fsText.appendChild(checkInput('f-bold', get(['text', 'bold']), v => set(['text', 'bold'])(v || undefined)));
-  fsText.appendChild(checkInput('f-text-shadow', get(['text', 'shadow']), v => set(['text', 'shadow'])(v || undefined)));
-  const fsIcon = fieldset(parent, t('f-icon-look'));
+  adv(fsText.appendChild(checkInput('f-bold', get(['text', 'bold']), v => set(['text', 'bold'])(v || undefined))));
+  adv(fsText.appendChild(checkInput('f-text-shadow', get(['text', 'shadow']), v => set(['text', 'shadow'])(v || undefined))));
+  const fsIcon = adv(fieldset(parent, t('f-icon-look')));
   const gi = el('div', { class: 'grid2' });
   cell(gi, t('f-position'), selectInput(['left', 'top', 'right', 'center'].map(p => [p, t('pos-' + p)]), get(['icon', 'position']), set(['icon', 'position']), ''));
   cell(gi, t('f-size-part'), numberInput(get(['icon', 'size']), set(['icon', 'size']), 0.05, 0.1, 1));
   fsIcon.appendChild(gi);
   for (const state of ['selected', 'disabled', 'pressed']) {
-    const fs = fieldset(parent, t('state-' + state), state === 'selected' && showSelected);
+    const fs = adv(fieldset(parent, t('state-' + state), state === 'selected' && showSelected));
     if (state === 'selected') {
       fs.addEventListener('toggle', () => {
         showSelected = fs.open;
@@ -1623,9 +1707,12 @@ function cellAt(point, id, zone) {
       c[1] < start + width && c[1] + c[2] > start;
   });
   const limit = m.flowing.length ? m.rows : 0;
+  // Jusqu'au bas de la zone : on peut laisser des rangees vides au-dessus
+  const fitting = Math.floor((m.area[1] + m.area[3] - top(0) + m.gapY) / stepY);
+  const bottomRow = Math.max(limit, fitting - high);
   let row = null;
   // Une place libre sous le point (un trou a cote d'un bouton) : la
-  for (let r = 0; r <= limit; r++) {
+  for (let r = 0; r <= bottomRow; r++) {
     if (!straddled(r) && point[1] >= top(r) && point[1] < top(r) + cellsH) { if (!occupied(r)) row = r; break; }
   }
   if (row === null) {
@@ -1648,39 +1735,58 @@ function cellAt(point, id, zone) {
   return { row: row, column: round4(start / S), zone: zone, high: high, width: width, start: start, insert: insert,
            rect: [x, top(row), cellsW, cellsH] };
 }
-function normalizeRows(zone, except) {
-  // Les rangees du fichier ramenees a celles affichees (sans rangees vides) : les cases visees
-  // et celles des boutons fixes parlent alors des memes rangees
+function freezeZone(zone, except) {
+  // Chaque bouton de la zone garde la case ou il est affiche (des qu'on dispose a la main, plus
+  // rien ne se range tout seul : une rangee laissee vide le reste)
   const info = menuInfo(screen);
   const shown = metrics(info.menu, info.listed, zone || '');
-  const rowOf = {};
-  for (const index of shown.members) if (shown.cells[index]) rowOf[R.buttonId(info.listed[index - 1])] = shown.cells[index][0];
+  const at = {};
+  for (const index of shown.members) if (shown.cells[index]) at[R.buttonId(info.listed[index - 1])] = shown.cells[index];
   for (const b of ownButtons(screen)) {
     const bid = R.buttonId(b);
-    if (bid !== except && L.isDict(b.cell) && !b.place && String(b.zone || '') === (zone || '') && bid in rowOf) {
-      b.cell = Object.assign({}, b.cell, { row: rowOf[bid] });
-    }
+    const z = String(b.zone || '');
+    if (bid === except || b.place || b.footer || !(bid in at) || (z !== (zone || '') && !(zone === '' && !zoneNames(info.menu).includes(z)))) continue;
+    b.cell = { row: at[bid][0], column: round4(at[bid][1] / L.SUBCELLS) };
   }
+}
+function fixedBox(b, total) {
+  // La place d'un bouton fixe en cases : rangee, debut et largeur (son ecart a gauche compris), hauteur
+  const S = L.SUBCELLS;
+  const span = L.isDict(b.span) ? b.span : {};
+  const left = Math.max(0, Math.round((parseFloat(b.space_left) || 0) * S));
+  const w = Math.min(total, Math.max(1, Math.round((parseFloat(span.columns) || 1) * S)) + left);
+  return { row: parseInt(b.cell.row || 0, 10), start: Math.min(Math.max(0, Math.round((parseFloat(b.cell.column) || 0) * S)), total - w),
+           w: w, h: Math.max(1, parseInt(span.rows || 1, 10)) };
+}
+function fixedOf(zone) {
+  return ownButtons(screen).filter(b => L.isDict(b.cell) && !b.place && String(b.zone || '') === (zone || ''));
+}
+function closeRows(zone, rows) {
+  // Les rangees devenues vides (un bouton parti, reduit ou supprime) se referment : celles du
+  // dessous remontent ; renvoie celles refermees
+  const info = menuInfo(screen);
+  const total = metrics(info.menu, info.listed, zone || '').columns * L.SUBCELLS;
+  const closed = [];
+  for (const r of [...new Set(rows)].sort((a, b) => b - a)) {
+    const fixed = fixedOf(zone);
+    if (fixed.some(b => { const x = fixedBox(b, total); return x.row <= r && r < x.row + x.h; })) continue;
+    for (const b of fixed) if ((b.cell.row || 0) > r) b.cell = Object.assign({}, b.cell, { row: b.cell.row - 1 });
+    closed.push(r);
+  }
+  return closed;
 }
 function settleZone(zone, firstId) {
   // Les boutons fixes de la zone sans chevauchement : celui qu'on vient de changer garde sa
   // place, les autres (de haut en bas) descendent juste sous ce qu'ils chevaucheraient
-  const S = L.SUBCELLS;
   const info = menuInfo(screen);
-  const total = metrics(info.menu, info.listed, zone || '').columns * S;
-  const fixed = ownButtons(screen).filter(b => L.isDict(b.cell) && !b.place && String(b.zone || '') === (zone || ''));
-  const box = (b) => {
-    const span = L.isDict(b.span) ? b.span : {};
-    const w = Math.min(total, Math.max(1, Math.round((parseFloat(span.columns) || 1) * S)));
-    return { row: parseInt(b.cell.row || 0, 10), start: Math.min(Math.max(0, Math.round((parseFloat(b.cell.column) || 0) * S)), total - w),
-             w: w, h: Math.max(1, parseInt(span.rows || 1, 10)) };
-  };
+  const total = metrics(info.menu, info.listed, zone || '').columns * L.SUBCELLS;
+  const fixed = fixedOf(zone);
   const overlap = (a, c) => a.row < c.row + c.h && c.row < a.row + a.h && a.start < c.start + c.w && c.start < a.start + a.w;
   const order = fixed.slice().sort((a, b) => (R.buttonId(b) === firstId) - (R.buttonId(a) === firstId) ||
-    box(a).row - box(b).row || box(a).start - box(b).start);
+    fixedBox(a, total).row - fixedBox(b, total).row || fixedBox(a, total).start - fixedBox(b, total).start);
   const placed = [];
   for (const b of order) {
-    const bx = box(b);
+    const bx = fixedBox(b, total);
     for (let guard = 0; guard < 100; guard++) {
       const hits = placed.filter(p => overlap(p, bx));
       if (!hits.length) break;
@@ -1692,18 +1798,31 @@ function settleZone(zone, firstId) {
 }
 function changeSpan(id, units, rows) {
   // Nouvelle taille d'un bouton (parts de colonne, rangees) : les boutons fixes qu'il
-  // chevaucherait descendent, les autres gardent leur place
+  // chevaucherait descendent ; reduit, la place qu'il laisse se referme
   const zone = zoneOfButton(id);
-  normalizeRows(zone);
+  freezeZone(zone);
+  const button = buttonOf(id) || {};
+  const before = L.isDict(button.cell) ? fixedBox(button, 1e6) : null;
   editButton(id, b => setSpan(b, units, rows));
+  if (before && rows < before.h) closeRows(zone, Array.from({ length: before.h - rows }, (_, i) => before.row + rows + i));
   settleZone(zone, id);
 }
+function leaveRows(origin) {
+  // Le bouton parti de sa case : sa zone se fige, et sa place se referme
+  if (!origin) return [];
+  freezeZone(origin.zone);
+  return closeRows(origin.zone, Array.from({ length: origin.high }, (_, i) => origin.row + i));
+}
 function setCell(id, cell) {
-  // Le bouton fixe sur cette case de sa zone (sans ecart au-dessus) ; celui qui l'avait se range
-  // avec les autres. A cote d'un bouton : les deux se partagent sa largeur, chacun sur sa moitie
+  // Le bouton fixe sur cette case de sa zone (sans ecart au-dessus), toute la zone figee. A
+  // cote d'un bouton : les deux se partagent sa largeur, chacun sur sa moitie. Sa place
+  // d'avant se referme (la case visee remonte d'autant si elle etait dessous)
   const S = L.SUBCELLS;
-  const putZone = (b) => { if (cell.zone) b.zone = cell.zone; else delete b.zone; };
-  normalizeRows(cell.zone || '', id);
+  const zone = cell.zone || '';
+  const putZone = (b) => { if (zone) b.zone = zone; else delete b.zone; };
+  freezeZone(zone, id);
+  const origin = cell.origin && cell.origin.zone === zone ? cell.origin : null;
+  if (cell.origin && !origin) leaveRows(cell.origin);
   for (const b of ownButtons(screen)) {
     const bid = R.buttonId(b);
     if (cell.side) {
@@ -1722,12 +1841,17 @@ function setCell(id, cell) {
       delete b.place; delete b.space_before;
       b.cell = { row: cell.row, column: cell.column };
       putZone(b);
-    } else if (cell.insert && L.isDict(b.cell) && !b.place && String(b.zone || '') === (cell.zone || '') && (b.cell.row || 0) >= cell.row) {
-      // Insere : les boutons fixes de cette rangee et de celles d'en dessous descendent
+    } else if (cell.insert && L.isDict(b.cell) && !b.place && String(b.zone || '') === zone && (b.cell.row || 0) >= cell.row) {
+      // Insere : les boutons de cette rangee et de celles d'en dessous descendent
       b.cell = Object.assign({}, b.cell, { row: (b.cell.row || 0) + (cell.high || 1) });
     }
   }
-  settleZone(cell.zone || '', cell.side ? cell.target : id);
+  // Puis sa place d'avant se referme si elle est restee vide (decalee si on a insere au-dessus)
+  if (origin) {
+    const shift = cell.insert && !cell.side && cell.row <= origin.row ? (cell.high || 1) : 0;
+    closeRows(zone, Array.from({ length: origin.high }, (_, i) => origin.row + shift + i));
+  }
+  settleZone(zone, cell.side ? cell.target : id);
 }
 function snap(rect, mode, exclude, off, area) {
   // Aimante le rectangle (deplace : bords et centre ; redimensionne : le bord tire) sur le
@@ -1791,6 +1915,8 @@ function addButton() {
       if (c && (!smallest || c[2] * c[3] < smallest[0] * smallest[1])) smallest = [c[2], c[3]];
     }
     if (smallest) setSpan(button, smallest[0], smallest[1]);
+    // Zone disposee a la main : il se met sous la derniere rangee (pas dans une rangee laissee vide)
+    if (fixedOf('').length) button.cell = { row: m.rows, column: 0 };
   }
   const footer = buttons.findIndex(b => b.footer);
   buttons.splice(footer >= 0 ? footer : buttons.length, 0, button);
@@ -1809,7 +1935,12 @@ function deleteButton(id) {
   const buttons = ownButtons(screen);
   const index = buttons.findIndex(b => R.buttonId(b) === id);
   if (index < 0) return;
+  // Sa place se referme si sa zone est disposee a la main
+  const removed = buttons[index];
+  const zone = zoneOfButton(id);
+  const origin = L.isDict(removed.cell) && !removed.place ? { zone: zone, row: removed.cell.row || 0, high: fixedBox(removed, 1e6).h } : null;
   buttons.splice(index, 1);
+  if (origin) leaveRows(origin);
   selection = { kind: 'screen' };
   changed(true);
 }
@@ -2031,6 +2162,14 @@ $('open-file').addEventListener('change', (e) => { if (e.target.files[0]) openFi
 $('download').addEventListener('click', download);
 $('download2').addEventListener('click', download);
 $('undo').addEventListener('click', undo);
+function setMode(mode) {
+  // Basique (par defaut) : le necessaire ; Avance : tous les reglages
+  document.body.classList.toggle('basic', mode !== 'advanced');
+  document.querySelectorAll('#mode-seg button').forEach(b => b.classList.toggle('active', b.dataset.mode === (mode === 'advanced' ? 'advanced' : 'basic')));
+  store('mode', mode);
+}
+document.querySelectorAll('#mode-seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+setMode(stored('mode') === 'advanced' ? 'advanced' : 'basic');
 document.addEventListener('keydown', (event) => {
   const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes((document.activeElement || {}).tagName);
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !typing) { event.preventDefault(); undo(); }

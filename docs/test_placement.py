@@ -57,6 +57,9 @@ def cases():
         {'layout': 'grid', 'columns': 2, 'buttons': nine[:4] + [{'id': 'z1', 'zone': 'right'}, {'id': 'z2', 'zone': 'right'},
                                                                  {'id': 'z3', 'zone': 'unknown'}],
          'zones': {'right': {'layout': 'list', 'area': {'x': 0.75, 'y': 0.2, 'width': 0.2, 'height': 0.6}}}},
+        # Ecart a gauche (space_left, en parts de colonne) et rangee vide gardee
+        {'layout': 'grid', 'columns': 2, 'buttons': [{'id': 'g1', 'space_left': 0.5, 'span': {'columns': 0.5}}, {'id': 'g2'},
+                                                       {'id': 'g3', 'space_left': 0.25}, {'id': 'g4', 'cell': {'row': 4, 'column': 0}}]},
     ]
     result = []
     for menu in menus:

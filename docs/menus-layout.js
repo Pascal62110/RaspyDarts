@@ -143,15 +143,17 @@
     // span.columns x span.rows cases (1 x 1 par defaut ; 0.5 : une demi-colonne), a la premiere
     // place libre dans l'ordre de lecture ; plus large que les colonnes : autant qu'il y en a,
     // le bouton plus large et centre dessus. Un bouton a case fixe (cell: {row, column},
-    // depuis 0) la prend d'abord ; les rangees restees vides sont retirees
+    // depuis 0) la prend d'abord ; une rangee vide reste (un espace voulu) ; space_left : un
+    // espace vide a sa gauche, en parts de colonne, pris avec ses cases
     const total = columns * SUBCELLS;
-    let cells = {};
+    const cells = {};
     const taken = new Set();
     const sizeOf = (index) => {
       const span = isDict(buttons[index - 1].span) ? buttons[index - 1].span : {};
       const wide = Math.max(1, roundHalfUp(num(span.columns || 1, 1) * SUBCELLS));
       const high = Math.max(1, parseInt(span.rows || 1, 10));
-      return [wide, high, Math.min(wide, total)];
+      const left = Math.max(0, roundHalfUp(num(buttons[index - 1].space_left || 0, 0) * SUBCELLS));
+      return [wide, high, Math.min(wide + left, total), left];
     };
     const free = (row, start, width, high) => {
       const wanted = [];
@@ -161,32 +163,24 @@
     for (const index of flowing) {
       const cell = buttons[index - 1].cell;
       if (!isDict(cell)) continue;
-      const [wide, high, width] = sizeOf(index);
+      const [wide, high, width, left] = sizeOf(index);
       const row = Math.max(0, parseInt(cell.row || 0, 10));
       const start = Math.min(Math.max(0, roundHalfUp(num(cell.column || 0, 0) * SUBCELLS)), total - width);
       const wanted = free(row, start, width, high);
-      if (wanted) { cells[index] = [row, start, width, high, wide]; wanted.forEach(k => taken.add(k)); }
+      if (wanted) { cells[index] = [row, start, width, high, wide, left]; wanted.forEach(k => taken.add(k)); }
     }
     for (const index of flowing) {
-      const [wide, high, width] = sizeOf(index);
+      const [wide, high, width, left] = sizeOf(index);
       // Un bouton commence sur ses pas : une colonne entiere au debut d'une colonne, une demie a une demie...
       const step = width % SUBCELLS === 0 ? SUBCELLS : gcd(width, SUBCELLS);
       for (let row = 0; !(index in cells); row++) {
         for (let start = 0; start <= total - width; start += step) {
           const wanted = free(row, start, width, high);
-          if (wanted) { cells[index] = [row, start, width, high, wide]; wanted.forEach(k => taken.add(k)); break; }
+          if (wanted) { cells[index] = [row, start, width, high, wide, left]; wanted.forEach(k => taken.add(k)); break; }
         }
       }
     }
-    const usedRows = new Set();
-    for (const c of Object.values(cells)) for (let r = 0; r < c[3]; r++) usedRows.add(c[0] + r);
-    const used = [...usedRows].sort((a, b) => a - b);
-    const compact = {};
-    used.forEach((row, position) => { compact[row] = position; });
-    const compacted = {};
-    for (const [index, c] of Object.entries(cells)) compacted[index] = [compact[c[0]]].concat(c.slice(1));
-    cells = compacted;
-    const count = used.length;
+    const count = Math.max(0, ...Object.values(cells).map(c => c[0] + c[3]));
     const rows = [];
     for (let row = 0; row < count; row++) rows.push(flowing.filter(index => cells[index][0] === row));
     // Les rangees liees par un bouton sur plusieurs rangees restent sur la meme page
@@ -256,7 +250,11 @@
           left = areaX + (areaW - (filled * columnW + (filled - 1) * gapX)) / 2;
         } else left = areaX + (total - used) * (columnW + gapX) / SUBCELLS / 2;
         for (const index of rows[row]) {
-          const [, start, widthCells, high, wide] = cells[index];
+          const [, start0, widthCells0, high, wide0, leftPart] = cells[index];
+          // Son espace vide a gauche d'abord
+          const start = start0 + leftPart, widthCells = widthCells0 - leftPart;
+          // (le bouton plus etroit si la rangee est pleine)
+          const wide = leftPart ? Math.min(wide0, widthCells) : wide0;
           const last = row + high - 1;
           const bottom = last in tops ? tops[last] + buttonH : tops[row] + high * buttonH + (high - 1) * gapY;
           const column = Math.floor(start / SUBCELLS), within = start % SUBCELLS;

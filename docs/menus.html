@@ -88,6 +88,7 @@ fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; pa
 legend { font-weight: 700; padding: 0 5px; font-size: .9rem; }
 textarea#yaml { width: 100%; min-height: 220px; font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
 .hidden { display: none !important; }
+body.basic .adv { display: none !important; }
 .image-note { color: #d11a1a; font-weight: 600; font-size: .84rem; margin: 3px 0 6px; }
 .image-note:empty { display: none; }
 .errors { color: var(--accent); font-weight: 600; font-size: .9rem; }
@@ -168,9 +169,10 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 10
   <div id="stage">
     <div id="screens"></div>
     <div class="bar">
+      <span class="seg" id="mode-seg" style="margin:0"><button data-mode="basic" data-t="mode-basic"></button><button data-mode="advanced" data-t="mode-advanced"></button></span>
       <button class="ghost" id="undo" disabled data-t="undo"></button>
       <span data-t="preview-size"></span> <select id="preview-res"></select>
-      <label class="inline"><input type="checkbox" id="fav-games"> <span data-t="fav-games"></span></label>
+      <label class="inline adv"><input type="checkbox" id="fav-games"> <span data-t="fav-games"></span></label>
       <button class="main" id="download2" data-t="download"></button>
     </div>
     <p class="hint" data-t="preview-hint"></p>

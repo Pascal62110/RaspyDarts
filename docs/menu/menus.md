@@ -310,6 +310,7 @@ Propriétés d'un bouton :
 | `dmd` | texte envoyé sur l'afficheur DMD quand le bouton est sélectionné |
 | `order` | rang dans l'ordre logique (§9), par défaut sa place dans la liste |
 | `space_before` | écart au-dessus (dispositions `list` et `grid`) |
+| `space_left` | écart à gauche, en parts de colonne (`0.25` : un quart de colonne) |
 | `span` | cases prises dans la disposition : `{columns: 2, rows: 1}` ; les autres boutons se rangent dans les cases libres (§12) |
 | `cell` | case fixe dans la disposition : `{row: 1, column: 2}` (comptées depuis 0) ; le bouton y reste, les autres se rangent autour (§12) |
 | `style`, et toute propriété de style | aspect de ce bouton seul ; l'aspect de son texte s'écrit `text: {text: game-type-local, size: 0.05}` (son texte dans `text`, comme les titres) et celui de son icône `icon: {image: images/icons/target.png, size: 0.6}` |
@@ -548,8 +549,9 @@ calculés des deux côtés (ils doivent être identiques au pixel).
    `align: center`) ; une ligne de boutons d'une case, sans case fixe, remplie depuis la
    gauche et non traversée par un bouton de plusieurs lignes, est centrée (une dernière ligne
    incomplète aussi).
-   Les lignes restées vides sont retirées. Chaque zone (`zones`) se place de même, dans sa
-   propre `area`.
+   Une ligne laissée vide reste vide (un espace voulu). `space_left` : un espace vide à
+   gauche du bouton, en parts de colonne, pris avec ses cases (le bouton rétrécit si sa
+   ligne est pleine). Chaque zone (`zones`) se place de même, dans sa propre `area`.
 7. Plus de lignes que n'en tient `area` : `overflow: pages` coupe en pages (les lignes
    reliées par un bouton de plusieurs lignes restent ensemble ; en bas à
    droite : la page affichée et des flèches vers les pages d'avant et d'après ; les

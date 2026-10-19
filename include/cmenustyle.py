@@ -169,7 +169,8 @@ def layout_zone(menu, buttons, flowing, units, selected=1):
     # span.columns x span.rows cells (1 x 1 by default ; 0.5 : half a column), in the first
     # free place in reading order ; wider than the columns : as many as there are, the button
     # wider and centred on them. A button with a cell of its own (cell: {row, column}, from
-    # 0) takes it first ; rows left empty are removed
+    # 0) takes it first ; an empty row stays (a space wanted) ; space_left : an empty space
+    # on its left, in parts of a column, taken with its cells
     total = columns * SUBCELLS
     cells, taken = {}, set()
 
@@ -178,7 +179,8 @@ def layout_zone(menu, buttons, flowing, units, selected=1):
         span = span if isinstance(span, dict) else {}
         wide = max(1, round_half_up(float(span.get('columns') or 1) * SUBCELLS))
         high = max(1, int(span.get('rows') or 1))
-        return wide, high, min(wide, total)
+        left = max(0, round_half_up(float(buttons[index - 1].get('space_left') or 0) * SUBCELLS))
+        return wide, high, min(wide + left, total), left
 
     def free(row, start, width, high):
         wanted = {(row + r, start + c) for r in range(high) for c in range(width)}
@@ -188,15 +190,15 @@ def layout_zone(menu, buttons, flowing, units, selected=1):
         cell = buttons[index - 1].get('cell')
         if not isinstance(cell, dict):
             continue
-        wide, high, width = size_of(index)
+        wide, high, width, left = size_of(index)
         row = max(0, int(cell.get('row') or 0))
         start = min(max(0, round_half_up(float(cell.get('column') or 0) * SUBCELLS)), total - width)
         wanted = free(row, start, width, high)
         if wanted:
-            cells[index] = (row, start, width, high, wide)
+            cells[index] = (row, start, width, high, wide, left)
             taken |= wanted
     for index in flowing:
-        wide, high, width = size_of(index)
+        wide, high, width, left = size_of(index)
         # A button starts on its own steps : a whole column at the start of a column, a half
         # at a half...
         step = SUBCELLS if width % SUBCELLS == 0 else math.gcd(width, SUBCELLS)
@@ -205,14 +207,11 @@ def layout_zone(menu, buttons, flowing, units, selected=1):
             for start in range(0, total - width + 1, step):
                 wanted = free(row, start, width, high)
                 if wanted:
-                    cells[index] = (row, start, width, high, wide)
+                    cells[index] = (row, start, width, high, wide, left)
                     taken |= wanted
                     break
             row += 1
-    used = sorted({row + r for row, _, _, high, _ in cells.values() for r in range(high)})
-    compact = {row: position for position, row in enumerate(used)}
-    cells = {index: (compact[row],) + cell[1:] for index, cell in cells.items() for row in [cell[0]]}
-    count = len(used)
+    count = max([cell[0] + cell[3] for cell in cells.values()] or [0])
     rows = [[index for index in flowing if cells[index][0] == row] for row in range(count)]
     # Rows tied by a button on several rows stay on the same page
     blocks, end_row = [], -1
@@ -282,7 +281,11 @@ def layout_zone(menu, buttons, flowing, units, selected=1):
             else:
                 left = area_x + (total - used) * (column_w + gap_x) / SUBCELLS / 2
             for index in rows[row]:
-                _, start, width_cells, high, wide = cells[index]
+                _, start, width_cells, high, wide, left_part = cells[index]
+                # Its empty space on the left first (the button narrower if the row is full)
+                start, width_cells = start + left_part, width_cells - left_part
+                if left_part:
+                    wide = min(wide, width_cells)
                 last = row + high - 1
                 bottom = tops[last] + button_h if last in tops else tops[row] + high * button_h + (high - 1) * gap_y
                 column, within = divmod(start, SUBCELLS)
