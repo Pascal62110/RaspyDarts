@@ -49,7 +49,10 @@ fusion :
 
 - Les **dictionnaires** se fusionnent clé par clé (`defaults`, `styles`, un menu…).
 - Une **liste de boutons** (`buttons:`) donnée par un fichier **remplace** celle du niveau
-  suivant, en entier. Pour ne changer qu'un bouton sans réécrire la liste, utiliser
+  suivant ; les boutons de ce niveau qu'elle ne nomme pas (un bouton d'une version plus
+  récente du jeu) sont ajoutés après les siens, avant ceux du bas de l'écran, sauf ceux que
+  le menu retire : `removed: [gallery]` (la page de configuration l'écrit quand on supprime
+  un bouton du jeu). Pour ne changer qu'un bouton sans réécrire la liste, utiliser
   `button_changes:` (§7.3).
 - Une valeur `null` (ou `~`) efface la valeur du niveau suivant.
 

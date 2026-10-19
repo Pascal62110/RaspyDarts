@@ -37,6 +37,20 @@
         }
         menu.buttons = buttons;
       }
+      // Une liste de boutons : ceux du jeu qu'elle ne nomme pas (un bouton d'une version plus
+      // recente) s'ajoutent apres les siens, avant ceux du bas, sauf ceux retires (removed)
+      const removed = asList(menu.removed).map(String);
+      delete menu.removed;
+      if (Array.isArray(menu.buttons)) {
+        const named = new Set(menu.buttons.filter(b => L.isDict(b)).map(buttonId));
+        const before = ((((defaults.menus || {})[name]) || {}).buttons || []);
+        const extra = before.filter(b => L.isDict(b) && !named.has(buttonId(b)) && !removed.includes(buttonId(b))).map(b => Object.assign({}, b));
+        if (extra.length) {
+          let at = menu.buttons.findIndex(b => L.isDict(b) && b.footer);
+          if (at < 0) at = menu.buttons.length;
+          menu.buttons.splice(at, 0, ...extra);
+        }
+      }
     }
     return merge(defaults, content);
   }

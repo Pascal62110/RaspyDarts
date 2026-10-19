@@ -1947,6 +1947,8 @@ async function addButton() {
   }
   const footer = buttons.findIndex(b => b.footer);
   buttons.splice(footer >= 0 ? footer : buttons.length, 0, button);
+  const own = userMenu(screen, true);
+  if (Array.isArray(own.removed)) { own.removed = own.removed.filter(r => r !== button.id); if (!own.removed.length) delete own.removed; }
   selection = { kind: 'button', id: button.id };
   changed(true);
 }
@@ -1967,6 +1969,12 @@ function deleteButton(id) {
   const zone = zoneOfButton(id);
   const origin = L.isDict(removed.cell) && !removed.place ? { zone: zone, row: removed.cell.row || 0, high: fixedBox(removed, 1e6).h } : null;
   buttons.splice(index, 1);
+  // Un bouton du jeu supprime expres : note dans le fichier (sans quoi il reviendrait, comme
+  // un bouton d'une nouvelle version du jeu)
+  if (((((DATA.defaults.menus || {})[screen]) || {}).buttons || []).some(b => R.buttonId(b) === id)) {
+    const menu = userMenu(screen, true);
+    menu.removed = [...new Set([].concat(menu.removed || [], [id]))];
+  }
   if (origin) leaveRows(origin);
   selection = { kind: 'screen' };
   changed(true);

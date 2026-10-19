@@ -851,26 +851,31 @@ $('menus-input').addEventListener('change', async () => {
   const file = $('menus-input').files[0];
   $('menus-input').value = '';
   if (!file) return;
+  let content = null;
   try {
-    const content = jsyaml.load(await file.text());
-    if (!content || typeof content !== 'object' || Array.isArray(content)) throw new Error(t('sm-own-bad'));
-    delete content.version;
-    store('menus-file', JSON.stringify(content));
-    store('menus-choice', 'own');
-    $('menus-error').classList.add('hidden');
-    $('menus-own-info').textContent = t('sm-own-ok', {name: file.name});
-    // Le configurateur deja ouvert le relit
-    if ($('menus-frame').getAttribute('src')) $('menus-frame').contentWindow.location.reload();
+    content = jsyaml.load(await file.text());
   } catch (error) {
-    $('menus-error').textContent = `${t('sm-own-bad')} ${error.message || ''}`;
-    $('menus-error').classList.remove('hidden');
+    content = null;
   }
+  if (!content || typeof content !== 'object' || Array.isArray(content)) {
+    $('menus-error').textContent = t('sm-own-bad');
+    $('menus-error').classList.remove('hidden');
+    updateMenus();
+    return;
+  }
+  delete content.version;
+  store('menus-file', JSON.stringify(content));
+  store('menus-choice', 'own');
+  $('menus-error').classList.add('hidden');
+  $('menus-own-info').textContent = t('sm-own-ok', {name: file.name});
+  // Le configurateur deja ouvert le relit (une nouvelle adresse : permis meme hors serveur)
+  if ($('menus-frame').getAttribute('src')) $('menus-frame').setAttribute('src', `menus.html?embedded=1&t=${Date.now()}`);
   updateMenus();
 });
 $('menus-copy').addEventListener('click', copyMenus);
 // Le configurateur donne sa hauteur : le cadre l'affiche en entier (pas de barre de defilement)
 window.addEventListener('message', (event) => {
-  if (event.source === $('menus-frame').contentWindow && event.data && event.data.menusHeight) {
+  if (event.data && event.data.menusHeight && event.source === $('menus-frame').contentWindow) {
     $('menus-frame').style.height = `${Math.ceil(event.data.menusHeight) + 4}px`;
   }
 });
@@ -892,8 +897,8 @@ $('menus-save-sd').addEventListener('click', async () => {
     if (!boot && !confirm(t('sd-not-boot'))) return;
     const folder = await card.getDirectoryHandle('.raspydarts', {create: true});
     await writeFile(folder, 'menus.yaml', new Blob([menusYaml()], {type: 'text/yaml'}));
-    const frame = $('menus-frame').contentWindow;
-    const images = (frame && frame.menusOwnImages) || {};
+    let images = {};
+    try { images = ($('menus-frame').contentWindow || {}).menusOwnImages || {}; } catch (error) { images = {}; }
     let count = 0;
     for (const [path, url] of Object.entries(images)) {
       const parts = path.split('/');

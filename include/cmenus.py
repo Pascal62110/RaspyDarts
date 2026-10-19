@@ -158,6 +158,23 @@ class Menus:
                     if isinstance(change, dict):
                         button.update(change)
                 menu['buttons'] = buttons
+        # A list of buttons of the file : the buttons of the files before which it does not
+        # name (a button of a newer version of the game) are added after its own, before those
+        # at the bottom of the screen, unless it removed them (removed: [ids])
+        for name, menu in (content.get('menus') or {}).items():
+            if not isinstance(menu, dict):
+                continue
+            removed = {str(item) for item in as_list(menu.pop('removed', None))}
+            if not isinstance(menu.get('buttons'), list):
+                continue
+            named = {self.button_id(button) for button in menu['buttons'] if isinstance(button, dict)}
+            before = (data.get('menus', {}).get(name) or {}).get('buttons') or []
+            extra = [dict(button) for button in before if isinstance(button, dict) and
+                     self.button_id(button) not in named and self.button_id(button) not in removed]
+            if extra:
+                at = next((index for index, button in enumerate(menu['buttons'])
+                           if isinstance(button, dict) and button.get('footer')), len(menu['buttons']))
+                menu['buttons'][at:at] = extra
         self.logs.debug(f"Menus : {path} read in {(time.perf_counter() - started) * 1000:.0f} ms")
         return merge(data, content)
 
