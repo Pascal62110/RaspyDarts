@@ -96,6 +96,9 @@ button.act.danger:hover:not(:disabled) { background: #c62828; color: #fff; }
 dialog label { display: block; font-weight: 600; margin: 8px 0 3px; }
 body.embedded header, body.embedded footer { display: none; }
 body.embedded main { padding: 8px; }
+/* Integree a l'installation : tout s'affiche, la page d'installation defile (pas le cadre) */
+body.embedded #side, body.embedded #stage { position: static; max-height: none; overflow: visible; }
+body.embedded { overflow: hidden; }
 .image-note { color: #d11a1a; font-weight: 600; font-size: .84rem; margin: 3px 0 6px; }
 .image-note:empty { display: none; }
 .errors { color: var(--accent); font-weight: 600; font-size: .9rem; }

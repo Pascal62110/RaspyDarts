@@ -105,7 +105,7 @@ pre#preview { background: var(--code); padding: 10px; border-radius: var(--radiu
 footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18px 16px 30px; }
 .choicebar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 14px 0; }
 .choicebar button.chosen { outline: 3px solid var(--accent); outline-offset: 2px; }
-#menus-frame { width: 100%; height: 88vh; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+#menus-frame { width: 100%; height: 600px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); display: block; }
 body.wide main { max-width: 1800px; }
 </style>
 </head>
@@ -276,7 +276,7 @@ body.wide main { max-width: 1800px; }
     <p class="note ok hidden" id="menus-own-info"></p>
     <p class="errors hidden" id="menus-error"></p>
     <p class="note hidden" id="menus-skipped" data-t="sm-skipped"></p>
-    <div id="menus-editor" class="hidden"><iframe id="menus-frame" title="Menus"></iframe></div>
+    <div id="menus-editor" class="hidden"><iframe id="menus-frame" title="Menus" scrolling="no"></iframe></div>
     <div class="savebar hidden" id="menus-savebar">
       <button class="main ghost" id="menus-copy" data-t="sm-copy"></button>
       <span id="menus-copy-status"></span>
@@ -868,6 +868,12 @@ $('menus-input').addEventListener('change', async () => {
   updateMenus();
 });
 $('menus-copy').addEventListener('click', copyMenus);
+// Le configurateur donne sa hauteur : le cadre l'affiche en entier (pas de barre de defilement)
+window.addEventListener('message', (event) => {
+  if (event.source === $('menus-frame').contentWindow && event.data && event.data.menusHeight) {
+    $('menus-frame').style.height = `${Math.ceil(event.data.menusHeight) + 4}px`;
+  }
+});
 $('cfg-copy').addEventListener('click', copyCfg);
 $('menus-download').addEventListener('click', () => { downloadText(menusYaml(), 'menus.yaml'); $('menus-sd-status').textContent = t('downloaded'); });
 async function writeFile(directory, name, data) {

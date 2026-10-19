@@ -2222,7 +2222,13 @@ $('images-load').addEventListener('change', (e) => { loadImages([...e.target.fil
 
 // ------------------------------------------------------------------ demarrage
 // Dans la page d'installation (etape Menus) : sans en-tete ni pied de page
-if (/[?&]embedded\b/.test(location.search)) document.body.classList.add('embedded');
+if (/[?&]embedded\b/.test(location.search)) {
+  document.body.classList.add('embedded');
+  // Sa hauteur a la page d'installation, a chaque changement : le cadre montre tout, sans barre
+  const tell = () => { try { parent.postMessage({ menusHeight: document.documentElement.scrollHeight }, '*'); } catch (e) { /* seule */ } };
+  new ResizeObserver(tell).observe(document.body);
+  window.addEventListener('load', tell);
+}
 // Ouverte seule (ancien lien) : la personnalisation est l'etape Menus de l'installation
 else if (!/[?&]direct\b/.test(location.search)) location.replace('index.html#4');
 const browser = (navigator.language || 'fr').slice(0, 2);
