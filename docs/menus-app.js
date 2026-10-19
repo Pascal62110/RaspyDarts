@@ -26,6 +26,7 @@ let scope = 'one';                // aspect : 'one' (ce bouton) ou 'all' (tous l
 let showSelected = false;         // le bouton edite est montre dans l'etat choisi (groupe « Bouton choisi » ouvert)
 let fitNotice = false;            // les boutons viennent d'etre reduits pour tenir sur l'ecran
 const ownImages = {};             // images chargees : chemin -> URL locale
+window.menusOwnImages = ownImages;  // (la page d'installation les depose sur la carte avec les menus)
 let ownTheme = null;              // theme charge : {colors, font, images}
 let lastDraw = null;              // zones de l'apercu et geometrie des boutons
 let history = [], lastState = '{}';   // Ctrl+Z
@@ -779,7 +780,7 @@ $('overlay').addEventListener('keydown', (event) => {
   if (GAME_SCREENS.includes(screen)) { selected = next + 1; schedule(); } else selectButton(ids[next]);
 });
 window.addEventListener('resize', () => drawOverlay());
-function ask(text, sub, choices, rememberKey) {
+function ask(text, sub, choices, rememberKey, extra) {
   // Question a choix dans la page (Oui / Non / Annuler) ; rememberKey : une case « Se souvenir
   // de mon choix », la reponse gardee sous ce nom (sauf Annuler)
   return new Promise((resolve) => {
@@ -801,6 +802,7 @@ function ask(text, sub, choices, rememberKey) {
       row.appendChild(el('button', { class: i === 0 ? 'main' : 'ghost', text: label, onclick: () => { answer(value); dialog.close(); } }));
     });
     $('ask-keep').innerHTML = '';
+    if (extra) $('ask-keep').appendChild(extra);
     if (keep) $('ask-keep').appendChild(keep);
     dialog.onclose = () => answer('cancel');
     dialog.showModal();
@@ -1008,7 +1010,7 @@ function imageInput(get, set) {
     input.value = path;
     input.dispatchEvent(new Event('change'));
   });
-  const load = el('button', { class: 'tiny', text: t('image-load'), type: 'button', onclick: () => picker.click() });
+  const load = el('button', { class: 'act', text: '📂 ' + t('image-load'), type: 'button', onclick: () => picker.click() });
   refresh();
   return el('div', {}, [el('div', { style: 'display:flex;gap:6px;align-items:center' }, [input, load, picker]), note]);
 }
@@ -1021,10 +1023,12 @@ function rectInputs(parent, get, set, rebuild) {
   parent.appendChild(grid);
   return grid;
 }
+const openGroups = new Set();   // groupes ouverts par l'utilisateur (fermes au depart)
 function fieldset(parent, legend, open) {
   const box = el('details', { class: 'group' });
-  if (open) box.open = true;
+  if (openGroups.has(legend) || open === 'force') box.open = true;
   box.appendChild(el('summary', { text: legend }));
+  box.addEventListener('toggle', () => { if (box.open) openGroups.add(legend); else openGroups.delete(legend); });
   parent.appendChild(box);
   return box;
 }
@@ -1132,7 +1136,7 @@ function buildScreenPanel(panel) {
   const effective = () => ((merged().menus || {})[name]) || {};
   const fsInfo = adv(fieldset(panel, t('f-info')));
   fsInfo.appendChild(checkInput('f-show-version', () => effective().show_version, v => set('show_version')(v || undefined), true));
-  if (effective().show_version) fsInfo.appendChild(el('button', { class: 'tiny', text: t('version-edit'), onclick: selectVersion }));
+  if (effective().show_version) fsInfo.appendChild(el('button', { class: 'act', text: '✥ ' + t('version-edit'), onclick: selectVersion }));
   for (const item of ['version', 'rpi_version', 'ips']) {
     fsInfo.appendChild(checkInput('info-' + item, () => [].concat(effective().info || []).includes(item), v => {
       const list = [].concat(effective().info || []).filter(i => i !== item);
@@ -1156,9 +1160,9 @@ function buildZoneList(panel, name) {
       el('span', { class: 'name', text: zoneLabel(zone) }), el('span', { class: 'tag', text: t('zone-count', { n: count }) })]));
   }
   fs.appendChild(list);
-  const actions = el('div', { class: 'row' }, [el('button', { class: 'tiny', text: t('zone-add'), onclick: addZone })]);
+  const actions = el('div', { class: 'row' }, [el('button', { class: 'act', text: '＋ ' + t('zone-add'), onclick: addZone })]);
   const copied = clipboardZone();
-  if (copied) actions.appendChild(el('button', { class: 'tiny', text: t('zone-paste', { n: copied.buttons.length, from: screenLabel(copied.from) }), onclick: pasteZone }));
+  if (copied) actions.appendChild(el('button', { class: 'act', text: '📋 ' + t('zone-paste', { n: copied.buttons.length, from: screenLabel(copied.from) }), onclick: pasteZone }));
   fs.appendChild(actions);
   fs.appendChild(el('p', { class: 'hint', text: t('zones-hint') }));
 }
@@ -1262,7 +1266,7 @@ function buildZonePanel(panel) {
   buildLayoutFields(panel, screen, zone);
   const several = zoneNames(info.menu).length > 1;
   const row = el('div', { class: 'row', style: 'margin-top:10px' });
-  row.appendChild(el('button', { class: 'tiny', text: t('zone-compact'), onclick: () => {
+  row.appendChild(el('button', { class: 'act', text: '⇡ ' + t('zone-compact'), onclick: () => {
     // Retirer les rangees vides de la zone
     ensureStyled(screen);
     freezeZone(zone);
@@ -1270,8 +1274,8 @@ function buildZonePanel(panel) {
     closeRows(zone, Array.from({ length: m.rows }, (_, i) => i));
     changed(true);
   } }));
-  row.appendChild(el('button', { class: 'tiny', text: t('zone-copy'), onclick: () => copyZone(zone) }));
-  const remove = el('button', { class: 'tiny', text: t('zone-delete'), onclick: () => deleteZone(zone) });
+  row.appendChild(el('button', { class: 'act', text: '⧉ ' + t('zone-copy'), onclick: () => copyZone(zone) }));
+  const remove = el('button', { class: 'act danger', text: '🗑 ' + t('zone-delete'), onclick: () => deleteZone(zone) });
   if (!several) remove.disabled = true;
   row.appendChild(remove);
   panel.appendChild(row);
@@ -1299,8 +1303,8 @@ function buildVersionPanel(panel) {
   adv(cell(grid, t('f-font'), selectInput(Object.keys(DATA.fonts), () => look().font, v => write('font', v), '')));
   panel.appendChild(grid);
   panel.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [
-    el('button', { class: 'tiny', text: t('version-reset'), onclick: () => { userMenu(screen, true).show_version = true; changed(true); } }),
-    el('button', { class: 'tiny', text: t('version-hide'), onclick: () => { delete userMenu(screen, true).show_version;
+    el('button', { class: 'act', text: '↩ ' + t('version-reset'), onclick: () => { userMenu(screen, true).show_version = true; changed(true); } }),
+    el('button', { class: 'act danger', text: '✕ ' + t('version-hide'), onclick: () => { delete userMenu(screen, true).show_version;
       if (((merged().menus || {})[screen] || {}).show_version) userMenu(screen, true).show_version = false; selection = { kind: 'screen' }; changed(true); } })]));
 }
 function buildLayoutFields(panel, name, zone) {
@@ -1341,7 +1345,7 @@ function buildLayoutFields(panel, name, zone) {
   adv(cell(grid, t('u-height') + (reference() ? ' (px)' : ' (%)'), unitInput(() => m.size.height,
     v => write(['button_size', 'height'], v), 'y', true)));
   fs.appendChild(grid);
-  fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'tiny', text: t('fit-area'), onclick: () => {
+  fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'act', text: '⤢ ' + t('fit-area'), onclick: () => {
     // Hauteur des boutons : la zone remplie par leurs lignes
     const spaces = m.flowing.reduce((sum, b) => sum + (parseFloat(b.space_before) || 0), 0);
     write(['button_size', 'height'], pxToFile(Math.max(1, (m.area[3] - (m.rows - 1) * m.gapY) / (m.rows + spaces)), 'y', true));
@@ -1359,7 +1363,7 @@ function buildLayoutFields(panel, name, zone) {
     (k, v) => write(['area', k], v)));
   fs.appendChild(el('p', { class: 'hint', text: t('area-hint') }));
   if (info.styled && !zone && zoneNames(info.menu).length === 1) {
-    adv(fs.appendChild(el('button', { class: 'tiny', text: t('layout-remove'), onclick: () => {
+    adv(fs.appendChild(el('button', { class: 'act', text: '↺ ' + t('layout-remove'), onclick: () => {
       if (!confirm(t('layout-remove-confirm'))) return;
       const menu = userMenu(name, true);
       for (const key of ['layout', 'area', 'columns', 'button_size', 'gap', 'align', 'overflow']) delete menu[key];
@@ -1407,8 +1411,8 @@ function buildButtonList(panel, name) {
   }
   fs.appendChild(list);
   fs.appendChild(el('div', { class: 'row' }, [
-    el('button', { class: 'tiny', text: t('btn-add'), onclick: addButton }),
-    el('button', { class: 'tiny', text: t('btn-reset'), onclick: resetMenu })]));
+    el('button', { class: 'act', text: '＋ ' + t('btn-add'), onclick: addButton }),
+    el('button', { class: 'act', text: '↺ ' + t('btn-reset'), onclick: resetMenu })]));
 }
 
 // ------------------------------------------------------------------ panneau : un bouton
@@ -1492,7 +1496,7 @@ function buildButtonPanel(panel) {
       adv(fs.appendChild(el('label', { text: t('f-anchor') })));
       adv(fs.appendChild(selectInput(POSITIONS.map(p => [p, t('pos-' + p)]), () => button.place.anchor,
         v => editButton(id, b => { b.place = Object.assign({}, b.place); if (v) b.place.anchor = v; else delete b.place.anchor; }), '')));
-      fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'tiny', text: t('pos-back-grid'),
+      fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'act', text: '↩ ' + t('pos-back-grid'),
         onclick: () => { editButton(id, b => delete b.place); changed(true); } })]));
     } else {
       fs.appendChild(el('p', { class: 'hint', text: t('pos-grid-hint') }));
@@ -1506,7 +1510,7 @@ function buildButtonPanel(panel) {
           }), 1, 1, 20));
         }
         fs.appendChild(adv(fixed));
-        fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'tiny', text: t('cell-free'),
+        fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'act', text: '↩ ' + t('cell-free'),
           onclick: () => { editButton(id, b => delete b.cell); changed(true); } })]));
       }
       // Largeur en parts de colonne (¼, ⅓, ½...) ou en colonnes, et rangees
@@ -1548,7 +1552,7 @@ function buildButtonPanel(panel) {
   if (isFooter(id)) look.appendChild(el('p', { class: 'hint', text: t('look-footer') }));
   else buildLookFields(look, id);
   panel.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [
-    el('button', { class: 'tiny', text: t('btn-del'), onclick: () => deleteButton(id) })]));
+    el('button', { class: 'act danger', text: '🗑 ' + t('btn-del'), onclick: () => deleteButton(id) })]));
 }
 
 // Aspect d'un bouton : ecrit sur ce bouton seul, ou dans le style de l'ecran (tous ses boutons)
@@ -1649,7 +1653,7 @@ function buildLookFields(parent, id) {
   cell(gi, t('f-size-part'), numberInput(get(['icon', 'size']), set(['icon', 'size']), 0.05, 0.1, 1));
   fsIcon.appendChild(gi);
   for (const state of ['selected', 'disabled', 'pressed']) {
-    const fs = adv(fieldset(parent, t('state-' + state), state === 'selected' && showSelected));
+    const fs = adv(fieldset(parent, t('state-' + state), state === 'selected' && showSelected ? 'force' : false));
     if (state === 'selected') {
       fs.addEventListener('toggle', () => {
         showSelected = fs.open;
@@ -1911,11 +1915,23 @@ function snap(rect, mode, exclude, off, area) {
   }
   return result;
 }
-function addButton() {
+async function addButton() {
+  // Son nom et sa fonction d'abord
+  const name = el('input', { type: 'text', value: t('new-button'), style: 'width:100%' });
+  const action = el('select', { style: 'width:100%' });
+  for (const [group, options] of actionChoices()) {
+    const og = el('optgroup', { label: group });
+    for (const [value, text] of options) og.appendChild(el('option', { value: value, text: text }));
+    action.appendChild(og);
+  }
+  action.value = 'local_game';
+  const form = el('div', {}, [el('label', { text: t('new-button-name') }), name, el('label', { text: t('f-action') }), action]);
+  setTimeout(() => { name.focus(); name.select(); }, 50);
+  if (await ask(t('new-button-title'), '', [['add', t('btn-add')], ['cancel', t('cancel')]], null, form) !== 'add') return;
   const buttons = ownButtons(screen);
   let n = 1;
   while (buttons.some(b => R.buttonId(b) === `button${n}`)) n++;
-  const button = { id: `button${n}`, action: 'local_game', text: t('new-button') };
+  const button = { id: `button${n}`, action: action.value, text: name.value.trim() || gameText(actionText(action.value)) };
   // La taille du plus petit bouton de la premiere zone (une rangee de grille peut etre petite)
   const info = menuInfo(screen);
   if (info.styled) {
@@ -2205,6 +2221,10 @@ $('fav-games').addEventListener('change', () => { buildPanel(); schedule(); });
 $('images-load').addEventListener('change', (e) => { loadImages([...e.target.files]); e.target.value = ''; });
 
 // ------------------------------------------------------------------ demarrage
+// Dans la page d'installation (etape Menus) : sans en-tete ni pied de page
+if (/[?&]embedded\b/.test(location.search)) document.body.classList.add('embedded');
+// Ouverte seule (ancien lien) : la personnalisation est l'etape Menus de l'installation
+else if (!/[?&]direct\b/.test(location.search)) location.replace('index.html#4');
 const browser = (navigator.language || 'fr').slice(0, 2);
 lang = stored('lang') || (LANGS.includes(browser) ? browser : 'en');
 $('lang').value = lang;

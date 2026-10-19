@@ -103,6 +103,10 @@ pre#preview { background: var(--code); padding: 10px; border-radius: var(--radiu
 .savebar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
 #save-status { font-weight: 600; }
 footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18px 16px 30px; }
+.choicebar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 14px 0; }
+.choicebar button.chosen { outline: 3px solid var(--accent); outline-offset: 2px; }
+#menus-frame { width: 100%; height: 88vh; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+body.wide main { max-width: 1800px; }
 </style>
 </head>
 <body>
@@ -111,7 +115,6 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
     <h1>Raspy<span>Darts</span></h1>
     <nav class="menu">
       <a class="active" href="#1" data-t="menu-install"></a>
-      <a href="menus.html" data-t="menu-custom"></a>
       <a href="https://raspydarts.wordpress.com/" target="_blank" rel="noopener" data-t="menu-site"></a>
       <select id="lang" aria-label="Langue">
         <option value="fr">Français</option><option value="en">English</option><option value="de">Deutsch</option>
@@ -252,12 +255,37 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
     <ul class="errors" id="errors"></ul>
     <h3 data-t="f-file"></h3>
     <pre id="preview"></pre>
+    <div class="savebar">
+      <button class="main ghost" id="cfg-copy" data-t="cfg-copy"></button>
+      <span id="cfg-copy-status"></span>
+    </div>
     <p class="hint" data-t="f-file-next"></p>
     </div>
   </section>
 
-  <!-- 4. Déposer -->
+  <!-- 4. Menus (facultatif) : le configurateur (menus.html) dans la page -->
   <section class="step" data-step="4">
+    <h2 data-t="sm-title"></h2>
+    <p data-t="sm-intro"></p>
+    <div class="choicebar">
+      <button class="main big" id="menus-make" data-t="sm-make"></button>
+      <button class="main big ghost" id="menus-have" data-t="sm-have"></button>
+      <button class="main big ghost" id="menus-skip" data-t="sm-skip"></button>
+    </div>
+    <input type="file" id="menus-input" accept=".yaml,.yml" hidden>
+    <p class="note ok hidden" id="menus-own-info"></p>
+    <p class="errors hidden" id="menus-error"></p>
+    <p class="note hidden" id="menus-skipped" data-t="sm-skipped"></p>
+    <div id="menus-editor" class="hidden"><iframe id="menus-frame" title="Menus"></iframe></div>
+    <div class="savebar hidden" id="menus-savebar">
+      <button class="main ghost" id="menus-copy" data-t="sm-copy"></button>
+      <span id="menus-copy-status"></span>
+    </div>
+    <p class="hint" data-t="sm-later"></p>
+  </section>
+
+  <!-- 5. Déposer -->
+  <section class="step" data-step="5">
     <h2 data-t="s4-title"></h2>
     <ol>
       <li data-t="s4-reinsert"></li>
@@ -286,14 +314,22 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
         <p class="hint" id="save-hint"></p>
         <p class="note warn" data-t="browser-warning"></p>
       </li>
+      <li id="menus-deposit" class="hidden"><span data-t="sd-menus"></span>
+        <div class="savebar">
+          <button class="main" id="menus-save-sd" data-t="sd-menus-save"></button>
+          <button class="main ghost" id="menus-download" data-t="sd-menus-download"></button>
+          <span id="menus-sd-status"></span>
+        </div>
+        <p class="hint" id="menus-sd-hint"></p>
+      </li>
       <li data-t="s4-eject"></li>
     </ol>
     <div class="note warn" data-t="s4-format"></div>
     <div class="note" data-t="s4-later"></div>
   </section>
 
-  <!-- 5. Démarrer -->
-  <section class="step" data-step="5">
+  <!-- 6. Démarrer -->
+  <section class="step" data-step="6">
     <h2 data-t="s5-title"></h2>
     <ol>
       <li data-t="s5-insert"></li>
@@ -311,6 +347,7 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 18
 </main>
 <footer><a href="https://github.com/rmdelcelier/RaspyDarts" target="_blank" rel="noopener">github.com/rmdelcelier/RaspyDarts</a></footer>
 
+<script src="vendor/js-yaml.min.js"></script>
 <script src="presets.js"></script>
 <script src="texts.js"></script>
 <script>
@@ -324,7 +361,8 @@ const GPIO_BUTTONS = ['PLAYERBUTTON', 'GAMEBUTTON', 'BACKUPBUTTON', 'EXTRABUTTON
 const $ = (id) => document.getElementById(id);
 let lang = 'fr';
 let step = 1;
-const STEPS = 5;
+const STEPS = 6;
+const STEP_NAMES = ['step1', 'step2', 'step3', 'step-menus', 'step4', 'step5'];
 
 function t(key, values) {
   let text = (T[lang] && T[lang][key]) || T.en[key] || T.fr[key] || key;
@@ -350,7 +388,7 @@ function buildSteps() {
   nav.innerHTML = '';
   for (let index = 1; index <= STEPS; index++) {
     const button = document.createElement('button');
-    button.innerHTML = `<b>${index}</b>${t('step' + index)}`;
+    button.innerHTML = `<b>${index}</b>${t(STEP_NAMES[index - 1])}`;
     button.classList.toggle('active', index === step);
     button.addEventListener('click', () => show(index));
     nav.appendChild(button);
@@ -365,6 +403,7 @@ function show(index) {
   document.querySelectorAll('[data-move="-1"]').forEach((button) => { button.disabled = step === 1; });
   document.querySelectorAll('[data-move="1"]').forEach((button) => { button.disabled = step === STEPS; });
   buildSteps();
+  updateMenus();
   store('step', step);
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
@@ -709,7 +748,7 @@ function ownFile(own) {
   $('s5-calibration').classList.toggle('hidden', !own && current.known);
   store('own', own ? '1' : '');
 }
-$('own-file').addEventListener('click', () => { ownFile(true); show(4); });
+$('own-file').addEventListener('click', () => { ownFile(true); show(5); });
 $('own-file-undo').addEventListener('click', () => ownFile(false));
 $('own-file-undo4').addEventListener('click', () => { ownFile(false); show(3); });
 window.addEventListener('hashchange', () => show(Number(location.hash.slice(1)) || 1));
@@ -725,8 +764,13 @@ document.querySelectorAll('[data-copy]').forEach((button) => {
 });
 
 document.querySelectorAll('[data-move]').forEach((button) => {
-  button.addEventListener('click', () => show(step + Number(button.dataset.move)));
+  button.addEventListener('click', () => {
+    const move = Number(button.dataset.move);
+    if (move > 0) offerCopy();
+    show(step + move);
+  });
 });
+document.querySelectorAll('#steps').forEach((nav) => nav.addEventListener('click', offerCopy, true));
 $('lang').addEventListener('change', () => {
   lang = $('lang').value;
   store('lang', lang);
@@ -742,6 +786,122 @@ $('card').addEventListener('change', () => {
 $('mcp-count').addEventListener('change', () => { fillMcp(); update(); });
 document.querySelector('section[data-step="3"]').addEventListener('input', update);
 
+// ------------------------------------------------------------------ menus (etape 4)
+// Le configurateur (menus.html) garde le fichier dans le navigateur (meme cle) : cette page le
+// lit pour en enregistrer une copie et le deposer sur la carte (.raspydarts/menus.yaml, que la
+// borne recupere au demarrage avec les images chargees)
+function menusData() {
+  try {
+    const data = JSON.parse(stored('menus-file') || 'null');
+    return data && typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length ? data : null;
+  } catch (error) { return null; }
+}
+function menusYaml() {
+  const data = menusData() || {};
+  const body = Object.keys(data).length ? jsyaml.dump(data, {lineWidth: 140, noRefs: true}) : '';
+  return `# ${t('sm-yaml-header')}\n# docs/menu/menus.md\nversion: 1\n` + body.replace(/^version: 1\n/m, '');
+}
+function cfgText() { return current && !current.errors.length && stored('own') !== '1' ? current.text : null; }
+function downloadText(text, name) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([text], {type: 'text/plain;charset=utf-8'}));
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+function copyCfg() {
+  const text = cfgText();
+  if (!text) return;
+  downloadText(text, 'raspydarts.cfg');
+  store('cfg-saved', text);
+  $('cfg-copy-status').textContent = t('downloaded');
+}
+function copyMenus() {
+  if (!menusData()) return;
+  downloadText(menusYaml(), 'menus.yaml');
+  store('menus-saved', menusYaml());
+  $('menus-copy-status').textContent = t('downloaded');
+}
+function offerCopy() {
+  // En quittant une etape ou un fichier a ete fait : en garder une copie (rien n'est perdu)
+  if (step === 3 && cfgText() && stored('cfg-saved') !== cfgText() && confirm(t('save-before-next-cfg'))) copyCfg();
+  if (step === 4 && ['make', 'own'].includes(stored('menus-choice')) && menusData() && stored('menus-saved') !== menusYaml() &&
+      confirm(t('save-before-next-menus'))) copyMenus();
+}
+function updateMenus() {
+  const choice = stored('menus-choice') || '';
+  [['make', 'menus-make'], ['own', 'menus-have'], ['skip', 'menus-skip']].forEach(([value, id]) => $(id).classList.toggle('chosen', choice === value));
+  $('menus-editor').classList.toggle('hidden', choice !== 'make');
+  if (choice === 'make' && !$('menus-frame').getAttribute('src')) $('menus-frame').setAttribute('src', 'menus.html?embedded=1');
+  $('menus-savebar').classList.toggle('hidden', !['make', 'own'].includes(choice));
+  $('menus-skipped').classList.toggle('hidden', choice !== 'skip');
+  $('menus-own-info').classList.toggle('hidden', choice !== 'own' || !menusData());
+  document.body.classList.toggle('wide', step === 4 && choice === 'make');
+  // Etape Deposer : les menus, s'il y en a
+  const deposit = ['make', 'own'].includes(choice) && !!menusData();
+  $('menus-deposit').classList.toggle('hidden', !deposit);
+  const picker = 'showDirectoryPicker' in window;
+  $('menus-save-sd').classList.toggle('hidden', !picker);
+  $('menus-sd-hint').innerHTML = t(picker ? 'sd-menus-hint-ok' : 'sd-menus-hint-no');
+}
+$('menus-make').addEventListener('click', () => { store('menus-choice', 'make'); updateMenus(); });
+$('menus-skip').addEventListener('click', () => { store('menus-choice', 'skip'); updateMenus(); show(5); });
+$('menus-have').addEventListener('click', () => $('menus-input').click());
+$('menus-input').addEventListener('change', async () => {
+  const file = $('menus-input').files[0];
+  $('menus-input').value = '';
+  if (!file) return;
+  try {
+    const content = jsyaml.load(await file.text());
+    if (!content || typeof content !== 'object' || Array.isArray(content)) throw new Error(t('sm-own-bad'));
+    delete content.version;
+    store('menus-file', JSON.stringify(content));
+    store('menus-choice', 'own');
+    $('menus-error').classList.add('hidden');
+    $('menus-own-info').textContent = t('sm-own-ok', {name: file.name});
+    // Le configurateur deja ouvert le relit
+    if ($('menus-frame').getAttribute('src')) $('menus-frame').contentWindow.location.reload();
+  } catch (error) {
+    $('menus-error').textContent = `${t('sm-own-bad')} ${error.message || ''}`;
+    $('menus-error').classList.remove('hidden');
+  }
+  updateMenus();
+});
+$('menus-copy').addEventListener('click', copyMenus);
+$('cfg-copy').addEventListener('click', copyCfg);
+$('menus-download').addEventListener('click', () => { downloadText(menusYaml(), 'menus.yaml'); $('menus-sd-status').textContent = t('downloaded'); });
+async function writeFile(directory, name, data) {
+  const handle = await directory.getFileHandle(name, {create: true});
+  const writable = await handle.createWritable();
+  await writable.write(data);
+  await writable.close();
+}
+$('menus-save-sd').addEventListener('click', async () => {
+  // La carte (bootfs) choisie : .raspydarts/menus.yaml et les images chargees dans le configurateur
+  const status = $('menus-sd-status');
+  try {
+    const card = await window.showDirectoryPicker({id: 'bootfs', mode: 'readwrite'});
+    let boot = true;
+    try { await card.getFileHandle('config.txt'); } catch (error) { boot = false; }
+    if (!boot && !confirm(t('sd-not-boot'))) return;
+    const folder = await card.getDirectoryHandle('.raspydarts', {create: true});
+    await writeFile(folder, 'menus.yaml', new Blob([menusYaml()], {type: 'text/yaml'}));
+    const frame = $('menus-frame').contentWindow;
+    const images = (frame && frame.menusOwnImages) || {};
+    let count = 0;
+    for (const [path, url] of Object.entries(images)) {
+      const parts = path.split('/');
+      let directory = folder;
+      for (const part of parts.slice(0, -1)) directory = await directory.getDirectoryHandle(part, {create: true});
+      await writeFile(directory, parts[parts.length - 1], await (await fetch(url)).blob());
+      count++;
+    }
+    status.textContent = t('sd-menus-ok', {n: count});
+  } catch (error) {
+    if (error.name !== 'AbortError') status.textContent = `${t('sd-menus-fail')} ${error.message}`;
+  }
+});
+
 // ------------------------------------------------------------------ start
 $('repo-url').textContent = REPO_URL;
 pinFields($('outputs'), PRESETS.outputs, 'out');
@@ -752,6 +912,7 @@ $('lang').value = lang;
 $('locale').value = LOCALES[lang];
 translate();
 ownFile(stored('own') === '1');
+if (stored('menus-choice') === 'own' && menusData()) $('menus-own-info').textContent = t('sm-own-ok', {name: 'menus.yaml'});
 // index.html#3 : the step 3 directly
 show(Number(location.hash.slice(1)) || Number(stored('step')) || 1);
 </script>

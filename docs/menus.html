@@ -89,6 +89,13 @@ legend { font-weight: 700; padding: 0 5px; font-size: .9rem; }
 textarea#yaml { width: 100%; min-height: 220px; font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
 .hidden { display: none !important; }
 body.basic .adv { display: none !important; }
+button.act { font: inherit; font-size: .86rem; border: 1px solid var(--accent); color: var(--accent); background: var(--panel); border-radius: 8px; padding: 4px 10px; font-weight: 600; }
+button.act:hover:not(:disabled) { background: var(--accent); color: var(--accent-text); }
+button.act.danger { border-color: #c62828; color: #c62828; }
+button.act.danger:hover:not(:disabled) { background: #c62828; color: #fff; }
+dialog label { display: block; font-weight: 600; margin: 8px 0 3px; }
+body.embedded header, body.embedded footer { display: none; }
+body.embedded main { padding: 8px; }
 .image-note { color: #d11a1a; font-weight: 600; font-size: .84rem; margin: 3px 0 6px; }
 .image-note:empty { display: none; }
 .errors { color: var(--accent); font-weight: 600; font-size: .9rem; }
