@@ -320,6 +320,14 @@ function geometry() {
   });
   const areas = {};
   if (info.styled) for (const zone of zoneNames(info.menu)) areas[zone] = metrics(info.menu, info.listed, zone).area;
+  else {
+    // Dessin classique : sa zone est la place de ses boutons (la toucher passe a la disposition, sans saut)
+    const shown = info.listed.map(b => rects[R.buttonId(b)]).filter(Boolean);
+    if (shown.length) {
+      const left = Math.min(...shown.map(r => r[0])), top = Math.min(...shown.map(r => r[1]));
+      areas[''] = [left, top, Math.max(...shown.map(r => r[0] + r[2])) - left, Math.max(...shown.map(r => r[1] + r[3])) - top];
+    }
+  }
   return { ids: ids, rects: rects, listed: info.listed.map(R.buttonId), areas: areas, area: areas[''] || null, version: version };
 }
 function zoneAt(point) {
@@ -650,6 +658,11 @@ $('overlay').addEventListener('pointermove', (event) => {
     }
   } else if (op.type === 'area') {
     if (!op.moved && Math.hypot(dx, dy) < 4 * overlayScale()) return;
+    if (!op.moved && screen !== 'games' && !menuInfo(screen).styled) {
+      // Dessin classique : passe a la disposition a la place de ses boutons, puis suit le geste
+      ensureStyled(screen);
+      op.size = clone(zoneOwn(op.zone).button_size || null);
+    }
     op.moved = true;
     let rect = op.handle === 'move' ? moved(op.rect) : resized(op.rect, op.handle, dx, dy);
     // La zone s'aligne sur l'ecran, les autres zones et les boutons hors d'elle (pas sur les siens)
@@ -717,7 +730,7 @@ $('overlay').addEventListener('pointerup', async () => {
       // Lui seul : sa largeur en parts de colonne et ses rangees, les autres se rangent autour
       ensureStyled(screen);
       const [units, rows] = cellsFor(done.current, done.zone);
-      editButton(done.id, b => setSpan(b, units, rows));
+      changeSpan(done.id, units, rows);
       changed(true);
     } else {
       user = JSON.parse(done.before);
@@ -1425,9 +1438,8 @@ function buildButtonPanel(panel) {
       const widths = Object.keys(FRACTIONS).map(Number).concat([1, 2, 3, 4].map(n => n * S));
       const unitsNow = Math.round((parseFloat(span().columns) || 1) * S);
       cell(grid, t('span-columns'), selectInput(widths.map(u => [String(u), fractionLabel(u)]), () => String(unitsNow),
-        v => editButton(id, b => setSpan(b, parseInt(v, 10) || S, (L.isDict(b.span) && b.span.rows) || 1)), undefined, true));
-      cell(grid, t('span-rows'), numberInput(() => span().rows || 1, v => editButton(id, b => setSpan(b,
-        Math.round((parseFloat((L.isDict(b.span) ? b.span : {}).columns) || 1) * S), Math.round(v || 1))), 1, 1, 8));
+        v => changeSpan(id, parseInt(v, 10) || S, span().rows || 1), undefined, true));
+      cell(grid, t('span-rows'), numberInput(() => span().rows || 1, v => changeSpan(id, unitsNow, Math.max(1, Math.round(v || 1))), 1, 1, 8));
       fs.appendChild(grid);
       // L'ecart au-dessus de sa rangee (en hauteurs de bouton)
       field(fs, 'f-space-before', numberInput(() => button.space_before, set('space_before'), 0.5, 0, 10), 'f-space-hint');
@@ -1636,23 +1648,62 @@ function cellAt(point, id, zone) {
   return { row: row, column: round4(start / S), zone: zone, high: high, width: width, start: start, insert: insert,
            rect: [x, top(row), cellsW, cellsH] };
 }
+function normalizeRows(zone, except) {
+  // Les rangees du fichier ramenees a celles affichees (sans rangees vides) : les cases visees
+  // et celles des boutons fixes parlent alors des memes rangees
+  const info = menuInfo(screen);
+  const shown = metrics(info.menu, info.listed, zone || '');
+  const rowOf = {};
+  for (const index of shown.members) if (shown.cells[index]) rowOf[R.buttonId(info.listed[index - 1])] = shown.cells[index][0];
+  for (const b of ownButtons(screen)) {
+    const bid = R.buttonId(b);
+    if (bid !== except && L.isDict(b.cell) && !b.place && String(b.zone || '') === (zone || '') && bid in rowOf) {
+      b.cell = Object.assign({}, b.cell, { row: rowOf[bid] });
+    }
+  }
+}
+function settleZone(zone, firstId) {
+  // Les boutons fixes de la zone sans chevauchement : celui qu'on vient de changer garde sa
+  // place, les autres (de haut en bas) descendent juste sous ce qu'ils chevaucheraient
+  const S = L.SUBCELLS;
+  const info = menuInfo(screen);
+  const total = metrics(info.menu, info.listed, zone || '').columns * S;
+  const fixed = ownButtons(screen).filter(b => L.isDict(b.cell) && !b.place && String(b.zone || '') === (zone || ''));
+  const box = (b) => {
+    const span = L.isDict(b.span) ? b.span : {};
+    const w = Math.min(total, Math.max(1, Math.round((parseFloat(span.columns) || 1) * S)));
+    return { row: parseInt(b.cell.row || 0, 10), start: Math.min(Math.max(0, Math.round((parseFloat(b.cell.column) || 0) * S)), total - w),
+             w: w, h: Math.max(1, parseInt(span.rows || 1, 10)) };
+  };
+  const overlap = (a, c) => a.row < c.row + c.h && c.row < a.row + a.h && a.start < c.start + c.w && c.start < a.start + a.w;
+  const order = fixed.slice().sort((a, b) => (R.buttonId(b) === firstId) - (R.buttonId(a) === firstId) ||
+    box(a).row - box(b).row || box(a).start - box(b).start);
+  const placed = [];
+  for (const b of order) {
+    const bx = box(b);
+    for (let guard = 0; guard < 100; guard++) {
+      const hits = placed.filter(p => overlap(p, bx));
+      if (!hits.length) break;
+      bx.row = Math.max(...hits.map(p => p.row + p.h));
+    }
+    if (bx.row !== (b.cell.row || 0)) b.cell = Object.assign({}, b.cell, { row: bx.row });
+    placed.push(bx);
+  }
+}
+function changeSpan(id, units, rows) {
+  // Nouvelle taille d'un bouton (parts de colonne, rangees) : les boutons fixes qu'il
+  // chevaucherait descendent, les autres gardent leur place
+  const zone = zoneOfButton(id);
+  normalizeRows(zone);
+  editButton(id, b => setSpan(b, units, rows));
+  settleZone(zone, id);
+}
 function setCell(id, cell) {
   // Le bouton fixe sur cette case de sa zone (sans ecart au-dessus) ; celui qui l'avait se range
   // avec les autres. A cote d'un bouton : les deux se partagent sa largeur, chacun sur sa moitie
   const S = L.SUBCELLS;
   const putZone = (b) => { if (cell.zone) b.zone = cell.zone; else delete b.zone; };
-  // Les rangees du fichier d'abord ramenees a celles affichees (sans rangees vides) : la case
-  // visee et celles des boutons fixes parlent alors des memes rangees
-  const info = menuInfo(screen);
-  const shown = metrics(info.menu, info.listed, cell.zone || '');
-  const rowOf = {};
-  for (const index of shown.members) if (shown.cells[index]) rowOf[R.buttonId(info.listed[index - 1])] = shown.cells[index][0];
-  for (const b of ownButtons(screen)) {
-    const bid = R.buttonId(b);
-    if (bid !== id && L.isDict(b.cell) && !b.place && String(b.zone || '') === (cell.zone || '') && bid in rowOf) {
-      b.cell = Object.assign({}, b.cell, { row: rowOf[bid] });
-    }
-  }
+  normalizeRows(cell.zone || '', id);
   for (const b of ownButtons(screen)) {
     const bid = R.buttonId(b);
     if (cell.side) {
@@ -1676,6 +1727,7 @@ function setCell(id, cell) {
       b.cell = Object.assign({}, b.cell, { row: (b.cell.row || 0) + (cell.high || 1) });
     }
   }
+  settleZone(cell.zone || '', cell.side ? cell.target : id);
 }
 function snap(rect, mode, exclude, off, area) {
   // Aimante le rectangle (deplace : bords et centre ; redimensionne : le bord tire) sur le
@@ -1729,6 +1781,17 @@ function addButton() {
   let n = 1;
   while (buttons.some(b => R.buttonId(b) === `button${n}`)) n++;
   const button = { id: `button${n}`, action: 'local_game', text: t('new-button') };
+  // La taille du plus petit bouton de la premiere zone (une rangee de grille peut etre petite)
+  const info = menuInfo(screen);
+  if (info.styled) {
+    const m = metrics(info.menu, info.listed, '');
+    let smallest = null;
+    for (const index of m.members) {
+      const c = m.cells[index];
+      if (c && (!smallest || c[2] * c[3] < smallest[0] * smallest[1])) smallest = [c[2], c[3]];
+    }
+    if (smallest) setSpan(button, smallest[0], smallest[1]);
+  }
   const footer = buttons.findIndex(b => b.footer);
   buttons.splice(footer >= 0 ? footer : buttons.length, 0, button);
   selection = { kind: 'button', id: button.id };
