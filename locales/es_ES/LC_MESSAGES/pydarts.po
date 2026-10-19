@@ -704,3 +704,6 @@ msgstr "Mayús"
 msgid "vk-space"
 msgstr "Espacio"
 
+msgid "nextplayer_music"
+msgstr "Música al empezar cada turno"
+

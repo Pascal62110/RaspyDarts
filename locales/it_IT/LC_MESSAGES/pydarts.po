@@ -3388,3 +3388,6 @@ msgstr "Maiusc"
 msgid "vk-space"
 msgstr "Spazio"
 
+msgid "nextplayer_music"
+msgstr "Musica all’inizio di ogni turno"
+

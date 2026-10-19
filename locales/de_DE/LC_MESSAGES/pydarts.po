@@ -698,3 +698,6 @@ msgstr "Umsch"
 msgid "vk-space"
 msgstr "Leertaste"
 
+msgid "nextplayer_music"
+msgstr "Musik zu Beginn jeder Runde"
+

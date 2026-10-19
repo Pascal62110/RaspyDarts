@@ -463,6 +463,8 @@ match_qty = 0  # Count number of matches
 # Init vars according to Customization, config else
 #solo = int(Config.get_value('SectionGlobals', 'solo'))
 play_firstname = bool(Config.get_value('SectionGlobals', 'play_firstname'))
+# The music at the start of each turn (option nextplayer_music)
+nextplayer_music = bool(Config.get_value('SectionGlobals', 'nextplayer_music'))
 print_dartstroke = bool(Config.get_value('SectionGlobals', 'print_dartstroke'))
 light_target = bool(Config.get_value('SectionGlobals', 'light_target'))
 light_strip = bool(Config.get_value('SectionGlobals', 'light_strip'))
@@ -1055,6 +1057,7 @@ try:
                         #solo = int(Config.get_value('SectionGlobals', 'solo'))
                         releasedartstime = int(Config.get_value('SectionGlobals', 'releasedartstime'))
                         play_firstname = bool(Config.get_value('SectionGlobals', 'play_firstname'))
+                        nextplayer_music = bool(Config.get_value('SectionGlobals', 'nextplayer_music'))
                         print_dartstroke = bool(Config.get_value('SectionGlobals', 'print_dartstroke'))
                         light_target = bool(Config.get_value('SectionGlobals', 'light_target'))
                         light_strip = bool(Config.get_value('SectionGlobals', 'light_strip'))
@@ -2299,7 +2302,7 @@ try:
                                 dmd.send_text(handler['announcement'])
                                 display.message([handler['announcement']], 0, None, 'middle', 'big')
                                 display.speech(handler['announcement'], speed=handler['speech_speed'])
-                            else:
+                            elif nextplayer_music:
                                 played_sound = display.play_sound('next_player', wait_finish=wait_finish, duration=sound_duration)
 
                         actual_player += 1

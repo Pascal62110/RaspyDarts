@@ -42,6 +42,8 @@ DefaultConfig['SectionGlobals'] = {
     'pnj_time': 2000,
     'releasedartstime': 1800,
     'nextplayer_sound_duration': 7000,
+    # The music played at the start of each turn (next_player) : False, none
+    'nextplayer_music': True,
     'waitevent_time': 30000,
     'resx': 1000,
     'resy': 700,
@@ -1230,6 +1232,8 @@ class Config:
         self.conf += f"pnj_time:{Global['pnj_time']}\n"
         self.conf += "### Max time of the next_player sound/music (max 10000)\n"
         self.conf += f"nextplayer_sound_duration:{Global['nextplayer_sound_duration']}\n"
+        self.conf += "### Music at the start of each turn (False : none)\n"
+        self.conf += f"nextplayer_music:{Global['nextplayer_music']}\n"
         self.conf += "### Time to release darts safely after a hit on player button (good is 1000-3000)\n"
         self.conf += f"releasedartstime:{Global['releasedartstime']}\n"
         self.conf += "### Screen resolution - if fullscreen is set to 1, resolution is bypassed\n"

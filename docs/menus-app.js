@@ -2186,6 +2186,7 @@ function translate() {
   document.documentElement.lang = lang;
   document.title = `RaspyDarts · ${t('menu-custom')}`;
   document.querySelectorAll('[data-t]').forEach(node => { node.innerHTML = t(node.dataset.t); });
+  document.querySelectorAll('[data-t-title]').forEach(node => { node.title = t(node.dataset.tTitle); node.setAttribute('aria-label', node.title); });
   buildThemes();
   buildAll();
 }

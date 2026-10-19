@@ -4022,3 +4022,6 @@ msgstr "Maj"
 msgid "vk-space"
 msgstr "Espace"
 
+msgid "nextplayer_music"
+msgstr "Musique à chaque début de tour"
+

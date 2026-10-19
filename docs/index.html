@@ -32,6 +32,9 @@ nav.menu select { padding: 3px 6px; margin-left: 6px; }
 nav.menu a, nav.menu button { border: 1px solid transparent; background: none; color: var(--text); font: inherit; padding: 4px 12px; border-radius: 999px; cursor: pointer; text-decoration: none; }
 nav.menu .active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 nav.menu a:hover, nav.menu button:hover { border-color: var(--line); }
+nav.menu a.social { display: inline-flex; padding: 6px; border-radius: 50%; }
+nav.menu a.social svg { width: 20px; height: 20px; display: block; }
+nav.menu a.social:hover { color: var(--accent); }
 dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text); padding: 20px 24px; text-align: center; }
 dialog::backdrop { background: rgba(0, 0, 0, .45); }
 dialog p { font-size: 1.1rem; margin: 0 0 14px; }
@@ -90,6 +93,7 @@ label { display: block; font-weight: 600; margin: 12px 0 4px; }
 select, input[type="number"], input[type="text"] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; max-width: 100%; }
 .choice { display: flex; gap: 16px; flex-wrap: wrap; }
 .choice label { font-weight: 400; display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+.choice.stack { flex-direction: column; gap: 4px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
 .grid div label { font-weight: 400; font-size: .85rem; margin: 0 0 2px; }
 .grid input, .grid select { width: 100%; }
@@ -120,7 +124,9 @@ body.wide main { max-width: 1800px; }
     <h1>Raspy<span>Darts</span></h1>
     <nav class="menu">
       <a class="active" href="#1" data-t="menu-install"></a>
-      <a href="https://raspydarts.wordpress.com/" target="_blank" rel="noopener" data-t="menu-site"></a>
+      <a class="social" href="https://raspydarts.wordpress.com/" target="_blank" rel="noopener" data-t-title="menu-site"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.469 6.825c.84 1.537 1.318 3.3 1.318 5.175 0 3.979-2.156 7.456-5.363 9.325l3.295-9.527c.615-1.54.82-2.771.82-3.864 0-.405-.026-.78-.07-1.11m-7.981.105c.647-.03 1.232-.105 1.232-.105.582-.075.514-.93-.067-.899 0 0-1.755.135-2.88.135-1.064 0-2.85-.15-2.85-.15-.585-.03-.661.855-.075.885 0 0 .54.061 1.125.09l1.68 4.605-2.37 7.08L5.354 6.9c.649-.03 1.234-.1 1.234-.1.585-.075.516-.93-.065-.896 0 0-1.746.138-2.874.138-.2 0-.438-.008-.69-.015C4.911 3.15 8.235 1.215 12 1.215c2.809 0 5.365 1.072 7.286 2.833-.046-.003-.091-.009-.141-.009-1.06 0-1.812.923-1.812 1.914 0 .89.513 1.643 1.06 2.531.411.72.89 1.643.89 2.977 0 .915-.354 1.994-.821 3.479l-1.075 3.585-3.9-11.61.001.014zM12 22.784c-1.059 0-2.081-.153-3.048-.437l3.237-9.406 3.315 9.087c.024.053.05.101.078.149-1.12.393-2.325.609-3.582.609M1.211 12c0-1.564.336-3.05.935-4.39L7.29 21.709C3.694 19.96 1.212 16.271 1.211 12M12 0C5.385 0 0 5.385 0 12s5.385 12 12 12 12-5.385 12-12S18.615 0 12 0"/></svg></a>
+      <a class="social" href="https://discord.gg/eNB5bEfzgS" target="_blank" rel="noopener" data-t-title="menu-discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a>
+      <a class="social" href="https://www.facebook.com/groups/1124845401274184/" target="_blank" rel="noopener" data-t-title="menu-facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/></svg></a>
       <select id="lang" aria-label="Langue">
         <option value="fr">Français</option><option value="en">English</option><option value="de">Deutsch</option>
         <option value="es">Español</option><option value="it">Italiano</option>
@@ -284,7 +290,8 @@ body.wide main { max-width: 1800px; }
 
     <div class="cfg-slide" data-q="videos">
       <h3 data-t="q-videos"></h3>
-      <div class="choice">
+      <p class="hint" data-t="q-videos-hint"></p>
+      <div class="choice stack">
         <label><input type="radio" name="videos" value="2" data-keep> <span data-t="q-videos-all"></span></label>
         <label><input type="radio" name="videos" value="1" data-keep> <span data-t="q-videos-some"></span></label>
         <label><input type="radio" name="videos" value="0" data-keep> <span data-t="q-videos-none"></span></label>
@@ -293,6 +300,7 @@ body.wide main { max-width: 1800px; }
 
     <div class="cfg-slide" data-q="sounds">
       <h3 data-t="q-sounds"></h3>
+      <p class="hint" data-t="q-sounds-hint"></p>
       <div class="choice">
         <label><input type="radio" name="sounds" value="on" data-keep> <span data-t="q-sounds-on"></span></label>
         <label><input type="radio" name="sounds" value="off" data-keep> <span data-t="q-sounds-off"></span></label>
@@ -494,6 +502,7 @@ function translate() {
   document.documentElement.lang = lang;
   document.title = `RaspyDarts · ${t('menu-install')}`;
   document.querySelectorAll('[data-t]').forEach((element) => { element.innerHTML = t(element.dataset.t); });
+  document.querySelectorAll('[data-t-title]').forEach((element) => { element.title = t(element.dataset.tTitle); element.setAttribute('aria-label', element.title); });
   buildSteps();
   if (typeof showSlide === 'function' && SLIDES.length) showSlide(slide);
   buildCards();
@@ -696,8 +705,8 @@ function build() {
   const section = (name, entries) => `[${name}]\n` + Object.entries(entries).map(([key, value]) => `${key}:${value}`).join('\n') + '\n\n';
   let text = `# RaspyDarts : ${new Date().toISOString().slice(0, 10)}, ${location.href.split('#')[0]}\n`;
   text += `# ${card ? card.name : t('f-other')}\n\n`;
-  const globals = {locale: $('locale').value, videos: radio('videos') || '2', play_firstname: radio('announce') === 'off' ? 'False' : 'True'};
-  if (radio('sounds') === 'off') globals.soundvolume = '0';
+  const globals = {locale: $('locale').value, videos: radio('videos') || '2', play_firstname: radio('announce') === 'off' ? 'False' : 'True',
+    nextplayer_music: radio('sounds') === 'off' ? 'False' : 'True'};
   text += section('SectionGlobals', globals);
   text += section('SectionAdvanced', {interior: card && card.interior ? 'True' : 'False'});
   text += section('Raspberry_BoardPinsOuts', outputs);

@@ -6112,7 +6112,7 @@ class Screen(pygame.Surface):
                 continue
 
             if option in ('endgamestats', 'bypass-stats', 'onscreenbuttons', 'fullscreen',
-                    'keeporder', 'play_firstname', 'print_dartstroke', 'light_target', 'light_strip',
+                    'keeporder', 'play_firstname', 'nextplayer_music', 'print_dartstroke', 'light_target', 'light_strip',
                     'competition_mode', 'exhibition_mode', 'illumination_mode', 'fast_games_mode', 'only_favorites_games_mode', 'check_for_updates'):  
                 option_type = 'check'
                 option_values = []
@@ -6206,7 +6206,7 @@ class Screen(pygame.Surface):
                     
             all_customization.append([option, customization[option], option_type, max_value, option_values, min_value, zero])
             
-            if option in ('pnj_time', 'nextplayer_sound_duration', 'releasedartstime', 'onscreenbuttons', 'keeporder', 'videos', \
+            if option in ('pnj_time', 'nextplayer_sound_duration', 'nextplayer_music', 'releasedartstime', 'onscreenbuttons', 'keeporder', 'videos', \
                 'play_firstname', 'print_dartstroke', 'light_target', 'light_strip', 'waitevent_time', 'competition_mode', \
                 'illumination_mode', 'illumination_color'):
                 game_customization.append([option, customization[option], option_type, max_value, option_values, min_value, zero])

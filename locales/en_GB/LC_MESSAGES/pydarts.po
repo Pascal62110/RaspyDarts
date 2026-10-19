@@ -2934,3 +2934,6 @@ msgstr "Shift"
 msgid "vk-space"
 msgstr "Space"
 
+msgid "nextplayer_music"
+msgstr "Music at the start of each turn"
+
