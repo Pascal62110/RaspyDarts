@@ -13,7 +13,7 @@ const RESOLUTIONS = [[1024, 600], [1280, 720], [1366, 768], [1600, 900], [1920, 
 const FITS = ['stretch', 'cover', 'contain', 'center', 'tile', 'slice'];
 const POSITIONS = ['center', 'top', 'bottom', 'left', 'right', 'top_left', 'top_right', 'bottom_left', 'bottom_right'];
 const SHAPES = ['rounded', 'rectangle', 'pill', 'none'];
-const THEME_COLORS = ['menu-buttons', 'menu-selected', 'menu-shortcut', 'menu-header', 'menu-text', 'menu-text-black',
+const THEME_COLORS = ['transparent', 'menu-buttons', 'menu-selected', 'menu-shortcut', 'menu-header', 'menu-text', 'menu-text-black',
   'menu-text-white', 'menu-border', 'menu-alternate', 'menu-ok', 'menu-warning', 'menu-ko', 'menu-inactive', 'menu-favorite'];
 const GAME_TILES_AREA = { x: '3.125%', y: '18.75%', width: '40%', height: '62.5%' };
 
@@ -480,6 +480,19 @@ function currentId() { return selection.kind === 'button' ? selection.id : null;
 function buttonOf(id) { return menuButtons(screen).find(b => R.buttonId(b) === id); }
 function isFooter(id) { const b = buttonOf(id); return !!(b && R.FOOTERS[b.footer]); }
 function resizable(id) { return !GAME_SCREENS.includes(screen) && !isFooter(id) && !!buttonOf(id); }
+// Un bouton du bas (Retour...) se glisse aussi : il quitte le bas de l'ecran pour la disposition
+function movableFooter(id) { return !GAME_SCREENS.includes(screen) && isFooter(id); }
+function footerDefault(id) {
+  // Sa place en bas dans les menus du jeu (pour l'y remettre)
+  const b = ((R.combine(DATA.defaults, {}).menus || {})[screen] || {}).buttons || [];
+  const found = b.find(x => L.isDict(x) && R.buttonId(x) === id);
+  return found && R.FOOTERS[found.footer] ? found.footer : null;
+}
+function leaveFooter(id) { editButton(id, b => { delete b.footer; }); }
+function backToFooter(id) {
+  editButton(id, b => { b.footer = footerDefault(id); for (const k of ['place', 'cell', 'span', 'zone']) delete b[k]; });
+  changed(true);
+}
 function isFree(id) { const b = buttonOf(id); return !!(b && L.isDict(b.place)); }
 const CURSORS = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' };
 
@@ -582,7 +595,7 @@ $('overlay').addEventListener('pointerdown', (event) => {
   const hit = buttonAt(point);
   if (hit) {
     if (hit !== id) selectButton(hit);
-    if (resizable(hit) && geo.rects[hit]) { op = { type: 'move', id: hit, start: point, rect: geo.rects[hit].slice(), started: false }; capture(event); }
+    if ((resizable(hit) || movableFooter(hit)) && geo.rects[hit]) { op = { type: 'move', id: hit, start: point, rect: geo.rects[hit].slice(), started: false, footer: isFooter(hit) }; capture(event); }
     return;
   }
   if (geo.version && inside(point, geo.version)) {
@@ -614,7 +627,7 @@ $('overlay').addEventListener('pointermove', (event) => {
     let over = GAME_SCREENS.includes(screen) ? null : buttonAt(point);
     if (!over && geo.version && inside(point, geo.version)) over = '__version';
     if (handle) cursor = CURSORS[handle];
-    else if (over === '__version' || (over && resizable(over))) cursor = 'move';
+    else if (over === '__version' || (over && (resizable(over) || movableFooter(over)))) cursor = 'move';
     else if (over) cursor = 'pointer';
     else if (!GAME_SCREENS.includes(screen) && zoneAt(point) !== null) cursor = 'move';
     else if (zoneArea && onEdge(zoneArea, point)) cursor = 'move';
@@ -629,12 +642,14 @@ $('overlay').addEventListener('pointermove', (event) => {
       if (Math.hypot(dx, dy) < 4 * overlayScale()) return;
       op.started = true;
       ensureStyled(screen);
+      // Un bouton du bas glisse : il rejoint les boutons de l'ecran (il n'y laisse aucune place)
+      if (op.footer) leaveFooter(op.id);
       const info = menuInfo(screen);
       // Sa case avant le geste (pour refermer la place qu'il laisse)
       const zone = zoneOfButton(op.id);
       const index = info.listed.findIndex(b => R.buttonId(b) === op.id) + 1;
       const from = metrics(info.menu, info.listed, zone).cells[index];
-      op.origin = from && !isFree(op.id) ? { zone: zone, row: from[0], high: from[3] } : null;
+      op.origin = from && !isFree(op.id) && !op.footer ? { zone: zone, row: from[0], high: from[3] } : null;
       op.areas = {};
       for (const zone of zoneNames(info.menu)) op.areas[zone] = metrics(info.menu, info.listed, zone).area;
     }
@@ -1079,6 +1094,12 @@ function buttonImageFields(parent, get, set) {
   const grid = el('div', { class: 'grid2' });
   cell(grid, t('f-fit'), selectInput(FITS.map(f => [f, t('fit-' + f)]), () => block(['background']).fit, put(['background'], 'fit'), ''));
   fs.appendChild(grid);
+  // Fond transparent : seulement les images (aucune couleur dessous, dans aucun etat), sans
+  // coins arrondis qui couperaient le PNG
+  fs.appendChild(checkInput('f-transparent', () => block(['background']).color === 'transparent', v => {
+    for (const path of [['background'], ['selected', 'background'], ['pressed', 'background'], ['disabled', 'background']]) put(path, 'color')(v ? 'transparent' : undefined);
+    set(['shape'])(v ? 'rectangle' : undefined);
+  }, true));
   fs.appendChild(checkInput('f-text-show', () => get(['text', 'show'])() !== false, v => set(['text', 'show'])(v ? undefined : false), true));
   return fs;
 }
@@ -1508,6 +1529,12 @@ function buildButtonPanel(panel) {
   field(more, 'f-footer', selectInput([['left', t('pos-left')], ['center', t('pos-center')], ['right', t('pos-right')]], () => button.footer, set('footer'), '', true));
   field(more, 'f-logo', textInput(() => button.logo, set('logo'), 'menu_classic'), 'f-logo-hint');
   // Position, taille et ordre
+  if (isFooter(id) && movableFooter(id)) {
+    const fs = fieldset(panel, t('pos-title'), true);
+    fs.appendChild(el('p', { class: 'hint', text: t('footer-move-hint') }));
+    fs.appendChild(el('div', { class: 'row' }, [el('button', { class: 'act', text: '↥ ' + t('footer-leave'),
+      onclick: () => { ensureStyled(screen); leaveFooter(id); changed(true); } })]));
+  }
   if (!isFooter(id)) {
     const fs = fieldset(panel, t('pos-title'), true);
     if (L.isDict(button.place)) {
@@ -1562,6 +1589,10 @@ function buildButtonPanel(panel) {
           v => { ensureStyled(screen); setPath(zoneOwn(zoneHere, true), ['gap', key], v); }, axis));
       }
       fs.appendChild(gaps);
+    }
+    if (footerDefault(id)) {
+      fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('button', { class: 'act', text: '↧ ' + t('footer-back'),
+        onclick: () => backToFooter(id) })]));
     }
     fs.appendChild(el('div', { class: 'row', style: 'margin-top:6px' }, [el('span', { text: t('order') }),
       el('button', { class: 'tiny', text: '▲', onclick: () => moveButton(id, -1) }),
@@ -1619,7 +1650,12 @@ function inlineSet(button, path, value) {
 function buildLookFields(parent, id) {
   const info = menuInfo(screen);
   const button = info.items.find(b => R.buttonId(b) === id) || buttonOf(id);
-  const effective = () => menuInfo(screen).renderer.buttonStyle(menuInfo(screen).menu, button);
+  // L'aspect du bouton tel qu'il est maintenant (pas celui de l'ouverture du panneau : un
+  // reglage fait depuis, une image chargee, serait perdu au reglage suivant)
+  const effective = () => {
+    const now = menuInfo(screen);
+    return now.renderer.buttonStyle(now.menu, now.items.find(b => R.buttonId(b) === id) || buttonOf(id) || button);
+  };
   // Interrupteur : ce bouton seul ou tous les boutons de l'ecran
   const seg = el('div', { class: 'seg' });
   for (const [value, key] of [['one', 'scope-one'], ['all', 'scope-all']]) {

@@ -71,6 +71,8 @@
     if (value === null || value === undefined || value === false) return fallback === undefined ? null : fallback;
     if (Array.isArray(value)) return value.map(Number);
     const text = String(value);
+    // transparent : rien de dessine (un bouton fait de son image : le PNG seul)
+    if (text.trim().toLowerCase() === 'transparent') return [0, 0, 0, 0];
     // 'menu-buttons*1.5' : une couleur du theme plus claire (ou plus foncee sous 1), comme les boutons classiques
     if (text.includes('*')) {
       const [name, factor] = text.split('*');

@@ -264,6 +264,10 @@ background:
 - Chaque état (`selected`, `disabled`, `pressed`) peut changer tout ou partie du fond :
   `selected: {background: {image: images/buttons/tile_on.png}}`. L'état `pressed` est montré un
   instant quand le bouton est validé ; sans image propre, il garde celle de l'état normal.
+- **Couleur `transparent`** : rien n'est dessiné (`color: null` ne convient pas : une valeur
+  `null` d'un fichier efface la valeur, celle par défaut revient). Pour un bouton fait d'un PNG
+  détouré : `background: {color: transparent, image: ...}` dans chaque état, et `shape:
+  rectangle` (des coins arrondis couperaient l'image).
 - **Bouton fait d'images** : une image par état, et `text: {show: false}` pour ne pas écrire son
   nom (il reste son nom pour l'écran DMD et l'éditeur ; une icône éventuelle se met au milieu).
   `show` se règle aussi par état (`selected: {text: {show: true}}` : le nom seulement quand le
@@ -324,7 +328,7 @@ Propriétés d'un bouton :
 | `visible` | `false` le cache (il reste joignable par son raccourci) |
 | `confirm` | texte d'une confirmation Oui/Non avant l'action |
 | `place` | placement libre (§7.5) ; sinon placé par la disposition du menu |
-| `footer` | bouton du bas de l'écran : `left`, `center` ou `right` (comme Retour, Enregistrer) |
+| `footer` | bouton du bas de l'écran : `left`, `center` ou `right` (comme Retour, Enregistrer) ; un bouton sans `footer` dans la liste du fichier est placé avec les autres (le configurateur le fait quand on glisse un bouton du bas) |
 | `logo` | image du dossier `images/logos_menu` du thème (disposition `tiles` du style `classic`) ; un dossier de ce nom contenant plusieurs images : l'une d'elles au hasard. Dans un menu dessiné par un style, il sert d'icône au bouton qui n'en a pas (et un bouton à logo sans `text` ne montre que son logo) |
 | `requires` | condition d'affichage : `favorite_games` (seulement s'il existe des jeux favoris) |
 | `dmd` | texte envoyé sur l'afficheur DMD quand le bouton est sélectionné |

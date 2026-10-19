@@ -327,6 +327,9 @@ class Painter:
         if isinstance(value, (list, tuple)):
             return tuple(int(part) for part in value)
         value = str(value)
+        if value.strip().lower() == 'transparent':
+            # Nothing drawn (a button made of its image : its PNG alone)
+            return (0, 0, 0, 0)
         if '*' in value:
             name, _, factor = value.partition('*')
             base = self.color(name.strip(), None)
