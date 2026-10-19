@@ -169,10 +169,9 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 10
   <div id="stage">
     <div id="screens"></div>
     <div class="bar">
-      <span class="seg" id="mode-seg" style="margin:0"><button data-mode="basic" data-t="mode-basic"></button><button data-mode="advanced" data-t="mode-advanced"></button></span>
       <button class="ghost" id="undo" disabled data-t="undo"></button>
       <span data-t="preview-size"></span> <select id="preview-res"></select>
-      <label class="inline adv"><input type="checkbox" id="fav-games"> <span data-t="fav-games"></span></label>
+      <label class="inline hidden" id="fav-games-box"><input type="checkbox" id="fav-games"> <span data-t="fav-games"></span></label>
       <button class="main" id="download2" data-t="download"></button>
     </div>
     <p class="hint" data-t="preview-hint"></p>

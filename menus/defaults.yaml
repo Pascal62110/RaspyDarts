@@ -18,6 +18,14 @@ styles:
     # comme eux (les raccourcis suivent aussi le thème, §7.1)
     background: {color: 'menu-buttons*1.5'}
     text: {size: auto, color: menu-text-black, align: theme}
+  classic-tiles:
+    # Comme les tuiles classiques du thème (logos des catégories) : fond à peine visible, le
+    # logo remplit la tuile, la tuile choisie surlignée
+    background: {color: menu-inactive, opacity: 0.08}
+    radius: 0.17
+    icon: {size: 1.0}
+    text: {size: auto, color: menu-text-black, align: theme}
+    selected: {background: {color: menu-selected, opacity: 1.0}}
 
 navigation:
   up: [up, btn:up, dart:S20]

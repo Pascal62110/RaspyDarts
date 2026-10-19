@@ -213,6 +213,8 @@ function ensureStyled(name) {
   if (beside) own.gap.x = pxToFile(beside[0] - first[0] - first[2], 'x');
   if (columns > 1) own.columns = columns;
   own.align = 'top';
+  // Des tuiles classiques (logos) : le style qui les reproduit, pour qu'elles ne changent pas d'aspect
+  if (String(info.menu.layout || 'list') === 'tiles' && String(info.menu.style || 'classic') === 'classic') own.style = 'classic-tiles';
 }
 function fitOnScreen(name) {
   // Un ecran reste un seul ecran : si les boutons d'une zone depassent sa place (pages), leur
@@ -1089,6 +1091,15 @@ function buildPanel() {
   const panel = $('tab-edit');
   const scroll = $('side').scrollTop;
   panel.innerHTML = '';
+  // En tete : Basique (le necessaire) ou Avance (tous les reglages)
+  const mode = el('div', { class: 'seg', id: 'mode-seg', style: 'margin:0 0 10px' });
+  for (const value of ['basic', 'advanced']) {
+    mode.appendChild(el('button', { 'data-mode': value, text: t('mode-' + value), onclick: () => setMode(value) }));
+  }
+  panel.appendChild(mode);
+  setMode(document.body.classList.contains('basic') ? 'basic' : 'advanced');
+  // L'apercu « jeux favoris » : seulement pour un ecran qui a un bouton lie aux favoris (Categories)
+  $('fav-games-box').classList.toggle('hidden', !menuButtons(screen).some(b => b.requires === 'favorite_games'));
   if (selection.kind === 'button') buildButtonPanel(panel);
   else if (selection.kind === 'zone') buildZonePanel(panel);
   else if (selection.kind === 'version') buildVersionPanel(panel);
@@ -2168,8 +2179,7 @@ function setMode(mode) {
   document.querySelectorAll('#mode-seg button').forEach(b => b.classList.toggle('active', b.dataset.mode === (mode === 'advanced' ? 'advanced' : 'basic')));
   store('mode', mode);
 }
-document.querySelectorAll('#mode-seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
-setMode(stored('mode') === 'advanced' ? 'advanced' : 'basic');
+document.body.classList.toggle('basic', stored('mode') !== 'advanced');
 document.addEventListener('keydown', (event) => {
   const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes((document.activeElement || {}).tagName);
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !typing) { event.preventDefault(); undo(); }

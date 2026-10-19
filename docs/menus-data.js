@@ -17,6 +17,27 @@ const MENUS_DATA = {
      "color": "menu-text-black",
      "align": "theme"
     }
+   },
+   "classic-tiles": {
+    "background": {
+     "color": "menu-inactive",
+     "opacity": 0.08
+    },
+    "radius": 0.17,
+    "icon": {
+     "size": 1.0
+    },
+    "text": {
+     "size": "auto",
+     "color": "menu-text-black",
+     "align": "theme"
+    },
+    "selected": {
+     "background": {
+      "color": "menu-selected",
+      "opacity": 1.0
+     }
+    }
    }
   },
   "navigation": {
