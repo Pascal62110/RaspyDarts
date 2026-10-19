@@ -71,6 +71,13 @@
     if (value === null || value === undefined || value === false) return fallback === undefined ? null : fallback;
     if (Array.isArray(value)) return value.map(Number);
     const text = String(value);
+    // 'menu-buttons*1.5' : une couleur du theme plus claire (ou plus foncee sous 1), comme les boutons classiques
+    if (text.includes('*')) {
+      const [name, factor] = text.split('*');
+      const base = this.color(name.trim(), null);
+      const f = parseFloat(factor);
+      return base && !isNaN(f) ? base.slice(0, 3).map(c => Math.trunc(Math.min(255, c * f))) : (fallback === undefined ? [128, 128, 128] : fallback);
+    }
     if (text.startsWith('#') && (text.length === 7 || text.length === 9)) {
       const parts = [];
       for (let i = 1; i < text.length; i += 2) parts.push(parseInt(text.slice(i, i + 2), 16));
@@ -466,9 +473,12 @@
     ctx.restore();
   };
   Context.prototype.styledText = function (text, rect, settings, units, zoom) {
-    if (!text || parseFloat(settings.size || 0) <= 0) return;
+    if (!text) return;
     if (zoom === undefined) zoom = 1;
-    let size = Math.max(1, Math.trunc(units.text(settings.size || '4.5%') * zoom));
+    // size: auto : comme les boutons classiques, le texte suit la hauteur de sa place
+    const auto = String(settings.size).trim().toLowerCase() === 'auto';
+    if (!auto && parseFloat(settings.size || 0) <= 0) return;
+    let size = auto ? Math.max(1, Math.trunc(rect[3] * 0.84 / 1.5 * zoom)) : Math.max(1, Math.trunc(units.text(settings.size || '4.5%') * zoom));
     const font = settings.font || this.font;
     const color = this.color(settings.color, [0, 0, 0]);
     const bold = !!settings.bold;
@@ -481,7 +491,8 @@
     }
     const position = String(settings.position || 'center');
     const anchor = L.ANCHORS[position] || [0.5, 0.5];
-    const align = String(settings.align || 'center');
+    let align = String(settings.align || 'center');
+    if (align === 'theme') align = String(this.colors['main-sub-menu-text-align'] || 'Left').toLowerCase();
     const horizontal = ['center', 'top', 'bottom'].includes(position) ? ({ left: 0, right: 1 }[align] !== undefined ? { left: 0, right: 1 }[align] : anchor[0]) : anchor[0];
     const margin = rect[3] * 0.08;
     const offset = settings.offset || [0, 0];

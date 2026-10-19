@@ -72,7 +72,10 @@ button:disabled { opacity: .45; cursor: default; }
 #canvas-wrap { background: #000; border-radius: 8px; overflow: hidden; line-height: 0; position: relative; }
 canvas#overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; outline: none; touch-action: none; }
 canvas#preview { width: 100%; height: auto; display: block; cursor: default; }
-.bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: .9rem; }
+.bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; font-size: .9rem; }
+#stage .hint { margin: 0 0 4px; }
+#stage .errors { margin: 0 0 6px; }
+#stage .errors:empty { display: none; }
 ul.buttons { list-style: none; padding: 0; margin: 6px 0; }
 ul.buttons li { display: flex; align-items: center; gap: 4px; padding: 3px 5px; border: 1px solid var(--line); border-radius: 7px; margin: 3px 0; background: var(--bg); cursor: pointer; }
 ul.buttons li.active { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
@@ -162,7 +165,6 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 10
 
   <div id="stage">
     <div id="screens"></div>
-    <div id="canvas-wrap"><canvas id="preview" width="1920" height="1080"></canvas><canvas id="overlay" width="1920" height="1080" tabindex="0"></canvas></div>
     <div class="bar">
       <button class="ghost" id="undo" disabled data-t="undo"></button>
       <span data-t="preview-size"></span> <select id="preview-res"></select>
@@ -171,6 +173,7 @@ footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 10
     </div>
     <p class="hint" data-t="preview-hint"></p>
     <p class="errors" id="file-errors"></p>
+    <div id="canvas-wrap"><canvas id="preview" width="1920" height="1080"></canvas><canvas id="overlay" width="1920" height="1080" tabindex="0"></canvas></div>
   </div>
 </main>
 <dialog id="ask"><p id="ask-text"></p><p class="hint" id="ask-sub"></p><div class="row" id="ask-buttons"></div></dialog>

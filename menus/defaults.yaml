@@ -13,7 +13,11 @@ defaults:
 
 styles:
   # Les boutons de toujours : raccourci à gauche, texte, couleurs du thème (Colorset.cfg)
-  classic: {}
+  classic:
+    # Comme les boutons classiques du thème : texte à la hauteur du bouton, aligné et coloré
+    # comme eux (les raccourcis suivent aussi le thème, §7.1)
+    background: {color: 'menu-buttons*1.5'}
+    text: {size: auto, color: menu-text-black, align: theme}
 
 navigation:
   up: [up, btn:up, dart:S20]

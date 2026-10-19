@@ -467,3 +467,9 @@ Object.assign(T.it, {
   'preview-hint': 'Cliccate un pulsante per selezionarlo, trascinatelo per spostarlo, tirate le sue maniglie per ridimensionarlo. Ctrl+Z: annulla.',
   'f-screen-style': 'Stile dei pulsanti di questo schermo'
 });
+// Raccourcis selon le theme, texte a la taille du bouton
+Object.assign(T.fr, { 'f-sc-show': 'Afficher les raccourcis (par défaut : comme le thème)', 'f-text-auto': 'Taille selon le bouton (comme les boutons classiques)' });
+Object.assign(T.en, { 'f-sc-show': 'Show the shortcuts (default: as the theme)', 'f-text-auto': 'Size following the button (as the classic buttons)' });
+Object.assign(T.de, { 'f-sc-show': 'Tastenkürzel anzeigen (Standard: wie das Thema)', 'f-text-auto': 'Größe nach der Taste (wie die klassischen Tasten)' });
+Object.assign(T.es, { 'f-sc-show': 'Mostrar los atajos (por defecto: como el tema)', 'f-text-auto': 'Tamaño según el botón (como los botones clásicos)' });
+Object.assign(T.it, { 'f-sc-show': 'Mostrare le scorciatoie (predefinito: come il tema)', 'f-text-auto': 'Dimensione secondo il pulsante (come i pulsanti classici)' });

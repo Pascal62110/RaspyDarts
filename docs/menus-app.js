@@ -117,6 +117,7 @@ function previewSize() {
 // Positions et tailles : en % de l'ecran (placement automatique) ou en pixels de la resolution choisie
 function toUnits(value, axis) {
   if (value === undefined || value === null || value === '') return '';
+  if (typeof value === 'string' && !value.trim().endsWith('%') && isNaN(parseFloat(value))) return '';   // auto
   if (reference()) return Math.round(new L.Units(reference(), reference()).length(value, axis));
   return Math.round(new L.Units([1, 1], null).length(value, axis) * 10000) / 100;
 }
@@ -298,6 +299,7 @@ function shownIds() { return (lastDraw && lastDraw.geometry && lastDraw.geometry
 
 // ------------------------------------------------------------------ calque de selection
 let ghost = null;     // taille en cours d'un bouton de la disposition (avant la question)
+let dropZone = null;  // zone des boutons ou le bouton glisse reprendra sa place
 let hover = null;
 function overlayScale() {
   const canvas = $('preview');
@@ -342,6 +344,7 @@ function drawOverlay() {
     knobs(geo.area);
   }
   if (ghost) frame(ghost, '#ffd60a', 2, true);
+  if (dropZone) frame(dropZone, '#30d158', 3, true);
 }
 function canvasPoint(event) {
   const canvas = $('preview');
@@ -414,7 +417,7 @@ $('overlay').addEventListener('pointerdown', (event) => {
   }
   if (selection.kind === 'screen' && geo.area) {
     const handle = handleAt(geo.area, point);
-    if (handle) { op = { type: 'area', handle: handle, start: point, rect: geo.area.slice() }; capture(event); return; }
+    if (handle) { op = { type: 'area', handle: handle, start: point, rect: geo.area.slice(), size: clone(userMenu(screen).button_size || null) }; capture(event); return; }
   }
   if (GAME_SCREENS.includes(screen)) {
     // Ecran du jeu : ses boutons montrent leur aspect choisi, le panneau reste celui de l'ecran
@@ -429,7 +432,7 @@ $('overlay').addEventListener('pointerdown', (event) => {
     return;
   }
   if (selection.kind === 'screen' && geo.area && onEdge(geo.area, point)) {
-    op = { type: 'area', handle: 'move', start: point, rect: geo.area.slice() }; capture(event); return;
+    op = { type: 'area', handle: 'move', start: point, rect: geo.area.slice(), size: clone(userMenu(screen).button_size || null) }; capture(event); return;
   }
   if (selection.kind !== 'screen') selectScreen();
 });
@@ -460,9 +463,14 @@ $('overlay').addEventListener('pointermove', (event) => {
       if (Math.hypot(dx, dy) < 4 * overlayScale()) return;
       op.started = true;
       ensureStyled(screen);
+      const info = menuInfo(screen);
+      op.area = metrics(info.menu, info.listed).area;
     }
     const rect = [Math.round(clamp(op.rect[0] + dx, 0, W - op.rect[2])), Math.round(clamp(op.rect[1] + dy, 0, H - op.rect[3])), op.rect[2], op.rect[3]];
     setPlace(op.id, rect);
+    // Lache dans la zone des boutons : il y reprendra sa place (zone en vert)
+    op.drop = [rect[0] + rect[2] / 2, rect[1] + rect[3] / 2];
+    dropZone = inside(op.drop, op.area) ? op.area : null;
     schedule();
   } else if (op.type === 'resize') {
     op.current = resized(op.rect, op.handle, dx, dy);
@@ -472,7 +480,13 @@ $('overlay').addEventListener('pointermove', (event) => {
     const rect = op.handle === 'move' ? [Math.round(clamp(op.rect[0] + dx, 0, W - op.rect[2])), Math.round(clamp(op.rect[1] + dy, 0, H - op.rect[3])), op.rect[2], op.rect[3]]
       : resized(op.rect, op.handle, dx, dy);
     if (screen === 'games') setPath(userMenu('games', true), ['area'], { x: pxToFile(rect[0], 'x'), y: pxToFile(rect[1], 'y'), width: pxToFile(rect[2], 'x'), height: pxToFile(rect[3], 'y') });
-    else setArea(rect);
+    else {
+      // Les boutons suivent la zone pendant qu'on la tire : leur taille d'avant, reduite
+      // si elle ne tient plus (jamais de deuxieme page)
+      setPath(userMenu(screen, true), ['button_size'], op.size ? clone(op.size) : undefined);
+      setArea(rect);
+      fitNotice = fitOnScreen(screen);
+    }
     schedule();
   }
 });
@@ -480,7 +494,11 @@ $('overlay').addEventListener('pointerup', async () => {
   const done = op;
   op = null;
   if (!done) return;
-  if (done.type === 'move' && done.started) changed(true);
+  if (done.type === 'move' && done.started) {
+    dropZone = null;
+    if (done.drop && inside(done.drop, done.area)) reintegrate(done.id, done.drop);
+    changed(true);
+  }
   else if (done.type === 'area' && done.moved) changed(true);
   else if (done.type === 'resize' && done.current) {
     if (done.free) { changed(true); return; }
@@ -882,7 +900,10 @@ function buildShortcutFields(panel, name) {
   const fs = fieldset(panel, t('f-shortcuts'));
   const sc = () => userMenu(name).shortcuts || {};
   const setSc = (k) => (v) => setPath(userMenu(name, true), ['shortcuts', k], v);
-  fs.appendChild(checkInput('f-sc-hide', () => sc().show === false, v => setSc('show')(v ? false : undefined)));
+  // Par defaut comme les boutons classiques du theme
+  const themeShows = () => { const pict = themeSetup().colors['main-sub-menu-shortcuts']; return pict !== null && pict !== undefined; };
+  fs.appendChild(checkInput('f-sc-show', () => (sc().show !== undefined ? sc().show !== false : themeShows()),
+    v => setSc('show')(v === themeShows() ? undefined : v), true));
   field(fs, 'f-sc-format', textInput(() => sc().format, setSc('format'), '{key}'));
   const grid = el('div', { class: 'grid2' });
   cell(grid, t('f-position'), selectInput(['left', 'right', 'top_left', 'top_right', 'bottom_left', 'bottom_right'].map(p => [p, t('pos-' + p)]),
@@ -1031,7 +1052,8 @@ function ensureMenuStyle() {
     name = screen;
     let n = 2;
     while (name === 'classic' || ((merged().styles || {})[name] && !L.isDict(user.styles[name]))) name = `${screen}${n++}`;
-    if (!L.isDict(user.styles[name])) user.styles[name] = {};
+    // Il part de l'aspect classique (texte comme les boutons classiques du theme)
+    if (!L.isDict(user.styles[name])) user.styles[name] = clone((merged().styles || {}).classic || {});
     userMenu(screen, true).style = name;
   } else if (!L.isDict(user.styles[name])) user.styles[name] = {};
   return user.styles[name];
@@ -1098,11 +1120,15 @@ function buildLookFields(parent, id) {
   const fsText = fieldset(parent, t('f-text-look'), true);
   const gt = el('div', { class: 'grid2' });
   cell(gt, t('f-font'), selectInput(Object.keys(DATA.fonts), get(['text', 'font']), set(['text', 'font']), ''));
-  cell(gt, sizeLabel(), sizeIn(['text', 'size']));
+  const autoSize = String(get(['text', 'size'])()).toLowerCase() === 'auto';
+  const sizeInput = sizeIn(['text', 'size']);
+  if (autoSize) { sizeInput.disabled = true; sizeInput.placeholder = 'auto'; }
+  cell(gt, sizeLabel(), sizeInput);
   cell(gt, t('f-color'), colorInput(get(['text', 'color']), set(['text', 'color'])));
   cell(gt, t('f-position'), selectInput(POSITIONS.slice(0, 5).map(p => [p, t('pos-' + p)]), get(['text', 'position']), set(['text', 'position']), ''));
   cell(gt, t('f-text-align'), selectInput([['left', t('pos-left')], ['center', t('pos-center')], ['right', t('pos-right')]], get(['text', 'align']), set(['text', 'align']), ''));
   fsText.appendChild(gt);
+  fsText.appendChild(checkInput('f-text-auto', () => autoSize, v => set(['text', 'size'])(v ? 'auto' : '4.5%'), true));
   fsText.appendChild(checkInput('f-bold', get(['text', 'bold']), v => set(['text', 'bold'])(v || undefined)));
   fsText.appendChild(checkInput('f-text-shadow', get(['text', 'shadow']), v => set(['text', 'shadow'])(v || undefined)));
   const fsIcon = fieldset(parent, t('f-icon-look'));
@@ -1132,6 +1158,30 @@ function buildLookFields(parent, id) {
     cell(gs, t('f-scale'), numberInput(get([state, 'scale']), set([state, 'scale']), 0.01, 0.5, 2));
     fs.appendChild(gs);
   }
+}
+function reintegrate(id, point) {
+  // Le bouton lache dans la zone des boutons reprend sa place dans la disposition, a
+  // l'endroit ou il est lache (ordre de lecture : ligne, puis colonne)
+  const info = menuInfo(screen);
+  const result = L.layout(info.menu, info.listed, previewSize(), reference(), 1);
+  let before = null;
+  info.listed.forEach((b, i) => {
+    const r = result.rects[i + 1];
+    if (before || b.place || R.buttonId(b) === id || !r) return;
+    if (point[1] < r[1] || (point[1] <= r[1] + r[3] && point[0] < r[0] + r[2] / 2)) before = R.buttonId(b);
+  });
+  const buttons = ownButtons(screen);
+  const index = buttons.findIndex(b => R.buttonId(b) === id);
+  if (index < 0) return;
+  const [button] = buttons.splice(index, 1);
+  delete button.place;
+  let at = before ? buttons.findIndex(b => R.buttonId(b) === before) : -1;
+  if (at < 0) {
+    // Apres le dernier bouton de la disposition (avant ceux du bas de l'ecran)
+    at = 0;
+    buttons.forEach((b, i) => { if (!b.footer && !b.place && b.visible !== false) at = i + 1; });
+  }
+  buttons.splice(at, 0, button);
 }
 function addButton() {
   const buttons = ownButtons(screen);

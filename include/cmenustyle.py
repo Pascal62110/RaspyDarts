@@ -205,13 +205,22 @@ class Painter:
     # ------------------------------------------------------------------ values
     def color(self, value, default=(128, 128, 128)):
         '''
-        A colour of the theme (Colorset.cfg) or '#RRGGBB(AA)' : a tuple, None if none
+        A colour of the theme (Colorset.cfg) or '#RRGGBB(AA)' : a tuple, None if none.
+        'menu-buttons*1.5' : a colour of the theme lighter (or darker, below 1), as the
+        classic buttons are drawn
         '''
         if value is None or value is False:
             return None
         if isinstance(value, (list, tuple)):
             return tuple(int(part) for part in value)
         value = str(value)
+        if '*' in value:
+            name, _, factor = value.partition('*')
+            base = self.color(name.strip(), None)
+            try:
+                return tuple(int(min(255, part * float(factor))) for part in base[:3]) if base else default
+            except ValueError:
+                return default
         if value.startswith('#') and len(value) in (7, 9):
             try:
                 return tuple(int(value[i:i + 2], 16) for i in range(1, len(value), 2))
@@ -395,11 +404,18 @@ class Painter:
     def text(self, surface, text, rect, settings, units, zoom=1.0):
         '''
         A text in a rectangle of the surface : font, size (reduced if too wide), colour,
-        position, offset, shadow, bold. zoom : the size of the button in its state (scale)
+        position, offset, shadow, bold. zoom : the size of the button in its state (scale).
+        size: auto : as the classic buttons, the text follows the height of its rectangle ;
+        align: theme : the alignment of the classic buttons of the theme
         '''
-        if not text or float(str(settings.get('size') or 0).strip().rstrip('%') or 0) <= 0:
+        if not text:
             return
-        size = max(1, int(units.text(settings.get('size') or '4.5%') * zoom))
+        if str(settings.get('size')).strip().lower() == 'auto':
+            size = max(1, int(rect.height * 0.84 / 1.5 * zoom))
+        elif float(str(settings.get('size') or 0).strip().rstrip('%') or 0) <= 0:
+            return
+        else:
+            size = max(1, int(units.text(settings.get('size') or '4.5%') * zoom))
         path = self.font_path(settings.get('font'))
         color = self.color(settings.get('color'), (0, 0, 0))
         bold = bool(settings.get('bold'))
@@ -417,6 +433,8 @@ class Painter:
         position = str(settings.get('position') or 'center')
         anchor = ANCHORS.get(position, (0.5, 0.5))
         align = str(settings.get('align') or 'center')
+        if align == 'theme':
+            align = str(self.screen.colorset.get('main-sub-menu-text-align') or 'Left').lower()
         horizontal = {'left': 0.0, 'right': 1.0}.get(align, anchor[0]) if position in ('center', 'top', 'bottom') else anchor[0]
         margin = rect.height * 0.08
         offset = settings.get('offset') or [0, 0]

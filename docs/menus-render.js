@@ -191,7 +191,9 @@
     }
     // Menu dessine par les styles (run_styled_menu)
     const units = new L.Units([ctx.width, ctx.height], this.menus.resolution);
-    const shortcuts = L.merge({ show: true, format: '{key}',
+    // Raccourcis montres comme sur les boutons classiques du theme, sauf si le menu le dit
+    const pict = ctx.colors['main-sub-menu-shortcuts'];
+    const shortcuts = L.merge({ show: pict !== null && pict !== undefined, format: '{key}',
                                 position: menu.layout === 'tiles' ? 'top_left' : 'left' }, menu.shortcuts || {});
     if (menu.background !== undefined && menu.background !== null) ctx.background(menu.background);
     else { ctx.background(); if (menu.show_version) ctx.version(); }
@@ -206,7 +208,8 @@
       // Sans icone, son logo (comme les tuiles classiques) ; avec un logo et sans texte, le logo seul
       const text = button.text === null || (button.text === undefined && button.logo) ? '' : ctx.translate(this.buttonText(button));
       const icon = buttonIcon(button) || (button.logo ? this.logoPath(button.logo) : null);
-      zones[index] = ctx.styledButton(result.rects[index], style, text, icon, state, units, this.buttonLabel(button, menu), shortcuts);
+      zones[index] = ctx.styledButton(result.rects[index], style, text, icon, state, units,
+                                      shortcuts.show ? this.buttonLabel(button, menu) : null, shortcuts);
     }
     if (result.pages > 1) {
       const area = [Math.trunc(ctx.width * 0.9), Math.trunc(ctx.height * 0.9), Math.trunc(ctx.width * 0.08), ctx.res_y_16];
@@ -257,6 +260,8 @@
   // Couleurs du style appliquees au theme le temps de l'ecran (Screen.screen_skin)
   Renderer.prototype.skin = function (name) {
     const menu = this.menu(name);
+    // Le style classique est l'aspect du theme lui-meme
+    if (String(menu.style || 'classic') === 'classic') return { colors: {}, font: null };
     const style = (this.menus.styles || {})[String(menu.style || 'classic')] || {};
     const ctx = this.ctx;
     const skin = {};

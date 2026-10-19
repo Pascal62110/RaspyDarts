@@ -171,7 +171,9 @@ bande derrière le texte), `place` (`{x, y, width, height}` : placement libre de
 par défaut le titre est en haut et le sous-titre juste dessous). Sans aspect donné, le
 bandeau de titre habituel du thème est gardé.
 
-**Raccourcis** : `shortcuts.show: false` n'affiche plus les F1, F2… (ils restent actifs).
+**Raccourcis** : `shortcuts.show: false` n'affiche plus les F1, F2… (ils restent actifs) ;
+`true` les affiche. Sans `show`, ils s'affichent comme sur les boutons classiques du thème
+(pas quand `main-sub-menu-shortcuts` du `Colorset.cfg` vaut `None`).
 `format` permet `'> '` ou `'[{key}]'`. Dans les menus dessinés par un style (§7.2), la
 touche est dans sa propre case, comme sur les boutons classiques : `background` (couleur de
 la case, `menu-shortcut` par défaut ; `null` : la touche seule, sans case), `color` (couleur
@@ -209,6 +211,16 @@ styles:
   propriétés directement (`background: {color: '#C0392B'}`, `selected: {…}`,
   `text: {size: 0.05}`).
 - `color: …` seul est un raccourci de `background: {color: …}`.
+- Les valeurs ci-dessus sont celles d'un style qui ne dit rien. Le style **`classic`** des
+  menus du jeu reproduit les boutons classiques du thème :
+  `background: {color: 'menu-buttons*1.5'}` et
+  `text: {size: auto, color: menu-text-black, align: theme}`. Un menu qui passe du dessin
+  classique au dessin par la disposition garde donc l'aspect de ses boutons.
+- `text.size: auto` : le texte suit la hauteur du bouton (comme les boutons classiques),
+  réduit s'il est trop large. `text.align: theme` : l'alignement des boutons classiques du
+  thème (`main-sub-menu-text-align` de `Colorset.cfg`).
+- Une couleur `menu-buttons*1.5` est une couleur du thème éclaircie (ou assombrie sous 1),
+  comme le fond des boutons classiques.
 
 ### 7.3 bis Fonds (boutons et menus)
 

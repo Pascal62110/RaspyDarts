@@ -8,7 +8,16 @@ const MENUS_DATA = {
    "layout": "list"
   },
   "styles": {
-   "classic": {}
+   "classic": {
+    "background": {
+     "color": "menu-buttons*1.5"
+    },
+    "text": {
+     "size": "auto",
+     "color": "menu-text-black",
+     "align": "theme"
+    }
+   }
   },
   "navigation": {
    "up": [

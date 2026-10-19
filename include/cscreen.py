@@ -7059,6 +7059,9 @@ class Screen(pygame.Surface):
         '''
         menus = self.menus()
         menu = menus.menu(name)
+        if str(menu.get('style') or 'classic') == 'classic':
+            # The classic style is the look of the theme itself
+            return {}, None
         style = (menus.data.get('styles') or {}).get(str(menu.get('style') or 'classic')) or {}
         painter = self.menu_painter()
         skin = {}
@@ -7145,7 +7148,8 @@ class Screen(pygame.Surface):
         units = cmenustyle.Units(self.screen.get_size(), resolution)
         title = title or self.menu_text_look(name, 'title')[0]
         subtitle = subtitle or self.menu_text_look(name, 'subtitle')[0]
-        shortcuts = cmenustyle.merge({'show': True, 'format': '{key}',
+        # Shortcuts shown as on the classic buttons of the theme, unless the menu says
+        shortcuts = cmenustyle.merge({'show': self.colorset.get('main-sub-menu-shortcuts') is not None, 'format': '{key}',
                                       'position': 'top_left' if menu.get('layout') == 'tiles' else 'left'},
                                      menu.get('shortcuts') or {})
         show_version = bool(menu.get('show_version'))
@@ -7212,7 +7216,7 @@ class Screen(pygame.Surface):
                                 '' if button.get('text', True) is None or ('text' not in button and button.get('logo')) else
                                 self.lang.translate(self.button_text(button)),
                                 self.button_icon(button), look, units,
-                                shortcut=self.button_label(button, menu), shortcuts=shortcuts)
+                                shortcut=self.button_label(button, menu) if shortcuts.get('show') else None, shortcuts=shortcuts)
             return patch
 
         while True:
