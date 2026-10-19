@@ -1599,12 +1599,33 @@ function cellAt(point, id, zone) {
     const last = known.filter(r => r < row).pop();
     return last !== undefined ? m.tops[last] + (row - last) * stepY : m.area[1] + row * stepY;
   };
-  let row = 0, best = Infinity;
+  // Seulement entre deux boutons : jamais au milieu d'un bouton haut de plusieurs rangees
+  // (ses rangees de grille ne sont pas des lignes pour qui regarde l'ecran)
+  const straddled = (r) => m.members.some(index => {
+    const c = m.cells[index];
+    return c && R.buttonId(info.listed[index - 1]) !== id && c[0] < r && r < c[0] + c[3];
+  });
+  const occupied = (r) => m.members.some(index => {
+    const c = m.cells[index];
+    return c && R.buttonId(info.listed[index - 1]) !== id && c[0] <= r + high - 1 && c[0] + c[3] - 1 >= r &&
+      c[1] < start + width && c[1] + c[2] > start;
+  });
   const limit = m.flowing.length ? m.rows : 0;
+  let row = null;
+  // Une place libre sous le point (un trou a cote d'un bouton) : la
   for (let r = 0; r <= limit; r++) {
-    const d = Math.abs(top(r) + cellsH / 2 - point[1]);
-    if (d < best) { best = d; row = r; }
+    if (!straddled(r) && point[1] >= top(r) && point[1] < top(r) + cellsH) { if (!occupied(r)) row = r; break; }
   }
+  if (row === null) {
+    // Sinon entre deux lignes : le trait de separation le plus proche du centre du bouton glisse
+    let best = Infinity;
+    for (let r = 0; r <= limit; r++) {
+      if (straddled(r)) continue;
+      const d = Math.abs(top(r) - m.gapY / 2 - point[1]);
+      if (d < best) { best = d; row = r; }
+    }
+  }
+  if (row === null) row = 0;
   const x = m.area[0] + Math.floor(start / S) * (m.columnW + m.gapX) + (start % S) * unit;
   // Une case deja prise par un autre bouton : il y sera insere, ce qui est dessous descend
   const insert = m.members.some(index => {
