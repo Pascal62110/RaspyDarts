@@ -410,6 +410,18 @@ function drawOverlay() {
     g.fillStyle = 'rgba(48,209,88,0.35)';
     g.fillRect(...dropCell.rect);
     frame(dropCell.rect, '#30d158', 3, false);
+    if (dropCell.insert) {
+      // Insertion : un trait au-dessus de la case, ce qui est dessous descendra
+      const [x, y, w] = dropCell.rect;
+      g.fillStyle = '#30d158';
+      g.fillRect(x - 6 * s, y - 5 * s, w + 12 * s, 6 * s);
+      g.font = 'bold ' + Math.round(13 * s) + 'px system-ui, sans-serif';
+      const label = t('drop-insert');
+      g.fillStyle = 'rgba(0,0,0,0.8)';
+      g.fillRect(x + w + 10 * s, y - 14 * s, g.measureText(label).width + 12 * s, 22 * s);
+      g.fillStyle = '#30d158';
+      g.fillText(label, x + w + 16 * s, y + 2 * s);
+    }
   }
   // Reperes d'alignement (comme un editeur d'interface) : centre de l'ecran en cyan
   for (const guide of guides) {
@@ -1594,7 +1606,14 @@ function cellAt(point, id, zone) {
     if (d < best) { best = d; row = r; }
   }
   const x = m.area[0] + Math.floor(start / S) * (m.columnW + m.gapX) + (start % S) * unit;
-  return { row: row, column: round4(start / S), zone: zone, rect: [x, top(row), cellsW, cellsH] };
+  // Une case deja prise par un autre bouton : il y sera insere, ce qui est dessous descend
+  const insert = m.members.some(index => {
+    const c = m.cells[index];
+    return c && R.buttonId(info.listed[index - 1]) !== id && c[0] <= row + high - 1 && c[0] + c[3] - 1 >= row &&
+      c[1] < start + width && c[1] + c[2] > start;
+  });
+  return { row: row, column: round4(start / S), zone: zone, high: high, width: width, start: start, insert: insert,
+           rect: [x, top(row), cellsW, cellsH] };
 }
 function setCell(id, cell) {
   // Le bouton fixe sur cette case de sa zone (sans ecart au-dessus) ; celui qui l'avait se range
@@ -1619,8 +1638,9 @@ function setCell(id, cell) {
       delete b.place; delete b.space_before;
       b.cell = { row: cell.row, column: cell.column };
       putZone(b);
-    } else if (L.isDict(b.cell) && b.cell.row === cell.row && b.cell.column === cell.column && String(b.zone || '') === (cell.zone || '')) {
-      delete b.cell;
+    } else if (cell.insert && L.isDict(b.cell) && !b.place && String(b.zone || '') === (cell.zone || '') && (b.cell.row || 0) >= cell.row) {
+      // Insere : les boutons fixes de cette rangee et de celles d'en dessous descendent
+      b.cell = Object.assign({}, b.cell, { row: (b.cell.row || 0) + (cell.high || 1) });
     }
   }
 }
