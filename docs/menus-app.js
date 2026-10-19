@@ -1062,6 +1062,26 @@ function titleFields(parent, name, key) {
   fs.appendChild(adv(checkInput('f-bold', () => look().bold, setLook('bold'))));
   return fs;
 }
+function buttonImageFields(parent, get, set) {
+  // Un bouton fait d'images : une par etat (au repos, choisi, appuye : vide, celle au repos),
+  // comment elles remplissent le bouton, et son nom ecrit dessus ou non
+  const fs = fieldset(parent, t('f-button-image'));
+  fs.appendChild(el('p', { class: 'hint', text: t('f-button-image-hint') }));
+  const block = (path) => { const b = get(path)(); return L.isDict(b) ? b : (b ? (/\.(png|jpe?g|webp)$/i.test(b) || String(b).includes('/') ? { image: b } : { color: b }) : {}); };
+  const put = (path, k) => (v) => {
+    const b = Object.assign({}, block(path));
+    if (isEmpty(v)) delete b[k]; else b[k] = v;
+    set(path)(Object.keys(b).length ? b : undefined);
+  };
+  field(fs, 'f-image-normal', imageInput(() => block(['background']).image, put(['background'], 'image')));
+  field(fs, 'f-image-selected', imageInput(() => block(['selected', 'background']).image, put(['selected', 'background'], 'image')));
+  field(fs, 'f-image-pressed', imageInput(() => block(['pressed', 'background']).image, put(['pressed', 'background'], 'image')));
+  const grid = el('div', { class: 'grid2' });
+  cell(grid, t('f-fit'), selectInput(FITS.map(f => [f, t('fit-' + f)]), () => block(['background']).fit, put(['background'], 'fit'), ''));
+  fs.appendChild(grid);
+  fs.appendChild(checkInput('f-text-show', () => get(['text', 'show'])() !== false, v => set(['text', 'show'])(v ? undefined : false), true));
+  return fs;
+}
 function backgroundFields(parent, get, set, legend, open) {
   // Fond : couleur et/ou image, et comment l'image remplit la place
   const fs = fieldset(parent, legend, open);
@@ -1632,6 +1652,7 @@ function buildLookFields(parent, id) {
   adv(cell(shape, t('f-border-color'), colorInput(get(['border', 'color']), set(['border', 'color']))));
   parent.appendChild(shape);
   adv(parent.appendChild(checkInput('f-shadow', get(['shadow']), v => set(['shadow'])(v || undefined))));
+  buttonImageFields(parent, get, set);
   backgroundFields(parent, get(['background']), set(['background']), t('f-background'), true);
   const fsText = fieldset(parent, t('f-text-look'), true);
   const gt = el('div', { class: 'grid2' });
@@ -1669,7 +1690,6 @@ function buildLookFields(parent, id) {
     }
     if (state === 'selected') {
       cell(gs, t('f-border-color'), colorInput(get([state, 'border', 'color']), set([state, 'border', 'color'])));
-      cell(gs, t('f-image'), imageInput(get([state, 'background', 'image']), set([state, 'background', 'image'])));
     }
     cell(gs, t('f-scale'), numberInput(get([state, 'scale']), set([state, 'scale']), 0.01, 0.5, 2));
     fs.appendChild(gs);

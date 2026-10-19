@@ -520,6 +520,8 @@
   Context.prototype.styledButton = function (rect0, style, text, icon, state, units, shortcut, shortcuts) {
     shortcuts = shortcuts || {};
     const values = this.stateStyle(style, state);
+    // text: {show: false} : le texte n'est pas ecrit (un bouton fait de son image), l'icone seule au milieu
+    if (L.isDict(values.text) && values.text.show === false) text = null;
     const zoom = this.scaleOf(style, state);
     const rect = this.placed(rect0, style, state);
     const [w, h] = [rect[2], rect[3]];

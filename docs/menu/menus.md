@@ -205,7 +205,7 @@ styles:
     border: {width: 0, color: menu-border}
     shadow: false
     text: {font: null, size: 0.045, color: menu-text, align: center, position: center,
-           offset: [0, 0], shadow: false, bold: false}
+           offset: [0, 0], shadow: false, bold: false, show: true}   # show: false : texte non écrit
     icon: {position: left, size: 0.7, fit: contain}   # taille relative à la hauteur du bouton
     # États : chacun ne précise que ce qui change par rapport à l'état normal
     selected: {background: {color: menu-selected}, text: {color: menu-text-white}}
@@ -262,7 +262,20 @@ background:
 - Écritures courtes : `background: images/x.png` (image, `fit: stretch`) ;
   `background: '#123456'` ou `background: menu-buttons` (couleur seule).
 - Chaque état (`selected`, `disabled`, `pressed`) peut changer tout ou partie du fond :
-  `selected: {background: {image: images/buttons/tile_on.png}}`.
+  `selected: {background: {image: images/buttons/tile_on.png}}`. L'état `pressed` est montré un
+  instant quand le bouton est validé ; sans image propre, il garde celle de l'état normal.
+- **Bouton fait d'images** : une image par état, et `text: {show: false}` pour ne pas écrire son
+  nom (il reste son nom pour l'écran DMD et l'éditeur ; une icône éventuelle se met au milieu).
+  `show` se règle aussi par état (`selected: {text: {show: true}}` : le nom seulement quand le
+  bouton est choisi). Dans le configurateur : groupe « Image du bouton ».
+
+```yaml
+    - id: x01
+      background: {image: images/buttons/x01.png, fit: stretch}
+      selected: {background: {image: images/buttons/x01_on.png}}
+      pressed:  {background: {image: images/buttons/x01_down.png}}
+      text: {show: false}
+```
 - Un fond de menu se règle pareil ; `fit: cover` est conseillé (aucune déformation, quelle
   que soit la résolution).
 

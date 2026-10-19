@@ -597,6 +597,9 @@ class Painter:
         import pygame
         shortcuts = shortcuts or {}
         values = self.state_style(style, state)
+        if isinstance(values.get('text'), dict) and values['text'].get('show') is False:
+            # Its text not written (a button made of its image) : its icon alone in the middle
+            text = None
         zoom = self.scale_of(style, state)
         rect = self.placed(rect, style, state)[0]
         width, height = rect.size
