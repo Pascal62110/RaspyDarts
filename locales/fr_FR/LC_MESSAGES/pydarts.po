@@ -4043,3 +4043,27 @@ msgstr "Couleurs d'origine"
 msgid "idle-off-target"
 msgstr "Éteinte"
 
+msgid "raspy2dmd"
+msgstr "Afficheur DMD (Raspy2DMD)"
+
+msgid "raspy2dmd-scan"
+msgstr "Scannez pour ouvrir tous ses réglages sur votre téléphone"
+
+msgid "raspy2dmd-test-message"
+msgstr "Afficher un message d'essai"
+
+msgid "raspy2dmd-hello"
+msgstr "Bonjour de RaspyDarts !"
+
+msgid "raspy2dmd-test-pattern"
+msgstr "Mire de test du Pico"
+
+msgid "raspy2dmd-clock"
+msgstr "Afficher l'horloge"
+
+msgid "raspy2dmd-demo"
+msgstr "Lancer la démo"
+
+msgid "raspy2dmd-sent"
+msgstr "Envoyé à l'afficheur"
+

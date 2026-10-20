@@ -42,6 +42,7 @@ ACTIONS = {
     'players_bank': 'firstname-bank',
     'backups': 'backups',
     'exhibition': 'exhibition',
+    'raspy2dmd': 'raspy2dmd',
     'update': 'update',
     'back': 'escape',
     'setup_buttons': 'setup-buttons',

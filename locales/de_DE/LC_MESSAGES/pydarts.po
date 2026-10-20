@@ -719,3 +719,27 @@ msgstr "Originalfarben"
 msgid "idle-off-target"
 msgstr "Aus"
 
+msgid "raspy2dmd"
+msgstr "DMD-Anzeige (Raspy2DMD)"
+
+msgid "raspy2dmd-scan"
+msgstr "Scannen, um alle Einstellungen auf dem Handy zu öffnen"
+
+msgid "raspy2dmd-test-message"
+msgstr "Testnachricht anzeigen"
+
+msgid "raspy2dmd-hello"
+msgstr "Hallo von RaspyDarts!"
+
+msgid "raspy2dmd-test-pattern"
+msgstr "Testbild des Pico"
+
+msgid "raspy2dmd-clock"
+msgstr "Uhr anzeigen"
+
+msgid "raspy2dmd-demo"
+msgstr "Demo starten"
+
+msgid "raspy2dmd-sent"
+msgstr "An die Anzeige gesendet"
+

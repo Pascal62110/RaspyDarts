@@ -3409,3 +3409,27 @@ msgstr "Colori originali"
 msgid "idle-off-target"
 msgstr "Spenta"
 
+msgid "raspy2dmd"
+msgstr "Display DMD (Raspy2DMD)"
+
+msgid "raspy2dmd-scan"
+msgstr "Scansionate per aprire tutte le impostazioni sul telefono"
+
+msgid "raspy2dmd-test-message"
+msgstr "Mostrare un messaggio di prova"
+
+msgid "raspy2dmd-hello"
+msgstr "Ciao da RaspyDarts!"
+
+msgid "raspy2dmd-test-pattern"
+msgstr "Schema di prova del Pico"
+
+msgid "raspy2dmd-clock"
+msgstr "Mostrare l'orologio"
+
+msgid "raspy2dmd-demo"
+msgstr "Avviare la demo"
+
+msgid "raspy2dmd-sent"
+msgstr "Inviato al display"
+

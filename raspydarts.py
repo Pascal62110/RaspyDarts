@@ -946,6 +946,12 @@ try:
                         config_favorites['games'] = games
                         Config.write_file()
 
+                elif menu == 'raspy2dmd':
+                    # THE DMD DISPLAY RASPY2DMD (installed on this machine)
+                    dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])
+                    display.raspy2dmd_menu(dispatcher)
+                    menu = ''
+
                 elif menu == 'servers':
                     # SERVERS MENU
                     dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])

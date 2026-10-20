@@ -725,3 +725,27 @@ msgstr "Colores originales"
 msgid "idle-off-target"
 msgstr "Apagada"
 
+msgid "raspy2dmd"
+msgstr "Pantalla DMD (Raspy2DMD)"
+
+msgid "raspy2dmd-scan"
+msgstr "Escanee para abrir todos sus ajustes en su teléfono"
+
+msgid "raspy2dmd-test-message"
+msgstr "Mostrar un mensaje de prueba"
+
+msgid "raspy2dmd-hello"
+msgstr "¡Hola desde RaspyDarts!"
+
+msgid "raspy2dmd-test-pattern"
+msgstr "Patrón de prueba del Pico"
+
+msgid "raspy2dmd-clock"
+msgstr "Mostrar el reloj"
+
+msgid "raspy2dmd-demo"
+msgstr "Iniciar la demo"
+
+msgid "raspy2dmd-sent"
+msgstr "Enviado a la pantalla"
+

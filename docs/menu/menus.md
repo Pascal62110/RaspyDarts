@@ -330,7 +330,7 @@ Propriétés d'un bouton :
 | `place` | placement libre (§7.5) ; sinon placé par la disposition du menu |
 | `footer` | bouton du bas de l'écran : `left`, `center` ou `right` (comme Retour, Enregistrer) ; un bouton sans `footer` dans la liste du fichier est placé avec les autres (le configurateur le fait quand on glisse un bouton du bas) |
 | `logo` | image du dossier `images/logos_menu` du thème (disposition `tiles` du style `classic`) ; un dossier de ce nom contenant plusieurs images : l'une d'elles au hasard. Dans un menu dessiné par un style, il sert d'icône au bouton qui n'en a pas (et un bouton à logo sans `text` ne montre que son logo) |
-| `requires` | condition d'affichage : `favorite_games` (seulement s'il existe des jeux favoris) |
+| `requires` | condition d'affichage : `favorite_games` (seulement s'il existe des jeux favoris), `raspy2dmd` (seulement si l'afficheur Raspy2DMD est installé sur la borne, dossier `/Raspy2DMD`) |
 | `dmd` | texte envoyé sur l'afficheur DMD quand le bouton est sélectionné |
 | `order` | rang dans l'ordre logique (§9), par défaut sa place dans la liste |
 | `space_before` | écart au-dessus (dispositions `list` et `grid`) |
@@ -429,6 +429,7 @@ Une action par bouton. Le jeu refuse une action inconnue (§3).
 | `players_bank` | banque de prénoms |
 | `backups` | sauvegardes |
 | `exhibition` | mode exposition |
+| `raspy2dmd` | l'afficheur DMD Raspy2DMD installé sur la borne (panneaux pilotés par un Raspberry Pico en USB) : QR code de sa page web, message d'essai, mire de test du Pico, horloge, démo (commandes publiées sur le sujet MQTT `raspy2dmd`) |
 | `update` | vérifier les mises à jour |
 
 **Paramètres**

@@ -214,6 +214,13 @@ const MENUS_DATA = {
       "shortcut": "F9"
      },
      {
+      "id": "raspy2dmd",
+      "action": "raspy2dmd",
+      "text": "raspy2dmd",
+      "shortcut": "F10",
+      "requires": "raspy2dmd"
+     },
+     {
       "id": "back",
       "action": "back",
       "text": "back",
@@ -365,6 +372,7 @@ const MENUS_DATA = {
   "network_create",
   "network_join",
   "players_bank",
+  "raspy2dmd",
   "reset",
   "restart",
   "setup_buttons",
@@ -2121,6 +2129,7 @@ const MENUS_DATA = {
    "players-bank": "Banque de prénoms",
    "players-names": "Nom des joueurs",
    "players-names-subtitle": "Appuyez sur + pour ajouter, - pour supprimer, / pour joueur ordinateur, * pour la couleur du joueur, <Tab> pour mélanger",
+   "raspy2dmd": "Afficheur DMD (Raspy2DMD)",
    "realy-stop": "Voulez-vous vraiment quitter ?",
    "reset": "Réinitialiser",
    "restart": "Rejouer",
@@ -2201,6 +2210,7 @@ const MENUS_DATA = {
    "players-bank": "Players database",
    "players-names": "Players' name",
    "players-names-subtitle": "Appuyez sur + pour ajouter, - pour supprimer, / pour joueur ordinateur, <Tab> pour mélanger",
+   "raspy2dmd": "DMD display (Raspy2DMD)",
    "realy-stop": "Really quit ?",
    "reset": "Reset",
    "restart": "Restart",
@@ -2251,7 +2261,8 @@ const MENUS_DATA = {
    "game-type-master": "Netzwerk Spiel beitreten",
    "left": "Übrig",
    "players-names": "Bitte gebe den Spielern Namen",
-   "players-names-subtitle": "Druecke + fuer hinzuzufuegen, - zum entfernen, <Tab> für zufaellig"
+   "players-names-subtitle": "Druecke + fuer hinzuzufuegen, - zum entfernen, <Tab> für zufaellig",
+   "raspy2dmd": "DMD-Anzeige (Raspy2DMD)"
   },
   "es": {
    "exhibition": "Modo exposición",
@@ -2288,7 +2299,8 @@ const MENUS_DATA = {
    "game-type-master": "Unirse a partida online",
    "left": "Faltan",
    "players-names": "Por favor escriba el nombre de los juegadores:",
-   "players-names-subtitle": "Presione tecla + para añadir, - para eliminar, <Tab> aleatorio."
+   "players-names-subtitle": "Presione tecla + para añadir, - para eliminar, <Tab> aleatorio.",
+   "raspy2dmd": "Pantalla DMD (Raspy2DMD)"
   },
   "it": {
    "animations": "Animations Leds",
@@ -2353,6 +2365,7 @@ const MENUS_DATA = {
    "players-bank": "Banque de prénoms",
    "players-names": "Nomi dei Giocatori",
    "players-names-subtitle": "Appuyez sur + pour ajouter, - pour supprimer, / pour joueur ordinateur, <Tab> pour mélanger",
+   "raspy2dmd": "Display DMD (Raspy2DMD)",
    "realy-stop": "Voulez-vous vraiment quitter ?",
    "reset": "Ripristina",
    "restart": "Rejouer",

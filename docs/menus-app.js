@@ -1463,6 +1463,8 @@ function buildButtonList(panel, name) {
     const tags = [];
     if (button.visible === false) tags.push(t('tag-hidden'));
     if (button.footer) tags.push(t('tag-footer'));
+    // Montre seulement quand l'afficheur Raspy2DMD est installe sur la borne
+    if (button.requires === 'raspy2dmd') tags.push(t('tag-raspy2dmd'));
     if (button.place) tags.push(t('tag-placed'));
     if (button.shortcut) tags.push([].concat(button.shortcut).join(', '));
     list.appendChild(el('li', { onclick: () => selectButton(id) }, [

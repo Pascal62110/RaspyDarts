@@ -5477,8 +5477,11 @@ class Screen(pygame.Surface):
         self.dmd.send_text(f"{self.lang.translate('parameters')}")
         menus = self.menus()
         while True:
-            buttons = [button for button in menus.buttons('miscellaneous') if button.get('visible', True) is not False]
-            button = self.run_menu('miscellaneous', buttons, menus.buttons('miscellaneous'))
+            # The button of the DMD display Raspy2DMD : only when it is installed on this machine
+            everything = [button for button in menus.buttons('miscellaneous')
+                          if button.get('requires') != 'raspy2dmd' or self.raspy2dmd_installed()]
+            buttons = [button for button in everything if button.get('visible', True) is not False]
+            button = self.run_menu('miscellaneous', buttons, everything)
             if button.get('action') != 'update':
                 return menus.result(button)
 
@@ -7516,6 +7519,68 @@ class Screen(pygame.Surface):
                     chosen.discard(name)
                 else:
                     chosen.add(name)
+
+    # The DMD display Raspy2DMD (its own project) installed on this machine, panels driven by a
+    # Raspberry Pico by USB : it shows what RaspyDarts publishes on raspydarts/dmd, and takes its
+    # commands on the topic raspy2dmd
+    RASPY2DMD_DIR = '/Raspy2DMD'
+    RASPY2DMD_TOPIC = 'raspy2dmd'
+
+    @classmethod
+    def raspy2dmd_installed(cls):
+        '''
+        Raspy2DMD installed on this machine
+        '''
+        return os.path.isdir(cls.RASPY2DMD_DIR)
+
+    def raspy2dmd_menu(self, dispatcher):
+        '''
+        The DMD display Raspy2DMD : the QR code of its web page (all its settings, from a
+        phone), and a few commands sent to it (a message to check the link, the test pattern
+        of the Pico, the clock, the demo)
+        '''
+        from include import cgallery
+        import qrcode
+        url = f"http://{cgallery.local_ip()}/"
+        picture = qrcode.make(url)
+        picture = (picture.get_image() if hasattr(picture, 'get_image') else picture).convert('RGB')
+        side = int(self.res['y'] * 0.5)
+        code = pygame.transform.scale(pygame.image.fromstring(picture.tobytes(), picture.size, 'RGB'), (side, side))
+        commands = [('raspy2dmd-test-message', f"msg|{self.lang.translate('raspy2dmd-hello')}"),
+                    ('raspy2dmd-test-pattern', 'pico|test_rgb'),
+                    ('raspy2dmd-clock', 'time|start'),
+                    ('raspy2dmd-demo', 'demo|gif')]
+        nb_elements = len(commands)
+        selected = 1
+        while True:
+            self.display_background()
+            self.menu_header(self.lang.translate('raspy2dmd'), self.lang.translate('raspy2dmd-scan'))
+            pos_x = int(self.res_x_16 * 2)
+            pos_y = int(self.res['y'] / 5)
+            self.blit(code, (pos_x, pos_y))
+            line = int(self.res['y'] / 20)
+            self.blit_text(url, pos_x, pos_y + side + self.margin, side, line, self.colorset['menu-text-white'])
+            click_zones = {}
+            for index, (text, _) in enumerate(commands, 1):
+                click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), (f'F{index}', text, BTN_CHOICE, None),
+                                                          align='Right')
+            click_zones['escape'] = self.display_button(selected == nb_elements + 1, 'back', special='escape')
+            self.update_screen()
+
+            key = self.rpi.listen_inputs(['arrows', 'fx'],
+                                         ['escape', 'enter', 'space', 'PLAYERBUTTON', 'BACKUPBUTTON', 'GAMEBUTTON', 'single-click'])
+            clicked = self.is_clicked(click_zones, key)
+            if clicked:
+                key = clicked
+            if key in [f'F{index}' for index in range(1, nb_elements + 1)]:
+                selected = int(key[1:])
+                key = 'enter'
+            selected = self.navigate(selected, key, nb_elements, 1, 1)
+            if key in ESCAPE_KEYS or key == 'escape' or (key in ENTER_KEYS and selected == nb_elements + 1):
+                return
+            if key in ENTER_KEYS and 1 <= selected <= nb_elements:
+                dispatcher.mqtt_publish(self.RASPY2DMD_TOPIC, commands[selected - 1][1])
+                self.message([self.lang.translate('raspy2dmd-sent')], 1000, self.colorset['menu-ok'], 'middle', 'big')
 
     def gallery_menu(self):
         '''

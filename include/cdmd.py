@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import random
 
 """
@@ -53,8 +54,12 @@ class Cdmd():
 
     def shutdown(self):
         """
-        Message to send in order to shutdown the rpi
+        Message to send in order to shutdown the rpi of the DMD. Not when Raspy2DMD is on this
+        machine : it would power it off at once (forced), while RaspyDarts powers it off cleanly
         """
+        if os.path.isdir('/Raspy2DMD'):
+            self.logs.debug("Raspy2DMD on this machine : no shutdwn sent, RaspyDarts powers off")
+            return
         self.send('shutdwn|')
 
     def send_text(self, text, tempo=None, sens=None, iteration=None):

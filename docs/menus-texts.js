@@ -539,3 +539,9 @@ Object.assign(T.en, {"new-file": "Start again from the theme menus", "new-confir
 Object.assign(T.de, {"new-file": "Von den Menüs des Themas neu beginnen", "new-confirm": "Ihre Einstellungen löschen und von den Menüs des gewählten Themas neu beginnen?", "resumed-note": "Sie setzen die geänderten Menüs fort, die dieser Browser gespeichert hat: es sind nicht die aktuellen Menüs des Themas „{theme}“.", "resumed-theme": "Von den Menüs des Themas „{theme}“ neu beginnen", "resumed-keep": "Meine Menüs behalten"});
 Object.assign(T.es, {"new-file": "Volver a los menús del tema", "new-confirm": "¿Borrar sus ajustes y volver a los menús del tema elegido?", "resumed-note": "Retoma los menús modificados que guardó este navegador: no son los menús actuales del tema «{theme}».", "resumed-theme": "Volver a los menús del tema «{theme}»", "resumed-keep": "Conservar mis menús"});
 Object.assign(T.it, {"new-file": "Ripartire dai menu del tema", "new-confirm": "Cancellare le vostre impostazioni e ripartire dai menu del tema scelto?", "resumed-note": "Riprendete i menu modificati salvati da questo browser: non sono i menu attuali del tema «{theme}».", "resumed-theme": "Ripartire dai menu del tema «{theme}»", "resumed-keep": "Tenere i miei menu"});
+// Bouton de l'afficheur Raspy2DMD : montre seulement s'il est installe
+Object.assign(T.fr, {"tag-raspy2dmd": "si Raspy2DMD est installé"});
+Object.assign(T.en, {"tag-raspy2dmd": "if Raspy2DMD is installed"});
+Object.assign(T.de, {"tag-raspy2dmd": "wenn Raspy2DMD installiert ist"});
+Object.assign(T.es, {"tag-raspy2dmd": "si Raspy2DMD está instalado"});
+Object.assign(T.it, {"tag-raspy2dmd": "se Raspy2DMD è installato"});

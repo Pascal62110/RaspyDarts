@@ -2955,3 +2955,27 @@ msgstr "Original colours"
 msgid "idle-off-target"
 msgstr "Off"
 
+msgid "raspy2dmd"
+msgstr "DMD display (Raspy2DMD)"
+
+msgid "raspy2dmd-scan"
+msgstr "Scan to open all its settings on your phone"
+
+msgid "raspy2dmd-test-message"
+msgstr "Show a test message"
+
+msgid "raspy2dmd-hello"
+msgstr "Hello from RaspyDarts!"
+
+msgid "raspy2dmd-test-pattern"
+msgstr "Pico test pattern"
+
+msgid "raspy2dmd-clock"
+msgstr "Show the clock"
+
+msgid "raspy2dmd-demo"
+msgstr "Start the demo"
+
+msgid "raspy2dmd-sent"
+msgstr "Sent to the display"
+
