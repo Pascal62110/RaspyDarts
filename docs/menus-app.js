@@ -1377,9 +1377,9 @@ function buildLayoutFields(panel, name, zone) {
   // Chaque reglage de la disposition fait passer l'ecran au dessin par la disposition
   const write = (path, value) => { ensureStyled(name); setPath(zoneOwn(zone, true), path, value); };
   const grid = el('div', { class: 'grid2' });
-  // Les valeurs en vigueur (celles du jeu tant que le fichier n'en dit rien)
-  cell(grid, t('f-layout'), selectInput([['list', t('layout-list')], ['grid', t('layout-grid')], ['tiles', t('layout-tiles')]],
-    () => m.kind, v => write(['layout'], v), undefined, true));
+  // Les valeurs en vigueur (celles du jeu tant que le fichier n'en dit rien). Plus de choix
+  // liste / grille / tuiles : il ne donne que des valeurs par defaut (zone, colonnes, hauteur),
+  // que la zone, les colonnes et les lignes reglees ici remplacent
   adv(cell(grid, t('f-align'), selectInput([['center', t('align-center')], ['top', t('align-top')]], () => settings.align || 'center',
     v => write(['align'], v))));
   const columns = el('input', { type: 'number', min: 1, max: 8, step: 1, value: m.columns });
