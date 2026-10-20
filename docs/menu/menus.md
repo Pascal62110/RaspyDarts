@@ -501,12 +501,18 @@ navigation:
 Deux logiques :
 
 - **Flèches (haut, bas, gauche, droite) : géométrie.** On va au bouton le plus proche dans la
-  direction demandée, d'après la position réelle des boutons à l'écran (placement libre
-  compris). Candidats : les boutons dont le centre est du bon côté du centre du bouton
-  actuel ; ceux qui sont dans la direction à 45° près passent d'abord (à gauche : plus à
-  gauche qu'au-dessus ou au-dessous, une autre zone de boutons comprise). Note de chacun :
-  `distance selon l'axe + 2 × écart perpendiculaire` ; le plus bas l'emporte (égalité : le premier dans l'ordre logique). Aucun candidat : on fait le tour,
-  vers le bouton le plus éloigné du côté opposé ayant le plus petit écart perpendiculaire.
+  direction demandée, d'après les **bords** des boutons à l'écran (placement libre compris),
+  pas leurs centres : sous un bouton large comme l'écran, toute la rangée suivante est
+  « en dessous », même loin de son centre. Candidats : les boutons au-delà de son bord dans
+  cette direction (un léger chevauchement est admis : le bouton choisi est dessiné plus grand).
+  Ceux qui lui font face (une partie de sa largeur pour haut/bas, de sa hauteur pour
+  gauche/droite) passent d'abord : la rangée la plus proche, puis celui qui lui fait le plus
+  face (en part de sa propre largeur, au dixième près), puis le premier dans le sens de
+  lecture (le plus à gauche, le plus haut). Les autres ensuite : `écart + 2 × écart
+  perpendiculaire des centres`. Aucun candidat : on fait le tour, vers le plus éloigné qui lui
+  fait face du côté opposé ; et si aucun ne lui fait face (un bouton seul sur sa rangée, avec
+  gauche ou droite) : le bouton suivant dans le sens de lecture (le précédent pour gauche et
+  haut).
 - **`next` / `previous` et l'encodeur : ordre logique.** L'ordre des boutons dans le fichier
   (ou `order:`), en passant d'une ligne à la suivante, et en faisant le tour au bout.
 

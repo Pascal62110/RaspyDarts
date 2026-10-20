@@ -6780,33 +6780,69 @@ class Screen(pygame.Surface):
     @staticmethod
     def move_selection(rects, selected, direction):
         '''
-        Arrows : the closest button in the direction (docs/menu/menus.md, 9). The buttons within
-        45 degrees of the direction first (left : more on the left than above or below, another
-        zone of buttons too), then the others ; score : distance along the axis + 2 x distance
-        across ; none, the button the farthest on the other side with the smallest distance across
+        Arrows : the closest button in the direction (docs/menu/menus.md, 9), by the edges of the
+        buttons (not their centres : a button as wide as the screen has the buttons of the row
+        under it below it, even far from its centre). In the direction : the buttons beyond its
+        edge ; those facing it (sharing part of its width, or of its height) first : the closest
+        row, the one facing it the most, the first in reading order ; then the others : gap + 2 x
+        distance across. None : around, the farthest one facing it on the other side ; none
+        facing it (a button alone on its row, left or right) : the next one in reading order
+        (the one before for left and up)
         '''
-        def center(rect):
-            return (rect[0] + rect[2] / 2, rect[1] + rect[3] / 2)
-        axis = {'up': (0, -1), 'down': (0, 1), 'left': (-1, 0), 'right': (1, 0)}[direction]
-        origin = center(rects[selected])
+        horizontal = direction in ('left', 'right')
+        sign = 1 if direction in ('right', 'down') else -1
+
+        def spans(rect):
+            # (start, end) along the direction, then across it
+            x, y, width, height = rect[:4]
+            return ((x, x + width), (y, y + height)) if horizontal else ((y, y + height), (x, x + width))
+
+        (start, end), (across_start, across_end) = spans(rects[selected])
+
+        def beyond(rect, way):
+            # Beyond the edge of the selected button on this side (a little overlap allowed : the
+            # selected button is drawn larger), and how far
+            (low, high), _ = spans(rect)
+            gap = low - end if way > 0 else start - high
+            return gap >= -0.3 * (high - low), max(0, gap)
+
+        def facing(rect):
+            _, (low, high) = spans(rect)
+            return min(high, across_end) - max(low, across_start)
+
+        def middle(rect):
+            _, (low, high) = spans(rect)
+            return (low + high) / 2
+
         best, wrap = None, None
         for index, rect in rects.items():
             if index == selected:
                 continue
-            point = center(rect)
-            along = (point[0] - origin[0]) * axis[0] + (point[1] - origin[1]) * axis[1]
-            across = abs((point[0] - origin[0]) * axis[1] + (point[1] - origin[1]) * axis[0])
-            if along > 0:
-                score = (0 if along >= across else 1, along + 2 * across, index)
+            shared = facing(rect)
+            ahead, gap = beyond(rect, sign)
+            if ahead:
+                if shared > 0:
+                    # The part of it facing the selected one (in tenths : one pixel apart is equal)
+                    part = round(shared / max(1, spans(rect)[1][1] - spans(rect)[1][0]), 1)
+                    score = (0, round(gap), -part, spans(rect)[1][0], index)
+                else:
+                    score = (1, gap + 2 * abs(middle(rect) - (across_start + across_end) / 2), 0, 0, index)
                 if best is None or score < best[0]:
                     best = (score, index)
-            elif along < 0:
-                score = (across, along, index)
+            elif shared > 0 and beyond(rect, -sign)[0]:
+                part = round(shared / max(1, spans(rect)[1][1] - spans(rect)[1][0]), 1)
+                score = (-beyond(rect, -sign)[1], -part, spans(rect)[1][0], index)
                 if wrap is None or score < wrap[0]:
                     wrap = (score, index)
         if best is not None:
             return best[1]
-        return wrap[1] if wrap is not None else selected
+        if wrap is not None:
+            return wrap[1]
+        # Alone on its row (or its column) : the next button in reading order
+        order = sorted(rects, key=lambda index: (round(rects[index][1]), rects[index][0], index))
+        if len(order) < 2:
+            return selected
+        return order[(order.index(selected) + sign) % len(order)]
 
     # Places of the buttons at the bottom of the menus (footer : see display_button)
     FOOTERS = {'left': 'escape', 'center': 'refresh', 'right': 'return'}
