@@ -759,5 +759,17 @@ msgid "raspy2dmd-installing"
 msgstr "Anzeige wird installiert (15 bis 45 Minuten)"
 
 msgid "raspy2dmd-not-running"
-msgstr "Die Anzeige ist nicht gestartet: Gerät neu starten"
+msgstr "Die Anzeige ist nicht gestartet"
+
+msgid "raspy2dmd-start"
+msgstr "Anzeige starten"
+
+msgid "raspy2dmd-starting"
+msgstr "Anzeige wird gestartet…"
+
+msgid "raspy2dmd-started"
+msgstr "Anzeige gestartet"
+
+msgid "raspy2dmd-start-failed"
+msgstr "Die Anzeige ist nicht gestartet (Protokolle in /Medias/Logs)"
 

@@ -4083,5 +4083,17 @@ msgid "raspy2dmd-installing"
 msgstr "Installation de l'afficheur en cours (15 à 45 minutes)"
 
 msgid "raspy2dmd-not-running"
-msgstr "L'afficheur n'est pas démarré : redémarrez la borne"
+msgstr "L'afficheur n'est pas démarré"
+
+msgid "raspy2dmd-start"
+msgstr "Démarrer l'afficheur"
+
+msgid "raspy2dmd-starting"
+msgstr "Démarrage de l'afficheur…"
+
+msgid "raspy2dmd-started"
+msgstr "Afficheur démarré"
+
+msgid "raspy2dmd-start-failed"
+msgstr "L'afficheur n'a pas démarré (journaux dans /Medias/Logs)"
 

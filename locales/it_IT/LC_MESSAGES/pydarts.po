@@ -3449,5 +3449,17 @@ msgid "raspy2dmd-installing"
 msgstr "Installazione del display in corso (da 15 a 45 minuti)"
 
 msgid "raspy2dmd-not-running"
-msgstr "Il display non è avviato: riavviate la macchina"
+msgstr "Il display non è avviato"
+
+msgid "raspy2dmd-start"
+msgstr "Avviare il display"
+
+msgid "raspy2dmd-starting"
+msgstr "Avvio del display…"
+
+msgid "raspy2dmd-started"
+msgstr "Display avviato"
+
+msgid "raspy2dmd-start-failed"
+msgstr "Il display non si è avviato (registri in /Medias/Logs)"
 

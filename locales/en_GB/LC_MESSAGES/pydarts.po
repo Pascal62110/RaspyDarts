@@ -2995,5 +2995,17 @@ msgid "raspy2dmd-installing"
 msgstr "Installing the display (15 to 45 minutes)"
 
 msgid "raspy2dmd-not-running"
-msgstr "The display is not started: restart the cabinet"
+msgstr "The display is not started"
+
+msgid "raspy2dmd-start"
+msgstr "Start the display"
+
+msgid "raspy2dmd-starting"
+msgstr "Starting the display…"
+
+msgid "raspy2dmd-started"
+msgstr "Display started"
+
+msgid "raspy2dmd-start-failed"
+msgstr "The display did not start (logs in /Medias/Logs)"
 

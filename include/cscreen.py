@@ -7550,7 +7550,8 @@ class Screen(pygame.Surface):
     @staticmethod
     def raspy2dmd_running():
         '''
-        Its engine running (else the cabinet has to be restarted after the installation)
+        Its engine running (its watchdog, every minute, starts it within its operating hours ;
+        it can also be started from its screen)
         '''
         try:
             return subprocess.run(['pgrep', '-f', 'python.*ServerRaspy2DMD[.]py'], stdout=subprocess.DEVNULL,
@@ -7583,6 +7584,27 @@ class Screen(pygame.Surface):
         except Exception as error:    # pylint: disable=broad-except
             self.logs.error(f"Raspy2DMD : installation not launched : {error}")
             self.message([self.lang.translate('raspy2dmd-install-failed')], 3000, self.colorset['menu-ko'], 'middle', 'big')
+
+    def raspy2dmd_start(self):
+        '''
+        Start it at once, as at the start of the machine (rc.local) : its engine and its web
+        page (each script once : the engine has its lock, the page is checked), in a unit of
+        their own ; then up to 30 s for the engine
+        '''
+        command = ("(pgrep -f 'python.*ServerRaspy2DMD[.]py' > /dev/null || bash /Raspy2DMD/ServerRaspy2DMD.sh) & "
+                   "(pgrep -f 'node.*app[.]js' > /dev/null || bash /Raspy2DMD/ServerRaspy2DMDWeb.sh) & wait")
+        try:
+            subprocess.run(['sudo', 'systemd-run', '--unit=raspy2dmd-start', '--collect', '/bin/bash', '-c', command],
+                           check=True, timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as error:    # pylint: disable=broad-except
+            self.logs.error(f"Raspy2DMD : not started : {error}")
+        self.message([self.lang.translate('raspy2dmd-starting')], 0, None, 'middle', 'big')
+        for _ in range(30):
+            if self.raspy2dmd_running():
+                self.message([self.lang.translate('raspy2dmd-started')], 1500, self.colorset['menu-ok'], 'middle', 'big')
+                return
+            pygame.time.wait(1000)
+        self.message([self.lang.translate('raspy2dmd-start-failed')], 3000, self.colorset['menu-ko'], 'middle', 'big')
 
     def raspy2dmd_install_progress(self):
         '''
@@ -7627,13 +7649,16 @@ class Screen(pygame.Surface):
         picture = (picture.get_image() if hasattr(picture, 'get_image') else picture).convert('RGB')
         side = int(self.res['y'] * 0.5)
         code = pygame.transform.scale(pygame.image.fromstring(picture.tobytes(), picture.size, 'RGB'), (side, side))
-        commands = [('raspy2dmd-test-message', f"msg|{self.lang.translate('raspy2dmd-hello')}"),
-                    ('raspy2dmd-test-pattern', 'pico|test_rgb'),
-                    ('raspy2dmd-clock', 'time|start'),
-                    ('raspy2dmd-demo', 'demo|gif')]
-        nb_elements = len(commands)
         selected = 1
         while True:
+            # Stopped : start it (its commands go through it) ; running : its commands
+            running = self.raspy2dmd_running()
+            commands = [('raspy2dmd-test-message', f"msg|{self.lang.translate('raspy2dmd-hello')}"),
+                        ('raspy2dmd-test-pattern', 'pico|test_rgb'),
+                        ('raspy2dmd-clock', 'time|start'),
+                        ('raspy2dmd-demo', 'demo|gif')] if running else [('raspy2dmd-start', None)]
+            nb_elements = len(commands)
+            selected = min(selected, nb_elements + 1)
             self.display_background()
             self.menu_header(self.lang.translate('raspy2dmd'), self.lang.translate('raspy2dmd-scan'))
             pos_x = int(self.res_x_16 * 2)
@@ -7641,8 +7666,8 @@ class Screen(pygame.Surface):
             self.blit(code, (pos_x, pos_y))
             line = int(self.res['y'] / 20)
             self.blit_text(url, pos_x, pos_y + side + self.margin, side, line, self.colorset['menu-text-white'])
-            if not self.raspy2dmd_running():
-                # Installed, not started yet (after its installation : the cabinet restarted)
+            if not running:
+                # Installed, not started (just installed, out of its operating hours...)
                 self.blit_text(self.lang.translate('raspy2dmd-not-running'), 0, pos_y + side + self.margin + line,
                                self.res['x'], line, self.colorset['menu-ko'])
             click_zones = {}
@@ -7664,6 +7689,10 @@ class Screen(pygame.Surface):
             if key in ESCAPE_KEYS or key == 'escape' or (key in ENTER_KEYS and selected == nb_elements + 1):
                 return
             if key in ENTER_KEYS and 1 <= selected <= nb_elements:
+                if commands[selected - 1][1] is None:
+                    self.raspy2dmd_start()
+                    selected = 1
+                    continue
                 dispatcher.mqtt_publish(self.RASPY2DMD_TOPIC, commands[selected - 1][1])
                 self.message([self.lang.translate('raspy2dmd-sent')], 1000, self.colorset['menu-ok'], 'middle', 'big')
 

@@ -765,5 +765,17 @@ msgid "raspy2dmd-installing"
 msgstr "Instalando la pantalla (15 a 45 minutos)"
 
 msgid "raspy2dmd-not-running"
-msgstr "La pantalla no está iniciada: reinicie la máquina"
+msgstr "La pantalla no está iniciada"
+
+msgid "raspy2dmd-start"
+msgstr "Iniciar la pantalla"
+
+msgid "raspy2dmd-starting"
+msgstr "Iniciando la pantalla…"
+
+msgid "raspy2dmd-started"
+msgstr "Pantalla iniciada"
+
+msgid "raspy2dmd-start-failed"
+msgstr "La pantalla no se ha iniciado (registros en /Medias/Logs)"
 
