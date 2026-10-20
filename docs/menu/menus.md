@@ -509,10 +509,10 @@ Deux logiques :
   gauche/droite) passent d'abord : la rangée la plus proche, puis celui qui lui fait le plus
   face (en part de sa propre largeur, au dixième près), puis le premier dans le sens de
   lecture (le plus à gauche, le plus haut). Les autres ensuite : `écart + 2 × écart
-  perpendiculaire des centres`. Aucun candidat : on fait le tour, vers le plus éloigné qui lui
-  fait face du côté opposé ; et si aucun ne lui fait face (un bouton seul sur sa rangée, avec
-  gauche ou droite) : le bouton suivant dans le sens de lecture (le précédent pour gauche et
-  haut).
+  perpendiculaire des centres`. Aucun candidat : droite et gauche continuent dans le sens de
+  lecture (au bout d'une rangée, le premier bouton de la rangée suivante ; gauche, le
+  précédent ; après le dernier, le premier) : tout le menu se parcourt avec droite seule.
+  Haut et bas font le tour, vers le plus éloigné qui lui fait face du côté opposé.
 - **`next` / `previous` et l'encodeur : ordre logique.** L'ordre des boutons dans le fichier
   (ou `order:`), en passant d'une ligne à la suivante, et en faisant le tour au bout.
 

@@ -6785,9 +6785,9 @@ class Screen(pygame.Surface):
         under it below it, even far from its centre). In the direction : the buttons beyond its
         edge ; those facing it (sharing part of its width, or of its height) first : the closest
         row, the one facing it the most, the first in reading order ; then the others : gap + 2 x
-        distance across. None : around, the farthest one facing it on the other side ; none
-        facing it (a button alone on its row, left or right) : the next one in reading order
-        (the one before for left and up)
+        distance across. None : right and left go on in reading order (the end of a row : the
+        first button of the next row ; left : the one before) ; up and down go around, to the
+        farthest one facing it on the other side
         '''
         horizontal = direction in ('left', 'right')
         sign = 1 if direction in ('right', 'down') else -1
@@ -6829,7 +6829,7 @@ class Screen(pygame.Surface):
                     score = (1, gap + 2 * abs(middle(rect) - (across_start + across_end) / 2), 0, 0, index)
                 if best is None or score < best[0]:
                     best = (score, index)
-            elif shared > 0 and beyond(rect, -sign)[0]:
+            elif not horizontal and shared > 0 and beyond(rect, -sign)[0]:
                 part = round(shared / max(1, spans(rect)[1][1] - spans(rect)[1][0]), 1)
                 score = (-beyond(rect, -sign)[1], -part, spans(rect)[1][0], index)
                 if wrap is None or score < wrap[0]:
@@ -6838,7 +6838,8 @@ class Screen(pygame.Surface):
             return best[1]
         if wrap is not None:
             return wrap[1]
-        # Alone on its row (or its column) : the next button in reading order
+        # Right at the end of a row (left at its start) : the next button in reading order (the
+        # one before), as a text is read ; all the menu is gone through with right alone
         order = sorted(rects, key=lambda index: (round(rects[index][1]), rects[index][0], index))
         if len(order) < 2:
             return selected
