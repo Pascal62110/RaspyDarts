@@ -198,6 +198,22 @@
       return width * (columnW + gapX) / SUBCELLS - gapX;
     };
 
+    // Un seul ecran (overflow: fit, par defaut) : des rangees qui ne tiennent pas dans la zone
+    // rendent les boutons plus petits (jamais plus grands), tous sur l'ecran ; jamais de
+    // deuxieme page (un bouton ajoute a un menu plein par une nouvelle version...).
+    // overflow: pages / scroll : comme avant
+    const overflow = String(menu.overflow || 'fit');
+    if (overflow === 'fit' && count) {
+      let spaces = 0;
+      for (let row = 0; row < count; row++) for (const index of rows[row]) spaces += num(buttons[index - 1].space_before, 0);
+      const fitting = Math.max(1, (areaH - (count - 1) * gapY) / (count + spaces));
+      if (fitting < buttonH) {
+        // Les tuiles carrees le restent
+        if (size.height === null || size.height === undefined) buttonW = Math.min(buttonW, fitting);
+        buttonH = fitting;
+      }
+    }
+
     let pages = [], pageRows = [], usedH = 0;
     for (const block of blocks) {
       const height = block.reduce((sum, row) => sum + spaceOf(row), 0) + block.length * buttonH + (block.length - 1) * gapY;
@@ -210,8 +226,8 @@
       pageRows.push(...block);
     }
     if (pageRows.length) pages.push(pageRows);
-    const scroll = String(menu.overflow || 'pages') === 'scroll';
-    if (scroll) pages = pages.length ? [[].concat(...pages)] : [];
+    const scroll = overflow === 'scroll';
+    if (scroll || overflow === 'fit') pages = pages.length ? [[].concat(...pages)] : [];
 
     let page = 0;
     pages.forEach((rowsOfPage, number) => {

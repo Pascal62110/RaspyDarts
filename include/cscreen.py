@@ -5477,11 +5477,8 @@ class Screen(pygame.Surface):
         self.dmd.send_text(f"{self.lang.translate('parameters')}")
         menus = self.menus()
         while True:
-            # The button of the DMD display Raspy2DMD : only when it is installed on this machine
-            everything = [button for button in menus.buttons('miscellaneous')
-                          if button.get('requires') != 'raspy2dmd' or self.raspy2dmd_installed()]
-            buttons = [button for button in everything if button.get('visible', True) is not False]
-            button = self.run_menu('miscellaneous', buttons, everything)
+            buttons = [button for button in menus.buttons('miscellaneous') if button.get('visible', True) is not False]
+            button = self.run_menu('miscellaneous', buttons, menus.buttons('miscellaneous'))
             if button.get('action') != 'update':
                 return menus.result(button)
 
@@ -7525,6 +7522,12 @@ class Screen(pygame.Surface):
     # commands on the topic raspy2dmd
     RASPY2DMD_DIR = '/Raspy2DMD'
     RASPY2DMD_TOPIC = 'raspy2dmd'
+    # Its installation from the game : the public script, mode « Pico seul » (nothing changed in
+    # the system of the cabinet), without question (the game answers : install, no reboot)
+    RASPY2DMD_INSTALLER = 'https://raw.githubusercontent.com/rmdelcelier/Raspy2DMD/main/scripts/install_raspy2dmd.sh'
+    RASPY2DMD_INSTALL_OPTIONS = '--pico-seul --sans-question'
+    RASPY2DMD_INSTALL_UNIT = 'raspy2dmd-install'
+    RASPY2DMD_INSTALL_LOG = 'logs/raspy2dmd_install.log'
 
     @classmethod
     def raspy2dmd_installed(cls):
@@ -7533,12 +7536,90 @@ class Screen(pygame.Surface):
         '''
         return os.path.isdir(cls.RASPY2DMD_DIR)
 
+    @classmethod
+    def raspy2dmd_installing(cls):
+        '''
+        Its installation running (launched from this screen, in the background)
+        '''
+        try:
+            return subprocess.run(['systemctl', 'is-active', '--quiet', cls.RASPY2DMD_INSTALL_UNIT],
+                                  check=False, timeout=5).returncode == 0
+        except Exception:    # pylint: disable=broad-except
+            return False
+
+    @staticmethod
+    def raspy2dmd_running():
+        '''
+        Its engine running (else the cabinet has to be restarted after the installation)
+        '''
+        try:
+            return subprocess.run(['pgrep', '-f', 'python.*ServerRaspy2DMD[.]py'], stdout=subprocess.DEVNULL,
+                                  check=False, timeout=5).returncode == 0
+        except Exception:    # pylint: disable=broad-except
+            return False
+
+    def raspy2dmd_install(self):
+        '''
+        Raspy2DMD not installed : asked, then installed in the background (internet needed,
+        15 to 45 minutes) ; the game stays usable meanwhile. Its log : logs/raspy2dmd_install.log
+        '''
+        if not self.wait_validation('raspy2dmd-install-question'):
+            return
+        import socket
+        try:
+            socket.create_connection(('raw.githubusercontent.com', 443), timeout=5).close()
+        except OSError:
+            self.message([self.lang.translate('raspy2dmd-no-internet')], 3000, self.colorset['menu-ko'], 'middle', 'big')
+            return
+        log = os.path.abspath(self.RASPY2DMD_INSTALL_LOG)
+        command = f"curl -fsSL {self.RASPY2DMD_INSTALLER} | bash -s -- {self.RASPY2DMD_INSTALL_OPTIONS} > {log} 2>&1"
+        try:
+            # A unit of its own : it goes on even if the game is restarted
+            subprocess.run(['sudo', 'systemd-run', f'--unit={self.RASPY2DMD_INSTALL_UNIT}', '--collect',
+                            '/bin/bash', '-c', command], check=True, timeout=30,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.logs.info(f"Raspy2DMD : installation launched ({command})")
+            self.message([self.lang.translate('raspy2dmd-install-started')], 3000, self.colorset['menu-ok'], 'middle', 'big')
+        except Exception as error:    # pylint: disable=broad-except
+            self.logs.error(f"Raspy2DMD : installation not launched : {error}")
+            self.message([self.lang.translate('raspy2dmd-install-failed')], 3000, self.colorset['menu-ko'], 'middle', 'big')
+
+    def raspy2dmd_install_progress(self):
+        '''
+        Its installation running : the last line of its log, until Back
+        '''
+        while self.raspy2dmd_installing():
+            self.display_background()
+            self.menu_header(self.lang.translate('raspy2dmd'), self.lang.translate('raspy2dmd-installing'))
+            last = ''
+            try:
+                with open(self.RASPY2DMD_INSTALL_LOG, encoding='utf-8', errors='ignore') as file:
+                    lines = [line.strip() for line in file.read().replace('\r', '\n').split('\n') if line.strip()]
+                # (without the colours of the terminal)
+                last = re.sub(r'\x1b\[[0-9;]*m', '', lines[-1]) if lines else ''
+            except OSError:
+                pass
+            line = int(self.res['y'] / 18)
+            self.blit_text(last[:90], 0, int(self.res['y'] * 0.45), self.res['x'], line, self.colorset['menu-text-white'])
+            self.display_button(True, 'back', special='escape')
+            self.update_screen()
+            key = self.rpi.listen_inputs(['arrows', 'fx'], ['escape', 'enter', 'space', 'PLAYERBUTTON', 'BACKUPBUTTON',
+                                                            'GAMEBUTTON', 'single-click'], timeout=2000)
+            if key in ESCAPE_KEYS or key in ENTER_KEYS or key in ('escape', 'single-click'):
+                return
+
     def raspy2dmd_menu(self, dispatcher):
         '''
         The DMD display Raspy2DMD : the QR code of its web page (all its settings, from a
         phone), and a few commands sent to it (a message to check the link, the test pattern
         of the Pico, the clock, the demo)
         '''
+        if self.raspy2dmd_installing():
+            self.raspy2dmd_install_progress()
+            return
+        if not self.raspy2dmd_installed():
+            self.raspy2dmd_install()
+            return
         from include import cgallery
         import qrcode
         url = f"http://{cgallery.local_ip()}/"
@@ -7560,6 +7641,10 @@ class Screen(pygame.Surface):
             self.blit(code, (pos_x, pos_y))
             line = int(self.res['y'] / 20)
             self.blit_text(url, pos_x, pos_y + side + self.margin, side, line, self.colorset['menu-text-white'])
+            if not self.raspy2dmd_running():
+                # Installed, not started yet (after its installation : the cabinet restarted)
+                self.blit_text(self.lang.translate('raspy2dmd-not-running'), 0, pos_y + side + self.margin + line,
+                               self.res['x'], line, self.colorset['menu-ko'])
             click_zones = {}
             for index, (text, _) in enumerate(commands, 1):
                 click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), (f'F{index}', text, BTN_CHOICE, None),

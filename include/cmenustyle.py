@@ -231,6 +231,19 @@ def layout_zone(menu, buttons, flowing, units, selected=1):
             return whole * column_w + (whole - 1) * gap_x
         return width * (column_w + gap_x) / SUBCELLS - gap_x
 
+    # One screen (overflow: fit, by default) : rows which do not hold in the area make the
+    # buttons smaller (never larger), all on the screen ; never a second page (a button added
+    # to a full menu by a newer version...). overflow: pages / scroll : as before
+    overflow = str(menu.get('overflow') or 'fit')
+    if overflow == 'fit' and count:
+        spaces = sum(float(buttons[index - 1].get('space_before', 0) or 0) for row in range(count) for index in rows[row])
+        fitting = max(1.0, (area_h - (count - 1) * gap_y) / (count + spaces))
+        if fitting < button_h:
+            if size.get('height') is None:
+                # Square tiles stay square
+                button_w = min(button_w, fitting)
+            button_h = fitting
+
     # Rows of each page : as many as the area holds (space_before included)
     pages, page_rows, used_h = [], [], 0.0
     for block in blocks:
@@ -242,7 +255,7 @@ def layout_zone(menu, buttons, flowing, units, selected=1):
         page_rows.extend(block)
     if page_rows:
         pages.append(page_rows)
-    if str(menu.get('overflow') or 'pages') == 'scroll':
+    if overflow in ('scroll', 'fit'):
         pages = [sum(pages, [])] if pages else []
 
     page = 0
@@ -257,7 +270,7 @@ def layout_zone(menu, buttons, flowing, units, selected=1):
         heights = [space_of(row) + (gap_y if position else 0) for position, row in enumerate(rows_of_page)]
         block_h = sum(heights) + len(rows_of_page) * button_h
         top = area_y + ((area_h - block_h) / 2 if str(menu.get('align') or 'center') == 'center' else 0)
-        if str(menu.get('overflow') or 'pages') == 'scroll' and block_h > area_h:
+        if overflow == 'scroll' and block_h > area_h:
             # The selected button stays in the area
             row_of = next((position for position, row in enumerate(rows_of_page) if selected in rows[row]), 0)
             selected_bottom = sum(heights[:row_of + 1]) + (row_of + 1) * button_h

@@ -2979,3 +2979,21 @@ msgstr "Start the demo"
 msgid "raspy2dmd-sent"
 msgstr "Sent to the display"
 
+msgid "raspy2dmd-install-question"
+msgstr "The DMD display Raspy2DMD is not installed. Install it now? (internet, 15 to 45 minutes, the game stays usable)"
+
+msgid "raspy2dmd-no-internet"
+msgstr "No internet access: the installation is not possible"
+
+msgid "raspy2dmd-install-started"
+msgstr "Installation started: follow it in this menu"
+
+msgid "raspy2dmd-install-failed"
+msgstr "The installation could not be started"
+
+msgid "raspy2dmd-installing"
+msgstr "Installing the display (15 to 45 minutes)"
+
+msgid "raspy2dmd-not-running"
+msgstr "The display is not started: restart the cabinet"
+

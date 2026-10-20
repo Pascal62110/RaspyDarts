@@ -749,3 +749,21 @@ msgstr "Iniciar la demo"
 msgid "raspy2dmd-sent"
 msgstr "Enviado a la pantalla"
 
+msgid "raspy2dmd-install-question"
+msgstr "La pantalla DMD Raspy2DMD no está instalada. ¿Instalarla ahora? (Internet, 15 a 45 minutos, el juego sigue disponible)"
+
+msgid "raspy2dmd-no-internet"
+msgstr "Sin acceso a Internet: la instalación no es posible"
+
+msgid "raspy2dmd-install-started"
+msgstr "Instalación iniciada: sígala en este menú"
+
+msgid "raspy2dmd-install-failed"
+msgstr "No se pudo iniciar la instalación"
+
+msgid "raspy2dmd-installing"
+msgstr "Instalando la pantalla (15 a 45 minutos)"
+
+msgid "raspy2dmd-not-running"
+msgstr "La pantalla no está iniciada: reinicie la máquina"
+

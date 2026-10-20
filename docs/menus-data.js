@@ -217,8 +217,7 @@ const MENUS_DATA = {
       "id": "raspy2dmd",
       "action": "raspy2dmd",
       "text": "raspy2dmd",
-      "shortcut": "F10",
-      "requires": "raspy2dmd"
+      "shortcut": "F10"
      },
      {
       "id": "back",

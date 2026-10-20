@@ -130,12 +130,11 @@ menus:
         action: exhibition
         text: exhibition
         shortcut: F9
-      # The DMD display Raspy2DMD installed on this machine (/Raspy2DMD) : shown only then
+      # The DMD display Raspy2DMD on this machine (its screen offers to install it)
       - id: raspy2dmd
         action: raspy2dmd
         text: raspy2dmd
         shortcut: F10
-        requires: raspy2dmd
       - id: back
         action: back
         text: back

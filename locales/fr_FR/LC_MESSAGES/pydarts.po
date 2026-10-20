@@ -4067,3 +4067,21 @@ msgstr "Lancer la démo"
 msgid "raspy2dmd-sent"
 msgstr "Envoyé à l'afficheur"
 
+msgid "raspy2dmd-install-question"
+msgstr "L'afficheur DMD Raspy2DMD n'est pas installé. L'installer maintenant ? (Internet, 15 à 45 minutes, le jeu reste utilisable)"
+
+msgid "raspy2dmd-no-internet"
+msgstr "Pas d'accès à Internet : l'installation est impossible"
+
+msgid "raspy2dmd-install-started"
+msgstr "Installation lancée : suivez-la dans ce menu"
+
+msgid "raspy2dmd-install-failed"
+msgstr "L'installation n'a pas pu être lancée"
+
+msgid "raspy2dmd-installing"
+msgstr "Installation de l'afficheur en cours (15 à 45 minutes)"
+
+msgid "raspy2dmd-not-running"
+msgstr "L'afficheur n'est pas démarré : redémarrez la borne"
+

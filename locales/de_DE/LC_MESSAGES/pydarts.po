@@ -743,3 +743,21 @@ msgstr "Demo starten"
 msgid "raspy2dmd-sent"
 msgstr "An die Anzeige gesendet"
 
+msgid "raspy2dmd-install-question"
+msgstr "Die DMD-Anzeige Raspy2DMD ist nicht installiert. Jetzt installieren? (Internet, 15 bis 45 Minuten, das Spiel bleibt nutzbar)"
+
+msgid "raspy2dmd-no-internet"
+msgstr "Kein Internetzugang: Installation nicht möglich"
+
+msgid "raspy2dmd-install-started"
+msgstr "Installation gestartet: in diesem Menü verfolgen"
+
+msgid "raspy2dmd-install-failed"
+msgstr "Die Installation konnte nicht gestartet werden"
+
+msgid "raspy2dmd-installing"
+msgstr "Anzeige wird installiert (15 bis 45 Minuten)"
+
+msgid "raspy2dmd-not-running"
+msgstr "Die Anzeige ist nicht gestartet: Gerät neu starten"
+

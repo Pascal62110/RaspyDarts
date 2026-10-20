@@ -330,7 +330,7 @@ Propriétés d'un bouton :
 | `place` | placement libre (§7.5) ; sinon placé par la disposition du menu |
 | `footer` | bouton du bas de l'écran : `left`, `center` ou `right` (comme Retour, Enregistrer) ; un bouton sans `footer` dans la liste du fichier est placé avec les autres (le configurateur le fait quand on glisse un bouton du bas) |
 | `logo` | image du dossier `images/logos_menu` du thème (disposition `tiles` du style `classic`) ; un dossier de ce nom contenant plusieurs images : l'une d'elles au hasard. Dans un menu dessiné par un style, il sert d'icône au bouton qui n'en a pas (et un bouton à logo sans `text` ne montre que son logo) |
-| `requires` | condition d'affichage : `favorite_games` (seulement s'il existe des jeux favoris), `raspy2dmd` (seulement si l'afficheur Raspy2DMD est installé sur la borne, dossier `/Raspy2DMD`) |
+| `requires` | condition d'affichage : `favorite_games` (seulement s'il existe des jeux favoris) |
 | `dmd` | texte envoyé sur l'afficheur DMD quand le bouton est sélectionné |
 | `order` | rang dans l'ordre logique (§9), par défaut sa place dans la liste |
 | `space_before` | écart au-dessus (dispositions `list` et `grid`) |
@@ -358,7 +358,7 @@ menus:
     button_size: {width: 1.0, height: 0.09}   # largeur : fraction de la colonne ; hauteur : de l'écran
     gap: {x: 0.02, y: 0.015}
     align: center          # center | top (si les boutons ne remplissent pas la zone)
-    overflow: pages        # pages | scroll (quand ils ne tiennent pas)
+    overflow: fit          # fit | pages | scroll (quand ils ne tiennent pas ; fit : un seul écran)
 ```
 
 - **`list`** : une colonne, les boutons les uns sous les autres.
@@ -429,7 +429,7 @@ Une action par bouton. Le jeu refuse une action inconnue (§3).
 | `players_bank` | banque de prénoms |
 | `backups` | sauvegardes |
 | `exhibition` | mode exposition |
-| `raspy2dmd` | l'afficheur DMD Raspy2DMD installé sur la borne (panneaux pilotés par un Raspberry Pico en USB) : QR code de sa page web, message d'essai, mire de test du Pico, horloge, démo (commandes publiées sur le sujet MQTT `raspy2dmd`) |
+| `raspy2dmd` | l'afficheur DMD Raspy2DMD sur la borne (panneaux pilotés par un Raspberry Pico en USB) : installé, QR code de sa page web, message d'essai, mire de test du Pico, horloge, démo (commandes publiées sur le sujet MQTT `raspy2dmd`) ; pas installé, il propose de l'installer (mode « Pico seul », en tâche de fond) |
 | `update` | vérifier les mises à jour |
 
 **Paramètres**
@@ -583,7 +583,10 @@ calculés des deux côtés (ils doivent être identiques au pixel).
    Une ligne laissée vide reste vide (un espace voulu). `space_left` : un espace vide à
    gauche du bouton, en parts de colonne, pris avec ses cases (le bouton rétrécit si sa
    ligne est pleine). Chaque zone (`zones`) se place de même, dans sa propre `area`.
-7. Plus de lignes que n'en tient `area` : `overflow: pages` coupe en pages (les lignes
+7. Plus de lignes que n'en tient `area` : par défaut (`overflow: fit`), **un seul écran** : les
+   boutons sont réduits (jamais agrandis) pour que toutes les lignes y tiennent — un bouton
+   ajouté à un menu plein par une nouvelle version ne crée pas de deuxième page.
+   `overflow: pages` coupe en pages (les lignes
    reliées par un bouton de plusieurs lignes restent ensemble ; en bas à
    droite : la page affichée et des flèches vers les pages d'avant et d'après ; les
    flèches du clavier passent d'une page à l'autre), `scroll` fait défiler pour garder le

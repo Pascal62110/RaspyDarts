@@ -3433,3 +3433,21 @@ msgstr "Avviare la demo"
 msgid "raspy2dmd-sent"
 msgstr "Inviato al display"
 
+msgid "raspy2dmd-install-question"
+msgstr "Il display DMD Raspy2DMD non è installato. Installarlo ora? (Internet, da 15 a 45 minuti, il gioco resta utilizzabile)"
+
+msgid "raspy2dmd-no-internet"
+msgstr "Nessun accesso a Internet: l'installazione non è possibile"
+
+msgid "raspy2dmd-install-started"
+msgstr "Installazione avviata: seguitela in questo menu"
+
+msgid "raspy2dmd-install-failed"
+msgstr "Non è stato possibile avviare l'installazione"
+
+msgid "raspy2dmd-installing"
+msgstr "Installazione del display in corso (da 15 a 45 minuti)"
+
+msgid "raspy2dmd-not-running"
+msgstr "Il display non è avviato: riavviate la macchina"
+
