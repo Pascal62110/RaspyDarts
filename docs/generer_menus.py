@@ -174,8 +174,14 @@ def main():
         colors.pop('font', None)
         background = 'images/background/background.png' if 'images/background/background.png' in images.get(theme, {}) \
             else 'images/background.png'
+        # Ses menus, comme le jeu les lit (themes/<theme>/menus.yaml, puis menu/menus.yaml) : le
+        # configurateur part d'eux pour ce theme
+        theme_menus = {}
+        for path in (os.path.join(EXAMPLE_THEMES, theme, cmenus.FILE_NAME), os.path.join(EXAMPLE_THEMES, theme, cmenus.THEME_FILE)):
+            if os.path.isfile(path):
+                theme_menus = cmenus.merge(theme_menus, yaml.safe_load(open(path, encoding='utf-8')) or {})
         themes[theme] = {'colors': {key: json_value(value) for key, value in colors.items()},
-                         'font': font, 'background': background}
+                         'font': font, 'background': background, 'menus': theme_menus}
 
     # Textes : les cles des menus par defaut, des boutons et des ecrans du jeu
     keys = set()

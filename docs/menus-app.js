@@ -140,6 +140,17 @@ function pxToFile(px, axis, floor) {
 
 // ------------------------------------------------------------------ menus : boutons et disposition
 function themeName() { return $('theme').value || 'sombre'; }
+function themeMenus(name) {
+  // Les menus du theme (son menu/menus.yaml) : le point de depart du fichier pour ce theme
+  const theme = (DATA.themes || {})[name || themeName()];
+  return theme && L.isDict(theme.menus) ? clone(theme.menus) : {};
+}
+function untouched(content) {
+  // Un fichier encore tel qu'au depart : vide, ou les menus d'un des themes, sans changement
+  const text = JSON.stringify(content || {});
+  return text === '{}' || Object.keys(DATA.themes || {}).some(name => JSON.stringify(themeMenus(name)) === text && text !== '{}');
+}
+let resumed = false;   // le travail garde par le navigateur n'est pas les menus du theme (bandeau)
 function makeRenderer(ctx) {
   const favorites = $('fav-games').checked;
   return new R.Renderer(DATA, merged(), {
@@ -1143,6 +1154,13 @@ function buildPanel() {
   }
   panel.appendChild(mode);
   setMode(document.body.classList.contains('basic') ? 'basic' : 'advanced');
+  if (resumed) {
+    // Le travail garde par le navigateur, pas les menus actuels du theme : on peut repartir d'eux
+    panel.appendChild(el('div', { class: 'note warn' }, [el('p', { text: t('resumed-note', { theme: themeName() }) }),
+      el('div', { class: 'row' }, [
+        el('button', { class: 'act', text: '↺ ' + t('resumed-theme', { theme: themeName() }), onclick: restartFromTheme }),
+        el('button', { class: 'act', text: t('resumed-keep'), onclick: () => { resumed = false; buildPanel(); } })])]));
+  }
   // L'apercu « jeux favoris » : seulement pour un ecran qui a un bouton lie aux favoris (Categories)
   $('fav-games-box').classList.toggle('hidden', !menuButtons(screen).some(b => b.requires === 'favorite_games'));
   if (selection.kind === 'button') buildButtonPanel(panel);
@@ -2251,7 +2269,10 @@ function translate() {
 $('lang').addEventListener('change', () => { lang = $('lang').value; store('lang', lang); translate(); });
 $('tab-edit-btn').addEventListener('click', () => showTab('edit'));
 $('tab-file-btn').addEventListener('click', () => showTab('file'));
-$('new-file').addEventListener('click', () => { if (confirm(t('new-confirm'))) { user = {}; selection = { kind: 'screen' }; remember(); buildAll(); } });
+function restartFromTheme() {
+  user = themeMenus(); selection = { kind: 'screen' }; resumed = false; remember(); buildAll();
+}
+$('new-file').addEventListener('click', () => { if (confirm(t('new-confirm'))) restartFromTheme(); });
 $('open-file').addEventListener('change', (e) => { if (e.target.files[0]) openFile(e.target.files[0]); e.target.value = ''; });
 $('download').addEventListener('click', download);
 $('download2').addEventListener('click', download);
@@ -2281,7 +2302,12 @@ $('res-ref').addEventListener('change', () => {
   if (w > 0 && h > 0) setResolution([w, h]);
 }));
 $('start').addEventListener('change', () => { const v = $('start').value; if (v === 'main') delete user.start; else user.start = v; changed(); });
-$('theme').addEventListener('change', () => { store('theme', $('theme').value); $('own-theme').classList.toggle('hidden', $('theme').value !== 'own'); buildPanel(); schedule(); });
+$('theme').addEventListener('change', () => {
+  store('theme', $('theme').value); $('own-theme').classList.toggle('hidden', $('theme').value !== 'own');
+  // Rien de change : les menus du theme choisi
+  if (untouched(user)) { user = themeMenus(); resumed = false; remember(); changed(true); }
+  buildPanel(); schedule();
+});
 $('theme-folder').addEventListener('change', (e) => loadTheme([...e.target.files]));
 $('preview-res').addEventListener('change', () => { store('preview', $('preview-res').value); schedule(); });
 $('fav-games').addEventListener('change', () => { buildPanel(); schedule(); });
@@ -2303,6 +2329,11 @@ lang = stored('lang') || (LANGS.includes(browser) ? browser : 'en');
 $('lang').value = lang;
 scope = stored('scope') === 'all' ? 'all' : 'one';
 try { const saved = JSON.parse(stored('file') || '{}'); if (L.isDict(saved)) user = saved; } catch (e) { user = {}; }
+buildThemes();
+// Au depart (ou rien de change) : les menus du theme ; sinon le travail garde par ce navigateur,
+// avec un bandeau pour repartir des menus du theme
+if (untouched(user)) user = themeMenus();
+else resumed = Object.keys(themeMenus()).length > 0 && JSON.stringify(user) !== JSON.stringify(themeMenus());
 lastState = JSON.stringify(user);
 screen = stored('screen') || 'main';
 if (!screens().includes(screen)) screen = 'main';

@@ -918,7 +918,8 @@ const MENUS_DATA = {
     "game-options-menu-text-align": "Left"
    },
    "font": "MaPolice.ttf",
-   "background": "images/background.png"
+   "background": "images/background.png",
+   "menus": {}
   },
   "sombre": {
    "colors": {
@@ -1398,7 +1399,483 @@ const MENUS_DATA = {
     ]
    },
    "font": "CompactaBT.ttf",
-   "background": "images/background/background.png"
+   "background": "images/background/background.png",
+   "menus": {
+    "version": 1,
+    "menus": {
+     "main": {
+      "area": {
+       "x": 0.0885,
+       "y": 0.1704,
+       "width": 0.8224,
+       "height": 0.6611
+      },
+      "button_size": {
+       "height": 0.0206
+      },
+      "gap": {
+       "y": 0.005,
+       "x": 0.005
+      },
+      "align": "top",
+      "buttons": [
+       {
+        "id": "local",
+        "action": "local_game",
+        "text": {
+         "size": "auto",
+         "text": "game-type-local"
+        },
+        "shortcut": "F1",
+        "exhibition": true,
+        "span": {
+         "rows": 5
+        },
+        "cell": {
+         "row": 0,
+         "column": 0
+        }
+       },
+       {
+        "id": "netjoin",
+        "action": "network_join",
+        "text": "game-type-master",
+        "shortcut": "F2",
+        "span": {
+         "rows": 5,
+         "columns": 0.5
+        },
+        "cell": {
+         "row": 11,
+         "column": 0.5
+        }
+       },
+       {
+        "id": "netcreate",
+        "action": "network_create",
+        "text": "game-type-manual",
+        "shortcut": "F3",
+        "span": {
+         "rows": 5,
+         "columns": 0.5
+        },
+        "cell": {
+         "row": 11,
+         "column": 0
+        }
+       },
+       {
+        "id": "gallery",
+        "action": "gallery",
+        "text": "gallery",
+        "shortcut": "F6",
+        "exhibition": true,
+        "span": {
+         "rows": 5,
+         "columns": 0.5
+        },
+        "cell": {
+         "row": 16,
+         "column": 0.5
+        }
+       },
+       {
+        "id": "miscellaneous",
+        "action": "menu:miscellaneous",
+        "text": "miscellaneous",
+        "shortcut": "F4",
+        "span": {
+         "columns": 0.3333,
+         "rows": 5
+        },
+        "cell": {
+         "row": 21,
+         "column": 0
+        }
+       },
+       {
+        "id": "trophees",
+        "action": "trophies",
+        "text": "trophees",
+        "shortcut": "F5",
+        "exhibition": true,
+        "span": {
+         "rows": 5,
+         "columns": 0.5
+        },
+        "cell": {
+         "row": 16,
+         "column": 0
+        }
+       },
+       {
+        "id": "infos",
+        "action": "infos",
+        "shortcut": "F9",
+        "visible": false
+       },
+       {
+        "id": "restart",
+        "action": "restart",
+        "shortcut": "F11",
+        "visible": false
+       },
+       {
+        "id": "quit",
+        "action": "desktop",
+        "text": "back-to-desktop",
+        "shortcut": "F12",
+        "shape": "rectangle",
+        "cell": {
+         "row": 21,
+         "column": 0.3333
+        },
+        "span": {
+         "rows": 5,
+         "columns": 0.3333
+        }
+       },
+       {
+        "id": "shutdown",
+        "action": "shutdown",
+        "text": "exit",
+        "shortcut": "escape",
+        "confirm": "realy-stop",
+        "pressed": {
+         "scale": 0.5
+        },
+        "cell": {
+         "row": 21,
+         "column": 0.6667
+        },
+        "span": {
+         "rows": 5,
+         "columns": 0.3333
+        }
+       },
+       {
+        "id": "button1",
+        "action": "game:Ho_One",
+        "text": "'01",
+        "span": {
+         "rows": 6,
+         "columns": 0.25
+        },
+        "cell": {
+         "row": 5,
+         "column": 0
+        }
+       },
+       {
+        "id": "button2",
+        "action": "game:Cricket",
+        "text": "Cricket",
+        "span": {
+         "rows": 6,
+         "columns": 0.25
+        },
+        "cell": {
+         "row": 5,
+         "column": 0.5
+        }
+       },
+       {
+        "id": "button3",
+        "action": "game:321_Zlip",
+        "text": "321 Zlip",
+        "span": {
+         "rows": 6,
+         "columns": 0.25
+        },
+        "cell": {
+         "row": 5,
+         "column": 0.75
+        }
+       },
+       {
+        "id": "button4",
+        "action": "game:High_Score",
+        "text": "High Score",
+        "span": {
+         "columns": 0.25,
+         "rows": 6
+        },
+        "cell": {
+         "row": 5,
+         "column": 0.25
+        }
+       }
+      ],
+      "layout": "tiles",
+      "columns": 1,
+      "style": "main",
+      "show_version": {
+       "x": 0.0052,
+       "y": 0.8481,
+       "width": 0.1073,
+       "height": 0.1102
+      }
+     },
+     "miscellaneous": {
+      "area": {
+       "x": 0.1443,
+       "y": 0.1556,
+       "width": 0.7083,
+       "height": 0.688
+      },
+      "button_size": {
+       "height": 0.226
+      },
+      "gap": {
+       "y": 0.004,
+       "x": 0.004
+      },
+      "align": "top",
+      "buttons": [
+       {
+        "id": "firstnames",
+        "action": "favorite_players",
+        "text": "favorites-players",
+        "shortcut": "F1",
+        "cell": {
+         "row": 0,
+         "column": 0
+        }
+       },
+       {
+        "id": "games",
+        "action": "favorite_games",
+        "text": "favorites-games",
+        "shortcut": "F2"
+       },
+       {
+        "id": "servers",
+        "action": "favorite_servers",
+        "text": "favorites-servers",
+        "shortcut": "F3"
+       },
+       {
+        "id": "customization",
+        "action": "customization",
+        "text": "customization",
+        "shortcut": "F4"
+       },
+       {
+        "id": "animations",
+        "action": "animations",
+        "text": "animations",
+        "shortcut": "F5"
+       },
+       {
+        "id": "firstname-bank",
+        "action": "players_bank",
+        "text": "players-bank",
+        "shortcut": "F6"
+       },
+       {
+        "id": "setup",
+        "action": "menu:settings",
+        "text": "setup",
+        "shortcut": "F7"
+       },
+       {
+        "id": "backups",
+        "action": "backups",
+        "text": "backups",
+        "shortcut": "F8"
+       },
+       {
+        "id": "exhibition",
+        "action": "exhibition",
+        "text": "exhibition",
+        "shortcut": "F9"
+       },
+       {
+        "id": "back",
+        "action": "back",
+        "text": "back",
+        "shortcut": "escape",
+        "footer": "left"
+       },
+       {
+        "id": "update",
+        "action": "update",
+        "text": "btn_update",
+        "footer": "right"
+       }
+      ],
+      "layout": "tiles",
+      "style": "miscellaneous"
+     },
+     "games": {
+      "style": "classic",
+      "area": {
+       "x": 0.0172,
+       "y": 0.1509,
+       "width": 0.4141,
+       "height": 0.7019
+      }
+     },
+     "settings": {
+      "area": {
+       "x": 0.1427,
+       "y": 0.1546,
+       "width": 0.7104,
+       "height": 0.6824
+      },
+      "button_size": {
+       "height": 0.2241
+      },
+      "gap": {
+       "y": 0.004,
+       "x": 0.004
+      },
+      "align": "top",
+      "layout": "tiles",
+      "style": "settings",
+      "buttons": [
+       {
+        "id": "setup-buttons",
+        "action": "setup_buttons",
+        "text": "setup-buttons",
+        "shortcut": "F1",
+        "cell": {
+         "row": 0,
+         "column": 0
+        }
+       },
+       {
+        "id": "setup-pinleds",
+        "action": "setup_pins_leds",
+        "text": "setup-pinsleds",
+        "shortcut": "F2",
+        "cell": {
+         "row": 0,
+         "column": 1
+        }
+       },
+       {
+        "id": "setup-leds",
+        "action": "setup_leds",
+        "text": "setup-leds",
+        "shortcut": "F3",
+        "cell": {
+         "row": 0,
+         "column": 2
+        }
+       },
+       {
+        "id": "setup-couleurs-segments",
+        "action": "setup_segment_colors",
+        "text": "setup-couleurs-segments",
+        "shortcut": "F4",
+        "cell": {
+         "row": 1,
+         "column": 0
+        }
+       },
+       {
+        "id": "setup-cam",
+        "action": "setup_camera",
+        "text": "setup-cam",
+        "shortcut": "F5",
+        "cell": {
+         "row": 1,
+         "column": 1
+        }
+       },
+       {
+        "id": "test-buttons",
+        "action": "test_buttons",
+        "text": "test-buttons",
+        "shortcut": "F6",
+        "cell": {
+         "row": 1,
+         "column": 2
+        }
+       },
+       {
+        "id": "test-target",
+        "action": "test_target",
+        "text": "test-target",
+        "shortcut": "F7",
+        "cell": {
+         "row": 2,
+         "column": 0
+        }
+       },
+       {
+        "id": "test-toys",
+        "action": "test_toys",
+        "text": "test-toys",
+        "shortcut": "F8",
+        "cell": {
+         "row": 2,
+         "column": 1
+        }
+       },
+       {
+        "id": "reset",
+        "action": "reset",
+        "text": "reset",
+        "shortcut": "F9",
+        "place": {
+         "x": 0.7646,
+         "y": 0.9056,
+         "width": 0.1203,
+         "height": 0.062
+        },
+        "shape": "pill",
+        "background": {
+         "color": "#919191"
+        }
+       },
+       {
+        "id": "back",
+        "action": "back",
+        "text": "back",
+        "shortcut": "escape",
+        "footer": "left"
+       }
+      ]
+     }
+    },
+    "styles": {
+     "main": {
+      "background": {
+       "color": "menu-buttons*1.5"
+      },
+      "text": {
+       "size": "auto",
+       "color": "menu-text-black",
+       "align": "theme"
+      },
+      "shape": "rectangle"
+     },
+     "miscellaneous": {
+      "background": {
+       "color": "menu-buttons*1.5"
+      },
+      "text": {
+       "size": "auto",
+       "color": "menu-text-black",
+       "align": "theme"
+      },
+      "shape": "rectangle"
+     },
+     "settings": {
+      "background": {
+       "color": "menu-buttons*1.5"
+      },
+      "text": {
+       "size": "auto",
+       "color": "menu-text-black",
+       "align": "theme"
+      },
+      "shape": "rectangle"
+     }
+    }
+   }
   }
  },
  "images": {
