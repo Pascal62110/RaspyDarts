@@ -36,6 +36,9 @@ class Event:
         self.matrix_topic = f'{topic}/matrix'
         self.other_topic = f'{topic}/other'
         self.continue_list = []
+        # Out of games with the light out of games : no animation of the events on the strip and
+        # the target (only off and quit)
+        self.quiet = False
 
         self.target_leds = False
         self.strip_leds = False
@@ -61,23 +64,31 @@ class Event:
 
         self.logs.debug(f"self.dispatcher={self.dispatcher}")
         self.logs.debug(f"broker={broker}")
+        self.loop_running = False
         try:
             self.mqtt_client = mqtt.Client(client_id)
             self.mqtt_client.connect(broker, port)
+            # Network loop in the background : the keepalive pings are sent (without them the
+            # broker closed the connection after a minute without message, and the first
+            # message sent then was lost : the light of the target, a menu animation...), and
+            # the connection is made again by itself
+            self.mqtt_client.loop_start()
+            self.loop_running = True
         except: # pylint: disable=bare-except
             self.mqtt_client = None
 
     def add_rpi(self, rpi):
         self.rpi = rpi
 
-    def base(self, animation=None):
+    def base(self, target=None, strip=None):
         """
-        Light of the background of the strip and of the target (an animation, 'Light,1,white,0') :
-        the LED servers come back to it after each animation ; None : no more
+        Light of the background of the target and of the strip (an animation : 'Light,1,white,0',
+        'Background', 'off') : the LED servers come back to it after each animation ; None : no
+        more
         """
         if self.mqtt_client is None:
             return
-        for available, topic in ((self.target_leds, self.target_topic), (self.strip_leds, self.strip_topic)):
+        for available, topic, animation in ((self.target_leds, self.target_topic, target), (self.strip_leds, self.strip_topic, strip)):
             if available:
                 self.mqtt_publish(topic, f"base:{animation or ''}")
 
@@ -161,8 +172,12 @@ class Event:
 
             deadline = time.time() + timeout
             while self.continue_list and time.time() < deadline:
-                # loop() borne a 0.2s : la deadline est donc respectee a 0.2s pres
-                self.mqtt_client.loop(timeout=0.2)
+                # loop() borne a 0.2s : la deadline est donc respectee a 0.2s pres (la
+                # boucle de fond, quand elle tourne, livre les acks : on attend seulement)
+                if self.loop_running:
+                    time.sleep(0.2)
+                else:
+                    self.mqtt_client.loop(timeout=0.2)
 
             if not self.continue_list:
                 self.logs.debug("Ack received")
@@ -335,6 +350,9 @@ class Event:
                         time.sleep(0.001)
             else:
                 ack_list = []
+                if self.quiet and event not in ('off', 'quit'):
+                    # The light out of games stays : the other devices only
+                    limit = [device for device in (limit or ['TARGET', 'STRIP', 'DMD', 'MATRIX', 'OTHER']) if device not in ('TARGET', 'STRIP')]
                 if limit is None or 'TARGET' in limit:
                     # Target Leds
                     ack_list.append(self.send('TARGET', self.target_topic, self.target_leds, \
@@ -363,6 +381,9 @@ class Event:
                 if event == 'quit':
                     try:
                         self.mqtt_client.disconnect()
+                        if self.loop_running:
+                            self.mqtt_client.loop_stop()
+                            self.loop_running = False
                     except Exception as ex: # pylint: disable=broad-except
                         self.logs.error(f"Mqtt disconnect error (ignored) : {ex}")
         else:

@@ -2938,8 +2938,20 @@ msgid "nextplayer_music"
 msgstr "Music at the start of each turn"
 
 msgid "idle_light"
-msgstr "Light out of games (strip and target)"
+msgstr "Light out of games (no animations)"
 
-msgid "idle_light_color"
-msgstr "Colour of the light out of games"
+msgid "idle_strip_color"
+msgstr "Strip out of games"
+
+msgid "idle_target_color"
+msgstr "Target out of games"
+
+msgid "idle-off"
+msgstr "Off"
+
+msgid "idle-origin"
+msgstr "Original colours"
+
+msgid "idle-off-target"
+msgstr "Off"
 

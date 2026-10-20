@@ -708,8 +708,20 @@ msgid "nextplayer_music"
 msgstr "Música al empezar cada turno"
 
 msgid "idle_light"
-msgstr "Luz fuera de las partidas (tira y diana)"
+msgstr "Luz fuera de las partidas (sin animaciones)"
 
-msgid "idle_light_color"
-msgstr "Color de la luz fuera de las partidas"
+msgid "idle_strip_color"
+msgstr "Tira fuera de las partidas"
+
+msgid "idle_target_color"
+msgstr "Diana fuera de las partidas"
+
+msgid "idle-off"
+msgstr "Apagada"
+
+msgid "idle-origin"
+msgstr "Colores originales"
+
+msgid "idle-off-target"
+msgstr "Apagada"
 

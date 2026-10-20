@@ -378,8 +378,48 @@ if Config.get_value('SectionGlobals', 'check_for_updates', False):
 # INIT
 ##############
 
+# Strip and target lit out of games (option idle_light) : the colour of each (off : off,
+# origin : the colours of the segments)
+idle_light_on = bool(Config.get_value('SectionGlobals', 'idle_light'))
+idle_strip_color = Config.get_value('SectionGlobals', 'idle_strip_color') or 'white'
+idle_target_color = Config.get_value('SectionGlobals', 'idle_target_color') or 'origin'
+idle_light_lit = False
+
+
+def idle_animation(color, target):
+    '''
+    Animation of the light out of games of a device for this colour option
+    '''
+    if color == 'off':
+        return 'off'
+    if color == 'origin' and target:
+        return 'Background'
+    return f"Light,1,{color},0"
+
+
+def idle_light(on):
+    '''
+    Light of the strip and of the target out of games (option idle_light) : on in the menus,
+    without the animations of the events (menu, wait...) ; off in a game, in the setup
+    screens (LEDs tested one by one) and when leaving. The LED servers keep it (and come back
+    to it after an animation tried in the screen of the animations)
+    '''
+    global idle_light_lit
+    if on and idle_light_on:
+        dispatcher.quiet = True
+        dispatcher.base(target=idle_animation(idle_target_color, True), strip=idle_animation(idle_strip_color, False))
+        idle_light_lit = True
+    elif idle_light_lit:
+        dispatcher.quiet = False
+        dispatcher.base(None, None)
+        dispatcher.publish('off', limit=['TARGET', 'STRIP', 'OTHER'])
+        idle_light_lit = False
+
+
 # Give translations to object rpi
 dispatcher.publish('off', limit=['TARGET', 'STRIP', 'OTHER'])
+# The light out of games at once (the animation of the start is then not played)
+idle_light(True)
 dispatcher.publish('launch', limit=['TARGET', 'STRIP', 'OTHER', 'LIGHT', 'STROBE'])
 
 # Beautiful intro screen
@@ -470,9 +510,6 @@ light_target = bool(Config.get_value('SectionGlobals', 'light_target'))
 light_strip = bool(Config.get_value('SectionGlobals', 'light_strip'))
 illumination_mode = bool(Config.get_value('SectionGlobals', 'illumination_mode'))
 illumination_color = Config.get_value('SectionGlobals', 'illumination_color')
-# Strip and target lit out of games (option idle_light), in this colour
-idle_light_on = bool(Config.get_value('SectionGlobals', 'idle_light'))
-idle_light_color = Config.get_value('SectionGlobals', 'idle_light_color') or 'white'
 pnj_time = int(Config.get_value('SectionGlobals', 'pnj_time'))
 sound_duration = int(Config.get_value('SectionGlobals', 'nextplayer_sound_duration'))
 try:
@@ -487,29 +524,7 @@ logs.debug(f"light_target option is set to : {light_target}")
 logs.debug(f"light_strip option is set to : {light_strip}")
 logs.debug(f"illumination_mode option is set to : {illumination_mode}")
 logs.debug(f"illumination color option is set to : {illumination_color}")
-logs.debug(f"idle_light option is set to : {idle_light_on} ({idle_light_color})")
-
-idle_light_lit = False
-
-
-def idle_light(on):
-    '''
-    Light of the strip and of the target out of games (option idle_light) : on in the menus,
-    off in a game, in the setup screens (LEDs tested one by one) and when leaving. The LED
-    servers come back to it after each animation of the events (menu, wait...)
-    '''
-    global idle_light_lit
-    if on and idle_light_on:
-        dispatcher.base(f"Light,1,{idle_light_color},0")
-        idle_light_lit = True
-    elif idle_light_lit:
-        dispatcher.base(None)
-        dispatcher.publish('off', limit=['TARGET', 'STRIP', 'OTHER'])
-        idle_light_lit = False
-
-
-# After the animation of the start
-idle_light(True)
+logs.debug(f"idle_light option is set to : {idle_light_on} (strip {idle_strip_color}, target {idle_target_color})")
 logs.debug(f"pnj_time option is set to : {pnj_time}ms")
 logs.debug(f"nextplayer_sound_duration option is set to : {sound_duration}ms")
 logs.debug(f"wait_event_time option is set to : {wait_event_time}ms")
@@ -1094,8 +1109,10 @@ try:
                         illumination_mode = bool(Config.get_value('SectionGlobals', 'illumination_mode'))
                         illumination_color = Config.get_value('SectionGlobals', 'illumination_color')
                         idle_light_on = bool(Config.get_value('SectionGlobals', 'idle_light'))
-                        idle_light_color = Config.get_value('SectionGlobals', 'idle_light_color') or 'white'
-                        # The light out of games : on, in its new colour, or off
+                        idle_strip_color = Config.get_value('SectionGlobals', 'idle_strip_color') or 'white'
+                        idle_target_color = Config.get_value('SectionGlobals', 'idle_target_color') or 'origin'
+                        # The light out of games : on, in its new colours, or off
+                        idle_light(False)
                         idle_light(True)
 
                         logs.update_facility(int(Config.get_value('SectionGlobals', 'debuglevel')))

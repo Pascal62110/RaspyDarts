@@ -2513,7 +2513,8 @@ class Screen(pygame.Surface):
                     if special in ['font', 'pattern']:
                         click_zones[str(i)] = self.dropdown_item(i_rect, selected == i, value[1], special=special, FirstLast=FirstLast)
                     if special == 'colors':
-                        click_zones[str(i)] = self.dropdown_item(i_rect, selected == i, value[0], special=special, FirstLast=FirstLast)
+                        click_zones[str(i)] = self.dropdown_item(i_rect, selected == i, value[0], special=special, FirstLast=FirstLast,
+                                                                 label=value[1])
                     else:
                         click_zones[str(i)] = self.dropdown_item(i_rect, selected == i, value[1], FirstLast=FirstLast)
                     i_rect.y = i_rect.bottom
@@ -2547,7 +2548,7 @@ class Screen(pygame.Surface):
             elif key_pressed in ESCAPE_KEYS:
                 return 'escape'
 
-    def dropdown_item(self, rect, selected, value, special=False, FirstLast=None):
+    def dropdown_item(self, rect, selected, value, special=False, FirstLast=None, label=None):
         '''
         Display drop down item
         '''
@@ -2595,7 +2596,8 @@ class Screen(pygame.Surface):
         elif special == 'pattern':
             self.blit_text2(value, rect, text_color, image=f'patterns/{value}')
         else:
-            self.blit_text2(value, rect, text_color)
+            # (a list of colours : the name shown of a value which is not a colour, Off...)
+            self.blit_text2(label if label is not None else value, rect, text_color)
         return (rect.x, rect.y, rect.w, rect.h)
 
     def display_button(self, selected, text, special):
@@ -6121,7 +6123,8 @@ class Screen(pygame.Surface):
 
             if option in ('startpercent', 'nbcol', 'resx', 'resy', 
                     'masterserver', 'endgamestats', 'videosound_multiplier', 'pnj_time',
-                    'exhibition_mode', 'exhibition_items'):
+                    'exhibition_mode', 'exhibition_items', 'illumination_mode', 'illumination_color',
+                    'idle_light_color'):
                 avoid.append([option, customization[option], '', 0, []])
                 continue
 
@@ -6206,9 +6209,16 @@ class Screen(pygame.Surface):
             elif option == 'preferedcategory':
                 option_type = 'dropdown'
                 option_values = [('classic', 'classic'), ('fun', 'fun'), ('sport', 'sport')]
-            elif option in ('illumination_color', 'idle_light_color'):
+            elif option == 'illumination_color':
                 option_type = 'dropdown_colors'
                 option_values = [(val, val) for val in colors_available]
+            elif option in ('idle_strip_color', 'idle_target_color'):
+                # The light out of games : off, the colours of the segments (target), or a colour
+                option_type = 'dropdown_colors'
+                option_values = [('off', self.lang.translate('idle-off-target' if option == 'idle_target_color' else 'idle-off'))]
+                if option == 'idle_target_color':
+                    option_values.append(('origin', self.lang.translate('idle-origin')))
+                option_values += [(val, val) for val in colors_available if val != 'random']
             else:
                 option_type = 'string'
                 option_values = []
@@ -6222,7 +6232,7 @@ class Screen(pygame.Surface):
             
             if option in ('pnj_time', 'nextplayer_sound_duration', 'nextplayer_music', 'releasedartstime', 'onscreenbuttons', 'keeporder', 'videos', \
                 'play_firstname', 'print_dartstroke', 'light_target', 'light_strip', 'waitevent_time', 'competition_mode', \
-                'illumination_mode', 'illumination_color', 'idle_light', 'idle_light_color'):
+                'illumination_mode', 'illumination_color', 'idle_light', 'idle_strip_color', 'idle_target_color'):
                 game_customization.append([option, customization[option], option_type, max_value, option_values, min_value, zero])
             else:
                 general_customization.append([option, customization[option], option_type, max_value, option_values, min_value, zero])

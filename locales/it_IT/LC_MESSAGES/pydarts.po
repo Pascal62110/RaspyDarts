@@ -3392,8 +3392,20 @@ msgid "nextplayer_music"
 msgstr "Musica all’inizio di ogni turno"
 
 msgid "idle_light"
-msgstr "Luce fuori dalle partite (striscia e bersaglio)"
+msgstr "Luce fuori dalle partite (senza animazioni)"
 
-msgid "idle_light_color"
-msgstr "Colore della luce fuori dalle partite"
+msgid "idle_strip_color"
+msgstr "Striscia fuori dalle partite"
+
+msgid "idle_target_color"
+msgstr "Bersaglio fuori dalle partite"
+
+msgid "idle-off"
+msgstr "Spenta"
+
+msgid "idle-origin"
+msgstr "Colori originali"
+
+msgid "idle-off-target"
+msgstr "Spenta"
 

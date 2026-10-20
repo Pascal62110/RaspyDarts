@@ -702,8 +702,20 @@ msgid "nextplayer_music"
 msgstr "Musik zu Beginn jeder Runde"
 
 msgid "idle_light"
-msgstr "Licht außerhalb der Spiele (Streifen und Zielscheibe)"
+msgstr "Licht außerhalb der Spiele (ohne Animationen)"
 
-msgid "idle_light_color"
-msgstr "Farbe des Lichts außerhalb der Spiele"
+msgid "idle_strip_color"
+msgstr "Streifen außerhalb der Spiele"
+
+msgid "idle_target_color"
+msgstr "Zielscheibe außerhalb der Spiele"
+
+msgid "idle-off"
+msgstr "Aus"
+
+msgid "idle-origin"
+msgstr "Originalfarben"
+
+msgid "idle-off-target"
+msgstr "Aus"
 

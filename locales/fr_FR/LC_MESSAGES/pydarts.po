@@ -4026,8 +4026,20 @@ msgid "nextplayer_music"
 msgstr "Musique à chaque début de tour"
 
 msgid "idle_light"
-msgstr "Lumière hors partie (bandeau et cible)"
+msgstr "Lumière hors partie (sans les animations)"
 
-msgid "idle_light_color"
-msgstr "Couleur de la lumière hors partie"
+msgid "idle_strip_color"
+msgstr "Bandeau hors partie"
+
+msgid "idle_target_color"
+msgstr "Cible hors partie"
+
+msgid "idle-off"
+msgstr "Éteint"
+
+msgid "idle-origin"
+msgstr "Couleurs d'origine"
+
+msgid "idle-off-target"
+msgstr "Éteinte"
 
