@@ -2333,7 +2333,9 @@ buildThemes();
 // Au depart (ou rien de change) : les menus du theme ; sinon le travail garde par ce navigateur,
 // avec un bandeau pour repartir des menus du theme
 if (untouched(user)) user = themeMenus();
-else resumed = Object.keys(themeMenus()).length > 0 && JSON.stringify(user) !== JSON.stringify(themeMenus());
+else resumed = stored('loaded') !== '1' && Object.keys(themeMenus()).length > 0 && JSON.stringify(user) !== JSON.stringify(themeMenus());
+// Un fichier que l'on vient de charger pour le modifier (page d'installation) : pas de bandeau
+try { localStorage.removeItem('raspydarts-menus-loaded'); } catch (e) { /* prive */ }
 lastState = JSON.stringify(user);
 screen = stored('screen') || 'main';
 if (!screens().includes(screen)) screen = 'main';

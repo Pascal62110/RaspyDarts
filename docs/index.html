@@ -363,6 +363,7 @@ body.wide main { max-width: 1800px; }
     <p data-t="sm-intro"></p>
     <div class="choicebar">
       <button class="main big" id="menus-make" data-t="sm-make"></button>
+      <button class="main big ghost" id="menus-edit" data-t="sm-edit"></button>
       <button class="main big ghost" id="menus-have" data-t="sm-have"></button>
       <button class="main big ghost" id="menus-skip" data-t="sm-skip"></button>
     </div>
@@ -1052,25 +1053,27 @@ function copyMenus() {
 function offerCopy() {
   // En quittant une etape ou un fichier a ete fait : en garder une copie (rien n'est perdu)
   if (step === 3 && cfgText() && stored('cfg-saved') !== cfgText() && confirm(t('save-before-next-cfg'))) copyCfg();
-  if (step === 4 && ['make', 'own'].includes(stored('menus-choice')) && menusData() && stored('menus-saved') !== menusYaml() &&
+  if (step === 4 && ['make', 'edit', 'own'].includes(stored('menus-choice')) && menusData() && stored('menus-saved') !== menusYaml() &&
       confirm(t('save-before-next-menus'))) copyMenus();
 }
 function updateMenus() {
   const choice = stored('menus-choice') || '';
-  [['make', 'menus-make'], ['own', 'menus-have'], ['skip', 'menus-skip']].forEach(([value, id]) => $(id).classList.toggle('chosen', choice === value));
-  $('menus-editor').classList.toggle('hidden', choice !== 'make');
-  if (choice === 'make' && !$('menus-frame').getAttribute('src')) $('menus-frame').setAttribute('src', 'menus.html?embedded=1');
-  $('menus-savebar').classList.toggle('hidden', !['make', 'own'].includes(choice));
-  $('menus-theme-box').classList.toggle('hidden', !['make', 'own'].includes(choice));
+  [['make', 'menus-make'], ['edit', 'menus-edit'], ['own', 'menus-have'], ['skip', 'menus-skip']].forEach(([value, id]) => $(id).classList.toggle('chosen', choice === value));
+  // Creer, ou modifier un fichier deja fait (charge dans le configurateur) : le configurateur
+  const editing = ['make', 'edit'].includes(choice);
+  $('menus-editor').classList.toggle('hidden', !editing);
+  if (editing && !$('menus-frame').getAttribute('src')) $('menus-frame').setAttribute('src', 'menus.html?embedded=1');
+  $('menus-savebar').classList.toggle('hidden', !['make', 'edit', 'own'].includes(choice));
+  $('menus-theme-box').classList.toggle('hidden', !['make', 'edit', 'own'].includes(choice));
   $('menus-theme').value = menusTheme(true);
   $('menus-theme-name').classList.toggle('hidden', menusTheme(true) !== 'own');
   $('menus-theme-name').value = stored('menus-theme-name') || '';
   $('menus-theme-name').placeholder = t('sm-theme-name');
   $('menus-skipped').classList.toggle('hidden', choice !== 'skip');
   $('menus-own-info').classList.toggle('hidden', choice !== 'own' || !menusData());
-  document.body.classList.toggle('wide', step === 4 && choice === 'make');
+  document.body.classList.toggle('wide', step === 4 && editing);
   // Etape Deposer : les menus, s'il y en a
-  const deposit = ['make', 'own'].includes(choice) && !!menusData();
+  const deposit = ['make', 'edit', 'own'].includes(choice) && !!menusData();
   $('menus-deposit').classList.toggle('hidden', !deposit);
   const picker = 'showDirectoryPicker' in window;
   $('menus-save-sd').classList.toggle('hidden', !picker);
@@ -1078,7 +1081,10 @@ function updateMenus() {
 }
 $('menus-make').addEventListener('click', () => { store('menus-choice', 'make'); updateMenus(); });
 $('menus-skip').addEventListener('click', () => { store('menus-choice', 'skip'); updateMenus(); show(5); });
-$('menus-have').addEventListener('click', () => $('menus-input').click());
+// Un fichier choisi : deposé tel quel (J'ai deja un fichier) ou modifie dans le configurateur
+let menusEditLoaded = false;
+$('menus-have').addEventListener('click', () => { menusEditLoaded = false; $('menus-input').click(); });
+$('menus-edit').addEventListener('click', () => { menusEditLoaded = true; $('menus-input').click(); });
 $('menus-input').addEventListener('change', async () => {
   const file = $('menus-input').files[0];
   $('menus-input').value = '';
@@ -1097,7 +1103,9 @@ $('menus-input').addEventListener('change', async () => {
   }
   delete content.version;
   store('menus-file', JSON.stringify(content));
-  store('menus-choice', 'own');
+  store('menus-choice', menusEditLoaded ? 'edit' : 'own');
+  // Le configurateur part de ce fichier (sans le bandeau « menus repris de ce navigateur »)
+  if (menusEditLoaded) store('menus-loaded', '1');
   $('menus-error').classList.add('hidden');
   $('menus-own-info').textContent = t('sm-own-ok', {name: file.name});
   // Le configurateur deja ouvert le relit (une nouvelle adresse : permis meme hors serveur)
