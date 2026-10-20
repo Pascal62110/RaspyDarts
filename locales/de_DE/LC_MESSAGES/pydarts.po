@@ -701,3 +701,9 @@ msgstr "Leertaste"
 msgid "nextplayer_music"
 msgstr "Musik zu Beginn jeder Runde"
 
+msgid "idle_light"
+msgstr "Licht außerhalb der Spiele (Streifen und Zielscheibe)"
+
+msgid "idle_light_color"
+msgstr "Farbe des Lichts außerhalb der Spiele"
+

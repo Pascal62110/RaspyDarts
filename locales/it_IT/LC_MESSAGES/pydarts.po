@@ -3391,3 +3391,9 @@ msgstr "Spazio"
 msgid "nextplayer_music"
 msgstr "Musica all’inizio di ogni turno"
 
+msgid "idle_light"
+msgstr "Luce fuori dalle partite (striscia e bersaglio)"
+
+msgid "idle_light_color"
+msgstr "Colore della luce fuori dalle partite"
+

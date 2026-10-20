@@ -29,7 +29,24 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe(MQTT_TOPIC)
     print(f"[DEBUG] TargetLeds_Server : Listen {MQTT_TOPIC} on {MQTT_HOST}", flush=True)
 
-def animation(t_event, msg):
+# Light of the background (base:<animation>, sent by the game out of games, option idle_light) :
+# set at once, and set again at the end of each animation (not after one stopped by a new one)
+BASE = None
+
+
+def apply_base():
+    if BASE:
+        animation(None, BASE, True)
+
+
+def animation(t_event, msg, restoring=False):
+    global BASE
+
+    if msg.startswith('base:'):
+        BASE = msg[5:] or None
+        print(f"[DEBUG] TargetLeds_Server : base {BASE}", flush=True)
+        apply_base()
+        return
 
     C = None
 
@@ -86,6 +103,7 @@ def animation(t_event, msg):
     try:
         if animation == 'quit' :
             print("[DEBUG] TargetLeds_Server : Disconnect. Sleep 1s", flush=True)
+            BASE = None
             time.sleep(1)
             client.publish(MQTT_TOPIC + '-ack',"ack")
             client.disconnect()
@@ -199,6 +217,10 @@ def animation(t_event, msg):
     if Ack :
         print(f"[DEBUG] TargetLeds_Server : publish Ack", flush=True)
         client.publish(MQTT_TOPIC,"ack")
+
+    # Back to the light of the background (not after quit, nor when a new message stopped it)
+    if BASE and not restoring and not msg.startswith('quit') and (t_event is None or not t_event.is_set()):
+        apply_base()
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):

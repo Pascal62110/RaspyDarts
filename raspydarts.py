@@ -470,6 +470,9 @@ light_target = bool(Config.get_value('SectionGlobals', 'light_target'))
 light_strip = bool(Config.get_value('SectionGlobals', 'light_strip'))
 illumination_mode = bool(Config.get_value('SectionGlobals', 'illumination_mode'))
 illumination_color = Config.get_value('SectionGlobals', 'illumination_color')
+# Strip and target lit out of games (option idle_light), in this colour
+idle_light_on = bool(Config.get_value('SectionGlobals', 'idle_light'))
+idle_light_color = Config.get_value('SectionGlobals', 'idle_light_color') or 'white'
 pnj_time = int(Config.get_value('SectionGlobals', 'pnj_time'))
 sound_duration = int(Config.get_value('SectionGlobals', 'nextplayer_sound_duration'))
 try:
@@ -484,6 +487,29 @@ logs.debug(f"light_target option is set to : {light_target}")
 logs.debug(f"light_strip option is set to : {light_strip}")
 logs.debug(f"illumination_mode option is set to : {illumination_mode}")
 logs.debug(f"illumination color option is set to : {illumination_color}")
+logs.debug(f"idle_light option is set to : {idle_light_on} ({idle_light_color})")
+
+idle_light_lit = False
+
+
+def idle_light(on):
+    '''
+    Light of the strip and of the target out of games (option idle_light) : on in the menus,
+    off in a game, in the setup screens (LEDs tested one by one) and when leaving. The LED
+    servers come back to it after each animation of the events (menu, wait...)
+    '''
+    global idle_light_lit
+    if on and idle_light_on:
+        dispatcher.base(f"Light,1,{idle_light_color},0")
+        idle_light_lit = True
+    elif idle_light_lit:
+        dispatcher.base(None)
+        dispatcher.publish('off', limit=['TARGET', 'STRIP', 'OTHER'])
+        idle_light_lit = False
+
+
+# After the animation of the start
+idle_light(True)
 logs.debug(f"pnj_time option is set to : {pnj_time}ms")
 logs.debug(f"nextplayer_sound_duration option is set to : {sound_duration}ms")
 logs.debug(f"wait_event_time option is set to : {wait_event_time}ms")
@@ -916,6 +942,8 @@ try:
 
                 elif menu == 'setup':
                     # SETUP MENU
+                    # The LEDs are tested and set one by one here : no light out of games
+                    idle_light(False)
                     setup = display.setup_menu()
 
                     while setup != 'escape':
@@ -1012,6 +1040,7 @@ try:
                                 camera = ccamera.Camera(Config, display, logs)
 
                         setup = display.setup_menu()
+                    idle_light(True)
 
                 elif menu == 'firstname-bank':
                     # Firstnames bank menu
@@ -1064,6 +1093,10 @@ try:
                         competition_mode = bool(Config.get_value('SectionGlobals', 'competition_mode'))
                         illumination_mode = bool(Config.get_value('SectionGlobals', 'illumination_mode'))
                         illumination_color = Config.get_value('SectionGlobals', 'illumination_color')
+                        idle_light_on = bool(Config.get_value('SectionGlobals', 'idle_light'))
+                        idle_light_color = Config.get_value('SectionGlobals', 'idle_light_color') or 'white'
+                        # The light out of games : on, in its new colour, or off
+                        idle_light(True)
 
                         logs.update_facility(int(Config.get_value('SectionGlobals', 'debuglevel')))
                         display.wait_event_time = int(Config.get_value('SectionGlobals', 'waitevent_time'))
@@ -1477,7 +1510,8 @@ try:
             data['nb_players'] = players_count
             game_id = scores.add_game(data)
             logs.debug(f"Local game id is : {game_id}")
-            # Reinit leds
+            # Reinit leds (no light out of games during the game)
+            idle_light(False)
             dispatcher.publish('newgame', limit=['TARGET', 'STRIP', 'OTHER', 'LIGHT', 'STROBE'])
             rpi.target_leds = ''
             rpi.target_leds_blink = ''
@@ -2477,6 +2511,8 @@ try:
 
             # On eteint la cible si besoin
             dispatcher.publish('off', limit=['TARGET', 'STRIP', 'OTHER'])
+            # Out of the game : the light out of games again
+            idle_light(True)
 
             # Grab stats from the game and write them in local DB
             if last_game_screen == 'stats':
@@ -2531,6 +2567,8 @@ finally:
     rpi.light_toys(['LIGHT_NEXTPLAYER', 'LIGHT_BACK', 'LIGHT_CELEBRATION', 'LIGHT_NAVIGATE'], \
             False)
 
+    # Leaving : the light out of games off (the LEDs do not stay lit on the desktop)
+    idle_light(False)
     display.message(["Shutting down servers"], wait=0, refresh=True)
 
     logs.debug("Sending quit signal to external servers")

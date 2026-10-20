@@ -70,6 +70,17 @@ class Event:
     def add_rpi(self, rpi):
         self.rpi = rpi
 
+    def base(self, animation=None):
+        """
+        Light of the background of the strip and of the target (an animation, 'Light,1,white,0') :
+        the LED servers come back to it after each animation ; None : no more
+        """
+        if self.mqtt_client is None:
+            return
+        for available, topic in ((self.target_leds, self.target_topic), (self.strip_leds, self.strip_topic)):
+            if available:
+                self.mqtt_publish(topic, f"base:{animation or ''}")
+
     def get_events(self):
         """
         returns list of available events

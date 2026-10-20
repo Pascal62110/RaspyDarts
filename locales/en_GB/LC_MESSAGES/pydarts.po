@@ -2937,3 +2937,9 @@ msgstr "Space"
 msgid "nextplayer_music"
 msgstr "Music at the start of each turn"
 
+msgid "idle_light"
+msgstr "Light out of games (strip and target)"
+
+msgid "idle_light_color"
+msgstr "Colour of the light out of games"
+

@@ -4025,3 +4025,9 @@ msgstr "Espace"
 msgid "nextplayer_music"
 msgstr "Musique à chaque début de tour"
 
+msgid "idle_light"
+msgstr "Lumière hors partie (bandeau et cible)"
+
+msgid "idle_light_color"
+msgstr "Couleur de la lumière hors partie"
+

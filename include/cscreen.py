@@ -3383,13 +3383,21 @@ class Screen(pygame.Surface):
         self.screen.blit(composite, target)
         return (rect.x, rect.y, rect.width, rect.height)
 
-    def menu_item(self, item, value, space=0, align=None, collapsed=False, exit=True, special=None, border_color=None, valid=None, item_per_line=None, limit_height=None, divider=None, tabs=False):
+    def menu_item(self, item, value, space=0, align=None, collapsed=False, exit=True, special=None, border_color=None, valid=None, item_per_line=None, limit_height=None, divider=None, tabs=False, column=None):
         '''
         Display menu's item (new version)
 
         item is : (item_id, total, selected)
         value is : (shortcut, text, button_type, value)
+        column : (column 0 or 1, rows of a column, row in it) : the items in two columns
         '''
+        is_selected = item[0] == item[2]
+        if column is not None:
+            # Its place in its column : the rows of a column instead of all the items
+            column_index, rows, row = column
+            start = item[0] - row
+            # The selected one, in this column (else none : the rounded corners of the others)
+            item = (row, rows, item[2] - start if start < item[2] <= start + rows else 0)
 
         padding = self.margin
         vertical_margin = 0 # Margin between 2 lines
@@ -3429,7 +3437,12 @@ class Screen(pygame.Surface):
 
         height = min(self.res_y_15, int(max_y / item[1]))
 
-        if align in ('Full', 'Values'):
+        if column is not None:
+            # Two columns side by side, from 1/16 to 15/16 of the screen
+            gap = int(self.res_x_16 / 2)
+            width = int((14 * self.res_x_16 - gap) / 2)
+            pos_x = int(self.res_x_16 + column_index * (width + gap))
+        elif align in ('Full', 'Values'):
             pos_x = int(3 * self.res_x_16)
             width = int(self.res['x'] - pos_x - height - pos_x)
         elif align == 'Left':
@@ -3447,7 +3460,7 @@ class Screen(pygame.Surface):
 
         pos_y = min_y + (vertical_margin + height) * (item[0] + space - 1)
 
-        if item[0] == item[2]:
+        if is_selected:
             shortcut_bg_color = self.colorset['menu-selected']
             shortcut_text_color = self.colorset['menu-text-black']
             value_bg_color = self.colorset['menu-selected']
@@ -3476,7 +3489,7 @@ class Screen(pygame.Surface):
             padding = 0
             corners = self.compute_corners(item[0], item[1], item[2], collapsed)
 
-        if valid is False and item[0] != item[2]:
+        if valid is False and not is_selected:
             # Button which does nothing (empty favorite) : greyed
             text_bg_color = self.colorset['menu-inactive']
             text_text_color = value_text_color = (150, 150, 150)
@@ -3497,7 +3510,8 @@ class Screen(pygame.Surface):
         else:
             text = (text_bg_color, value[1], text_text_color)
             value = (value_bg_color, value[3], value_text_color)
-            self.svt_item(shortcut, value, text, rect, padding, border_size, border_color)
+            # In a column : a wider place for the value (half the width of a line)
+            self.svt_item(shortcut, value, text, rect, padding, border_size, border_color, ratio=0.3 if column is not None else 0.2)
 
         return (pos_x, pos_y, width, height)
 
@@ -6112,7 +6126,7 @@ class Screen(pygame.Surface):
                 continue
 
             if option in ('endgamestats', 'bypass-stats', 'onscreenbuttons', 'fullscreen',
-                    'keeporder', 'play_firstname', 'nextplayer_music', 'print_dartstroke', 'light_target', 'light_strip',
+                    'keeporder', 'play_firstname', 'nextplayer_music', 'print_dartstroke', 'light_target', 'light_strip', 'idle_light',
                     'competition_mode', 'exhibition_mode', 'illumination_mode', 'fast_games_mode', 'only_favorites_games_mode', 'check_for_updates'):  
                 option_type = 'check'
                 option_values = []
@@ -6192,7 +6206,7 @@ class Screen(pygame.Surface):
             elif option == 'preferedcategory':
                 option_type = 'dropdown'
                 option_values = [('classic', 'classic'), ('fun', 'fun'), ('sport', 'sport')]
-            elif option == 'illumination_color':
+            elif option in ('illumination_color', 'idle_light_color'):
                 option_type = 'dropdown_colors'
                 option_values = [(val, val) for val in colors_available]
             else:
@@ -6208,7 +6222,7 @@ class Screen(pygame.Surface):
             
             if option in ('pnj_time', 'nextplayer_sound_duration', 'nextplayer_music', 'releasedartstime', 'onscreenbuttons', 'keeporder', 'videos', \
                 'play_firstname', 'print_dartstroke', 'light_target', 'light_strip', 'waitevent_time', 'competition_mode', \
-                'illumination_mode', 'illumination_color'):
+                'illumination_mode', 'illumination_color', 'idle_light', 'idle_light_color'):
                 game_customization.append([option, customization[option], option_type, max_value, option_values, min_value, zero])
             else:
                 general_customization.append([option, customization[option], option_type, max_value, option_values, min_value, zero])
@@ -6236,8 +6250,12 @@ class Screen(pygame.Surface):
             shortcuts.append(f'F0')
 
             index = 0
+            rows = (nb_elements + 1) // 2
             for option in selected_customization:
                 index += 1
+                # Two columns : the first half on the left, the other on the right ; down goes
+                # on from the bottom of the left one to the top of the right one
+                column = (0, rows, index) if index <= rows else (1, rows, index - rows)
 
                 if option[2] == 'check' and not option[1]:
                     value = False
@@ -6262,9 +6280,9 @@ class Screen(pygame.Surface):
                         value = int(int(value) / option[6])
                     else:
                         value = int(value) / option[6]
-                    click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), (f'F{index}', option[0], Cbtn, value), align='Full', tabs=True)
+                    click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), (f'F{index}', option[0], Cbtn, value), align='Full', tabs=True, column=column)
                 else:
-                    click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), (f'F{index}', option[0], Cbtn, value), align='Full', tabs=True)
+                    click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), (f'F{index}', option[0], Cbtn, value), align='Full', tabs=True, column=column)
 
                 shortcuts.append(f'F{index}')
                 cursor.append(click_zones[f'F{index}'])

@@ -57,6 +57,10 @@ DefaultConfig['SectionGlobals'] = {
     'print_dartstroke': True,
     'light_target': False,
     'light_strip': False,
+    # Strip and target lit all the time out of games (in this colour) ; the animations of the
+    # events (menu...) still play, then the light comes back
+    'idle_light': False,
+    'idle_light_color': 'white',
     'netgamecreator': 'Raspydarts',
     'debuglevel': 0,
     'exhibition_mode': False,
@@ -1272,6 +1276,10 @@ class Config:
         self.conf += f"light_target:{Global['light_target']}\n"
         self.conf += "### Light strip according to players's color\n"
         self.conf += f"light_strip:{Global['light_strip']}\n"
+        self.conf += "### Strip and target lit out of games (the animations of the events still play)\n"
+        self.conf += f"idle_light:{Global['idle_light']}\n"
+        self.conf += "### Colour of this light\n"
+        self.conf += f"idle_light_color:{Global['idle_light_color']}\n"
         self.conf += "### Wait event delay (in seconds)\n"
         self.conf += f"waitevent_time:{Global['waitevent_time']}\n"
         self.conf += "### Exhibition mode\n"
