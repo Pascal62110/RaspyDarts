@@ -998,7 +998,22 @@ class StatisticsScreen:
                         curr_x_l3 += lbl_mpr_val.get_width()
                         has_stat = True
                         
-                    elif game_lower in ["321_zlip", "batard", "highscore", "ho-one", "shoot-out", "up_and_down", "sabotage", "chaos", "low_score"]:
+                    elif game_lower in ["321_zlip", "batard", "highscore", "shoot-out", "up_and_down", "sabotage", "chaos", "low_score"]:
+                        ppr_val = self.stats.get(f"moyenne_ppr_{game}", self.stats.get(f"ppr_moyen_{game}", 0.0))
+                        ppd_val = ppr_val #missmach entre ppdet ppr entre ho-one et autres, - ne pas divise par / 3.0  # Conversion PPR -> PPD (divisé par 3)
+                        
+                        lbl_ppd_label = text_font.render("PPD : ", True, (210, 210, 210))
+                        formatted_ppd = f"{ppd_val:.2f}".replace('.', ',')
+                        lbl_ppd_val = text_font.render(f"{formatted_ppd}", True, (0, 220, 255))
+                        
+                        self.screen.blit(lbl_ppd_label, (curr_x_l3, line3_y))
+                        curr_x_l3 += lbl_ppd_label.get_width()
+                        self.screen.blit(lbl_ppd_val, (curr_x_l3, line3_y))
+                        curr_x_l3 += lbl_ppd_val.get_width()
+                        has_stat = True
+
+
+                    elif game_lower in ["ho-one"]:
                         ppr_val = self.stats.get(f"moyenne_ppr_{game}", self.stats.get(f"ppr_moyen_{game}", 0.0))
                         ppd_val = ppr_val / 3.0  # Conversion PPR -> PPD (divisé par 3)
                         
@@ -1011,6 +1026,7 @@ class StatisticsScreen:
                         self.screen.blit(lbl_ppd_val, (curr_x_l3, line3_y))
                         curr_x_l3 += lbl_ppd_val.get_width()
                         has_stat = True
+
 
                     if has_stat:
                         lbl_sep2 = text_font.render("  •  ", True, (210, 210, 210))

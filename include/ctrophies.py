@@ -39,7 +39,7 @@ def play_trophy_sound():
         print(f"[AVERTISSEMENT] Impossible de lire le son du trophée : {e}")
 
 def show_trophy_popup(trophy_id):
-    """Affiche un pop-up visuel temporaire du trophée débloqué sur l'écran."""
+    """Affiche un pop-up visuel temporaire du trophée débloqué au centre de l'écran."""
     if not _DISPLAY_INSTANCE or not hasattr(_DISPLAY_INSTANCE, 'screen'):
         return
 
@@ -48,11 +48,11 @@ def show_trophy_popup(trophy_id):
         screen_w = screen.get_width()
         screen_h = screen.get_height()
 
-        # Dimensions et position du pop-up (en haut au centre)
-        popup_w = int(screen_w * 0.45)
-        popup_h = int(screen_h * 0.12)
+        # Dimensions et position du pop-up (centré sur l'écran)
+        popup_w = int(screen_w * 0.65)
+        popup_h = int(screen_h * 0.22)
         popup_x = (screen_w - popup_w) // 2
-        popup_y = int(screen_h * 0.04)
+        popup_y = (screen_h - popup_h) // 2  # Centrage vertical exact
 
         # Surface du pop-up avec fond sombre et semi-transparent
         popup_surface = pygame.Surface((popup_w, popup_h))
@@ -61,21 +61,22 @@ def show_trophy_popup(trophy_id):
 
         screen.blit(popup_surface, (popup_x, popup_y))
         # Cadre doré élégant
-        pygame.draw.rect(screen, (255, 215, 0), (popup_x, popup_y, popup_w, popup_h), 3)
+        pygame.draw.rect(screen, (255, 215, 0), (popup_x, popup_y, popup_w, popup_h), 4)
 
-        # Polices de texte
-        font_title = pygame.font.SysFont("Impact", int(popup_h * 0.35))
-        font_desc = pygame.font.SysFont("Arial", int(popup_h * 0.28), bold=True)
+        # Polices de texte ajustées à la taille du pop-up
+        font_title = pygame.font.SysFont("Impact", int(popup_h * 0.30))
+        font_desc = pygame.font.SysFont("Arial", int(popup_h * 0.25), bold=True)
 
-        title_surf = font_title.render("🏆 NOUVEAU TROPHÉE ! 🏆", True, (255, 215, 0))
+        # Suppression des emojis pour éviter le carré/croix
+        title_surf = font_title.render("!!!   NOUVEAU TROPHEE   !!!", True, (255, 215, 0))
         
         # Nettoyage de l'ID du trophée pour un affichage plus propre
         clean_name = str(trophy_id).replace("_", " ")
         desc_surf = font_desc.render(clean_name, True, (255, 255, 255))
 
-        # Centrage des textes
-        screen.blit(title_surf, (popup_x + (popup_w - title_surf.get_width()) // 2, popup_y + int(popup_h * 0.15)))
-        screen.blit(desc_surf, (popup_x + (popup_w - desc_surf.get_width()) // 2, popup_y + int(popup_h * 0.55)))
+        # Centrage des textes à l'intérieur du pop-up
+        screen.blit(title_surf, (popup_x + (popup_w - title_surf.get_width()) // 2, popup_y + int(popup_h * 0.20)))
+        screen.blit(desc_surf, (popup_x + (popup_w - desc_surf.get_width()) // 2, popup_y + int(popup_h * 0.58)))
 
         pygame.display.update()
         
