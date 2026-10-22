@@ -4139,3 +4139,9 @@ msgstr "Joueurs favoris et banque de prénoms : vert = pris, rose = laissé"
 msgid "favorite-count"
 msgstr "Nombre de joueurs du favori"
 
+msgid "favorite-edit-players"
+msgstr "Modifier les joueurs"
+
+msgid "player-exists"
+msgstr "Ce nom est déjà dans la liste"
+

@@ -3051,3 +3051,9 @@ msgstr "Favorite players and bank of firstnames: green = taken, pink = left"
 msgid "favorite-count"
 msgstr "Number of players of the favorite"
 
+msgid "favorite-edit-players"
+msgstr "Change the players"
+
+msgid "player-exists"
+msgstr "This name is already in the list"
+

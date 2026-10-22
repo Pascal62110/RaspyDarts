@@ -815,3 +815,9 @@ msgstr "Lieblingsspieler und Vornamenbank: grün = genommen, rosa = weggelassen"
 msgid "favorite-count"
 msgstr "Spielerzahl des Favoriten"
 
+msgid "favorite-edit-players"
+msgstr "Spieler ändern"
+
+msgid "player-exists"
+msgstr "Dieser Name ist bereits in der Liste"
+

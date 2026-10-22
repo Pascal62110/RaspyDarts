@@ -2003,7 +2003,8 @@ class Screen(pygame.Surface):
                 if bank is None or len(bank) == 0 or len(bank[0]) == 0:
                     players.append(f'{new_player}')
                 else:
-                    missing_players = [(f'{player}', f'{player}') for player in bank if player not in players] + [(new_player, new_player)]
+                    missing_players = [(f'{player}', f'{player}') for player in bank
+                                       if player.casefold() not in [name.casefold() for name in players]] + [(new_player, new_player)]
 
                     if len(missing_players) > 1:
                         new_player = self.dropdown(int(6.5 * self.res_x_16 ), int(2.5 * self.res_y_16), missing_players)
@@ -2080,7 +2081,16 @@ class Screen(pygame.Surface):
                     tmp = self.input_value_item('string', players[selected - 1], 1, 12, text='player-name')
 
                 if tmp != '' and tmp != 'escape':
-                    players[selected - 1] = tmp[0].upper() + tmp[1::]
+                    name = tmp.strip()
+                    name = name[:1].upper() + name[1:]
+                    others = [player.casefold() for index, player in enumerate(players) if index != selected - 1]
+                    if not name:
+                        pass
+                    elif name.casefold() in others:
+                        # The same name twice (Rémi, rémi) : refused
+                        self.message([self.lang.translate('player-exists')], 2000, 'menu-ko', 'middle', 'big')
+                    else:
+                        players[selected - 1] = name
 
 
     def blit_border(self, rect, border_color, border_size, corners, border_radius=None, alpha=None):
@@ -3816,22 +3826,33 @@ class Screen(pygame.Surface):
 
     def numbered_favorite_menu(self, slot, favorite):
         '''
-        Screen Jeux favoris : a numbered favorite of the game chosen, its options changed or
-        removed (the others are kept)
+        Screen Jeux favoris : a numbered favorite of the game chosen, its options or its players
+        changed, or removed (the others are kept)
         '''
         game = favorite['game'].replace('_', ' ')
         edit = {'id': 'edit', 'action': 'edit', 'text': 'favorite-edit-options', 'shortcut': 'F1'}
-        remove = {'id': 'remove', 'action': 'remove', 'text': 'favorite-numbered-remove', 'shortcut': 'F2'}
+        players = {'id': 'players', 'action': 'players', 'text': 'favorite-edit-players', 'shortcut': 'F2',
+                   'details': [self.favorite_players_text(favorite)]}
+        remove = {'id': 'remove', 'action': 'remove', 'text': 'favorite-numbered-remove', 'shortcut': 'F3'}
         back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
+        buttons = [edit, players, remove, back]
         title = f"{game} · {self.favorite_text(slot[3:], favorite['options'])}"
         while True:
-            choice = self.run_menu('favorite_game', [edit, remove, back], [edit, remove, back], title=title).get('id')
+            choice = self.run_menu('favorite_game', buttons, buttons, title=title).get('id')
             if choice == 'back':
                 return
             try:
                 if choice == 'remove':
                     self.favorites().remove(slot)
                     self.message([f"{self.lang.translate('favorite-removed')} {slot[3:]}"], 1500, None, 'middle', 'big')
+                    return
+                if choice == 'players':
+                    chosen = self.favorite_players_choice(game, favorite)
+                    if chosen is None:
+                        continue
+                    mode, count, names = chosen
+                    self.favorites().save(slot, game, favorite['options'], count, mode, names)
+                    self.message([f"{self.lang.translate('favorite-saved')} {slot[3:]}"], 1500, None, 'middle', 'big')
                     return
                 options = self.favorite_options_screen(game, favorite['options'] or None)
                 if options is None:
@@ -3887,20 +3908,22 @@ class Screen(pygame.Surface):
         The players the borne knows : the favorite players, then those of the bank of
         firstnames (Divers > Banque de prénoms)
         '''
-        names = list(self.favorite_players())
         bank = self.config.get_value('SectionAdvanced', 'localplayers', False, None, split=',') or []
-        for name in [str(name).strip() for name in bank]:
-            if name and name not in names:
+        names = []
+        # The same name once (Rémi, rémi, ' Rémi')
+        for name in [str(name).strip() for name in list(self.favorite_players()) + list(bank)]:
+            if name and name.casefold() not in [known.casefold() for known in names]:
                 names.append(name)
         return names
 
-    def pick_favorite_players(self, names):
+    def pick_favorite_players(self, names, current=None):
         '''
-        The players of a favorite chosen among those the borne knows (the favorite players are
-        taken at first) : green taken, pink left, as the favorite games. None : back
+        The players of a favorite chosen among those the borne knows (taken at first : those
+        of the favorite changed, else the favorite players) : green taken, pink left, as the
+        favorite games. None : back
         '''
-        favorites = self.favorite_players()
-        chosen = [name for name in names if name in favorites]
+        taken = current if current else self.favorite_players()
+        chosen = [name for name in names if name in taken]
         nb_elements = len(names)
         selected = 1
         old_selection = None
@@ -6916,18 +6939,6 @@ class Screen(pygame.Surface):
                 taken[name] = what
             slots.append({'id': name, 'action': f'favorite:{name}', 'text': f"{number} : {what}", 'shortcut': f'F{number}'})
         free = next((slot['id'] for slot in slots if slot['id'] not in taken), None)
-        names = self.known_players()
-        modes = []
-        if names:
-            # Chosen among the favorite players and the bank of firstnames
-            modes.append({'id': 'choose', 'action': 'favorite:choose', 'shortcut': 'F1',
-                          'text': self.lang.translate('favorite-choose')})
-        modes.append({'id': 'generic', 'action': 'favorite:generic', 'shortcut': f'F{len(modes) + 1}',
-                      'text': self.lang.translate('favorite-generic')})
-        modes.append({'id': 'last', 'action': 'favorite:last', 'shortcut': f'F{len(modes) + 1}',
-                      'text': self.lang.translate('favorite-last')})
-        modes.append({'id': 'ask', 'action': 'favorite:ask', 'shortcut': f'F{len(modes) + 1}',
-                      'text': self.lang.translate('favorite-ask')})
         # Menus of their own (files of menus : favorite_save, favorite_players), not the look
         # of the screen of the options
         previous = self.current_look
@@ -6941,27 +6952,56 @@ class Screen(pygame.Surface):
                 if slot['id'] not in taken or self.ask_yes_no(
                         f"{self.lang.translate('favorite-replace')} {slot['id'][3:]} ({taken[slot['id']]}) ?"):
                     break
-            # Back in the choice of the players or of their number : back to this question
-            while True:
-                mode = self.run_menu('favorite_players', modes + [back], modes + [back])
-                if mode.get('id') == 'back':
-                    return False
-                players = []
-                count = 1
-                if mode['id'] == 'choose':
-                    players = self.pick_favorite_players(names)
-                    count = len(players or [])
-                elif mode['id'] in ('generic', 'last'):
-                    count = self.favorite_count(game, generic=mode['id'] == 'generic')
-                if players is not None and count is not None:
-                    break
-            favorites.save(slot['id'], game, options, count, mode['id'], players)
+            chosen = self.favorite_players_choice(game)
+            if chosen is None:
+                return False
+            mode, count, players = chosen
+            favorites.save(slot['id'], game, options, count, mode, players)
             self.message([f"{self.lang.translate('favorite-saved')} {slot['id'][3:]}"], 1500, None, 'middle', 'big')
             return True
         except Exception as error:    # pylint: disable=broad-except
             self.logs.error(f"Favorites : not saved ({error})")
             self.message([self.lang.translate('favorite-not-saved')], 2500, 'menu-ko', 'middle', 'big')
             return False
+        finally:
+            self.current_look = previous
+
+    def favorite_players_choice(self, game, current=None):
+        '''
+        How the players of a numbered favorite are chosen : (mode, count, players), None : back.
+        current : the favorite changed (its choice selected first)
+        '''
+        names = self.known_players()
+        back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
+        modes = []
+        if names:
+            # Chosen among the favorite players and the bank of firstnames
+            modes.append({'id': 'choose', 'action': 'favorite:choose', 'shortcut': 'F1',
+                          'text': self.lang.translate('favorite-choose')})
+        modes.append({'id': 'generic', 'action': 'favorite:generic', 'shortcut': f'F{len(modes) + 1}',
+                      'text': self.lang.translate('favorite-generic')})
+        modes.append({'id': 'last', 'action': 'favorite:last', 'shortcut': f'F{len(modes) + 1}',
+                      'text': self.lang.translate('favorite-last')})
+        modes.append({'id': 'ask', 'action': 'favorite:ask', 'shortcut': f'F{len(modes) + 1}',
+                      'text': self.lang.translate('favorite-ask')})
+        previous = self.current_look
+        self.current_look = None
+        try:
+            # Back in the choice of the players or of their number : back to this question
+            while True:
+                mode = self.run_menu('favorite_players', modes + [back], modes + [back],
+                                     initial=current['mode'] if current else None)
+                if mode.get('id') == 'back':
+                    return None
+                players = []
+                count = 1
+                if mode['id'] == 'choose':
+                    players = self.pick_favorite_players(names, current['names'] if current else None)
+                    count = len(players or [])
+                elif mode['id'] in ('generic', 'last'):
+                    count = self.favorite_count(game, generic=mode['id'] == 'generic')
+                if players is not None and count is not None:
+                    return mode['id'], count, players
         finally:
             self.current_look = previous
 

@@ -821,3 +821,9 @@ msgstr "Jugadores favoritos y banco de nombres: verde = elegido, rosa = no"
 msgid "favorite-count"
 msgstr "Número de jugadores del favorito"
 
+msgid "favorite-edit-players"
+msgstr "Modificar los jugadores"
+
+msgid "player-exists"
+msgstr "Este nombre ya está en la lista"
+
