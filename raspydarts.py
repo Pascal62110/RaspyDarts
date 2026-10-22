@@ -1254,6 +1254,8 @@ try:
                     try:
                         playersOk = choosed_game.check_players_allowed(players_count)
                         if not playersOk:
+                            # Its favorite's options are not kept for the next game chosen
+                            favorite_options = None
                             display.message([f"{Lang.translate('bad-numberofplayers')}"], 2500, 'menu-ko', 'middle', 'big')
                         else:
                             logs.debug(f"Ok, {players_count} players allowed")

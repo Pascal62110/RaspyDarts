@@ -3736,15 +3736,18 @@ class Screen(pygame.Surface):
         name = game.replace(' ', '_')
         back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
         while True:
-            # Its favorites : without number, then numbered
-            items = [{'id': 'new', 'action': 'new', 'text': 'favorite-add-options'},
-                     {'id': 'plain', 'action': 'plain', 'text': 'favorite-add-plain'}]
-            for position, entry in enumerate(unnumbered):
-                if entry['game'] == name:
-                    items.append({'id': f'list{position}', 'action': 'favorite', 'text': self.favorite_text(None, entry['options'])})
+            # Its favorites : without number, then numbered (their options under the list when
+            # selected)
             numbered = dict((slot, favorite) for slot, favorite in self.favorites().numbered() if favorite['game'] == name)
-            for slot, favorite in numbered.items():
-                items.append({'id': slot, 'action': 'favorite', 'text': self.favorite_text(slot[3:], favorite['options'])})
+            favorites = [(f'list{position}', None, entry['options']) for position, entry in enumerate(unnumbered) if entry['game'] == name]
+            favorites += [(slot, slot[3:], favorite['options']) for slot, favorite in numbered.items()]
+            items = [{'id': 'new', 'action': 'new', 'text': 'favorite-add-options'}]
+            # Without options : one for a game (they would be the same)
+            if all(options for _, _, options in favorites):
+                items.append({'id': 'plain', 'action': 'plain', 'text': 'favorite-add-plain'})
+            for ident, number, options in favorites:
+                items.append({'id': ident, 'action': 'favorite', 'text': self.favorite_text(number, options),
+                              'details': self.favorite_options_lines(game, options)})
             for number, item in enumerate(items, 1):
                 item['shortcut'] = f'F{number}'
             choice = self.run_menu('favorite_game', items + [back], items + [back], title=game).get('id')
@@ -3762,10 +3765,6 @@ class Screen(pygame.Surface):
                 if button is None:
                     continue
                 if button and self.new_numbered_favorite(game, options):
-                    continue
-                if not options and any(entry['game'] == name and not entry['options'] for entry in unnumbered):
-                    # The same one is there : no other
-                    self.message([self.lang.translate('favorite-exists')], 2000, None, 'middle', 'big')
                     continue
                 unnumbered = self.save_unnumbered(unnumbered + [{'game': name, 'options': options}])
             elif choice.startswith('list'):
@@ -3854,11 +3853,72 @@ class Screen(pygame.Surface):
 
     def new_numbered_favorite(self, game, options):
         '''
-        A numbered favorite of a game saved (options {} : chosen at its launch), the favorite
-        players as its players. False : not saved
+        A numbered favorite of a game saved (options {} : chosen at its launch). False : not
+        saved
         '''
-        names = self.favorite_players()
-        return self.favorite_save(game, options, len(names) or 1, names)
+        return self.favorite_save(game, options)
+
+    def pick_favorite_players(self, names):
+        '''
+        The players of a favorite chosen among the favorite players (all at first) : validating
+        one takes or leaves it. None : back
+        '''
+        chosen = list(names)
+        back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
+        done = {'id': 'done', 'action': 'done', 'text': 'validate', 'footer': 'right', 'shortcut': 'space'}
+        current = None
+        while True:
+            items = []
+            for index, name in enumerate(names, 1):
+                taken = self.lang.translate('yes' if name in chosen else 'no')
+                item = {'id': f'player{index}', 'action': 'player', 'text': f"{name} : {taken}"}
+                if index <= 9:
+                    item['shortcut'] = f'F{index}'
+                items.append(item)
+            # Validate : at least one player
+            done['unavailable'] = not chosen
+            choice = self.run_menu('favorite_players', items + [back, done], items + [back, done], initial=current,
+                                   title=self.lang.translate('favorite-players'),
+                                   subtitle=self.lang.translate('favorite-pick-sub')).get('id')
+            if choice == 'back':
+                return None
+            if choice == 'done':
+                # In the order of the favorite players
+                return [name for name in names if name in chosen]
+            current = choice
+            name = names[int(choice[6:]) - 1]
+            if name in chosen:
+                chosen.remove(name)
+            else:
+                chosen.append(name)
+
+    def favorite_count(self, game, generic=False):
+        '''
+        Number of players of a favorite (generic : Joueur 1, Joueur 2... written on its
+        buttons, else the last players), among those its game allows. None : back
+        '''
+        try:
+            limits = self.config.get_value('NbOfPlayersPerGame', game.replace(' ', '_'))
+            low, high = max(1, int(limits[0])), max(1, int(limits[1]))
+        except Exception:    # pylint: disable=broad-except
+            low, high = 1, 8
+        if low == high:
+            return low
+        back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
+        items = []
+        for count in range(low, min(high, 12) + 1):
+            text = str(count)
+            if generic:
+                player = self.lang.translate('favorite-player')
+                names = [f"{player} {index}" for index in range(1, count + 1)]
+                text = ', '.join(names) if count <= 4 else f"{names[0]} … {names[-1]}"
+            item = {'id': f'count{count}', 'action': 'count', 'text': text}
+            if count <= 9:
+                item['shortcut'] = f'F{count}'
+            items.append(item)
+        choice = self.run_menu('favorite_players', items + [back], items + [back],
+                               title=self.lang.translate('favorite-count')).get('id')
+        return None if choice == 'back' else int(choice[5:])
 
     def display_changelog(self, version):
         '''
@@ -6774,7 +6834,7 @@ class Screen(pygame.Surface):
         names = self.config.get_value('Favorites', 'firstnames', False, None, split=',') or []
         return [str(name).strip() for name in names if str(name).strip()]
 
-    def favorite_save(self, game, options, count, players):
+    def favorite_save(self, game, options):
         '''
         A favorite game and its options placed on a button fav1... of the main menu, with
         the number of players and how they are chosen (section 13). False : not saved
@@ -6791,11 +6851,12 @@ class Screen(pygame.Surface):
                 taken[name] = what
             slots.append({'id': name, 'action': f'favorite:{name}', 'text': f"{number} : {what}", 'shortcut': f'F{number}'})
         free = next((slot['id'] for slot in slots if slot['id'] not in taken), None)
-        names = [str(player) for player in players or []]
+        names = self.favorite_players()
         modes = []
         if names:
+            # Chosen among the favorite players (Divers > Joueurs favoris)
             modes.append({'id': 'choose', 'action': 'favorite:choose', 'shortcut': 'F1',
-                          'text': f"{self.lang.translate('favorite-choose')} : {', '.join(names)}"})
+                          'text': self.lang.translate('favorite-choose')})
         modes.append({'id': 'generic', 'action': 'favorite:generic', 'shortcut': f'F{len(modes) + 1}',
                       'text': self.lang.translate('favorite-generic')})
         modes.append({'id': 'last', 'action': 'favorite:last', 'shortcut': f'F{len(modes) + 1}',
@@ -6815,10 +6876,21 @@ class Screen(pygame.Surface):
                 if slot['id'] not in taken or self.ask_yes_no(
                         f"{self.lang.translate('favorite-replace')} {slot['id'][3:]} ({taken[slot['id']]}) ?"):
                     break
-            mode = self.run_menu('favorite_players', modes + [back], modes + [back])
-            if mode.get('id') == 'back':
-                return False
-            favorites.save(slot['id'], game, options, count, mode['id'], names)
+            # Back in the choice of the players or of their number : back to this question
+            while True:
+                mode = self.run_menu('favorite_players', modes + [back], modes + [back])
+                if mode.get('id') == 'back':
+                    return False
+                players = []
+                count = 1
+                if mode['id'] == 'choose':
+                    players = self.pick_favorite_players(names)
+                    count = len(players or [])
+                elif mode['id'] in ('generic', 'last'):
+                    count = self.favorite_count(game, generic=mode['id'] == 'generic')
+                if players is not None and count is not None:
+                    break
+            favorites.save(slot['id'], game, options, count, mode['id'], players)
             self.message([f"{self.lang.translate('favorite-saved')} {slot['id'][3:]}"], 1500, None, 'middle', 'big')
             return True
         except Exception as error:    # pylint: disable=broad-except
@@ -7077,6 +7149,11 @@ class Screen(pygame.Surface):
         for button in listed:
             space += float(button.get('space_before', 0) or 0)
             spaces.append(space)
+        # Details of the buttons (the options of a favorite) : under the list, those of the
+        # button selected
+        with_details = any(button.get('details') for button in listed)
+        details_area = None
+        details_shown = None
 
         def look(index):
             # Selected or not (with 10 buttons or more, the corners of the neighbours change)
@@ -7134,6 +7211,11 @@ class Screen(pygame.Surface):
                     self.pristine_background = None
                 for index in range(1, nb_shown + 1):
                     draw(index)
+                if with_details:
+                    details_area = self.menu_details_area([rects[index] for index in range(1, nb_listed + 1)],
+                                                          [rects[index] for index in range(nb_listed + 1, nb_shown + 1)])
+                    details_shown = shown[selected - 1].get('details')
+                    self.menu_details(details_area, details_shown, pristine)
                 self.update_screen()
                 full = False
             else:
@@ -7144,6 +7226,9 @@ class Screen(pygame.Surface):
                     draw(index)
                 if changed:
                     self.update_screen(rect_array=[pygame.Rect(rects[index]) for index in changed])
+                if details_area is not None and shown[selected - 1].get('details') != details_shown:
+                    details_shown = shown[selected - 1].get('details')
+                    self.update_screen(rect_array=[self.menu_details(details_area, details_shown, pristine)])
 
             key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha', 'math'],
                ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON',
@@ -7183,6 +7268,44 @@ class Screen(pygame.Surface):
                 if not self.wait_validation(self.lang.translate(str(button['confirm']))):
                     continue
             return button
+
+    def menu_details_area(self, listed, footers):
+        '''
+        Place of the details of the selected button : between the list and the buttons at the
+        bottom, nearly the whole width. None : no room
+        '''
+        margin = int(self.res_y_16 / 4)
+        top = max(pygame.Rect(rect).bottom for rect in listed) + margin
+        bottom = min([pygame.Rect(rect).top for rect in footers] or [self.res['y']]) - margin
+        if bottom - top < 2 * self.res_y_16:
+            return None
+        return pygame.Rect(int(self.res['x'] / 8), top, int(self.res['x'] * 3 / 4), bottom - top)
+
+    def menu_details(self, area, lines, pristine):
+        '''
+        Details of the selected button (lines : the options of a favorite...) drawn in their
+        place over the background (nothing : the background only). Returns the place drawn
+        '''
+        if area is None:
+            return pygame.Rect(0, 0, 0, 0)
+        self.screen.blit(pristine, area, area)
+        if not lines:
+            return area
+        margin = int(self.res_y_16 / 4)
+        self.new_blit_rect2(area, self.menu_color(self.colorset['menu-buttons']), corners='All',
+                            border_radius=self.get_radius(margin * 2))
+        columns = 2 if len(lines) > 6 else 1
+        rows = math.ceil(len(lines) / columns)
+        step = min(int((area.height - 2 * margin) / rows), int(self.res['y'] / 22))
+        font = self.font(self.defaultfontpath, max(10, int(step * 0.8)))
+        width = int((area.width - 2 * margin) / columns)
+        for index, line in enumerate(lines):
+            column, row = divmod(index, rows)
+            text = font.render(str(line), True, self.colorset['menu-text-white'])
+            if text.get_width() > width - margin:
+                text = pygame.transform.smoothscale(text, (width - margin, text.get_height()))
+            self.screen.blit(text, (area.x + margin + column * width, area.y + margin + row * step))
+        return area
 
     def styled_title(self, name, title, subtitle):
         '''
@@ -8395,14 +8518,21 @@ class Screen(pygame.Surface):
         The options of a favorite, one per line (as the screen of the options names them)
         '''
         lines = [f"{self.lang.translate('favorite-options-title')} :", '']
+        return '\n'.join(lines + self.favorite_options_lines(game, options))
+
+    def favorite_options_lines(self, game, options):
+        '''
+        The options of a favorite : 'label : value' (as the screen of the options names them)
+        '''
         if not options:
-            lines.append(self.lang.translate('favorite-no-options'))
+            return [self.lang.translate('favorite-no-options')]
+        lines = []
         for name, value in options.items():
             if isinstance(value, bool):
                 value = self.lang.translate('yes' if value else 'no')
             label = self.lang.translate('colorset') if name == 'theme' else self.translate_option(game.replace(' ', '_'), name)
             lines.append(f"{label} : {value}")
-        return '\n'.join(lines)
+        return lines
 
     def game_description(self, game, full=False, versionGame = '', min_max_players = None, goodNbPlayers=True, favorite_options=None, title=None):
         '''
