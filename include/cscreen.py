@@ -3363,8 +3363,10 @@ class Screen(pygame.Surface):
         look = {'icon': {'position': 'top', 'size': 0.72}, 'text': {'size': f'{tile_h * 13 / height:.3f}%'}} if square else \
             {'icon': {'position': 'left', 'size': 0.86}, 'text': {'size': f'{tile_h * 30 / height:.3f}%'}}
         style = cmenustyle.merge(look, self.button_style(menu, {}))
-        logos = [self.file_class.get_full_filename(f"logos_menu/{game.replace(' ', '_')}", 'images') for game in games]
-        return {'rects': rects, 'style': style, 'logos': logos, 'names': [game.replace('_', ' ') for game in games],
+        logos = [self.file_class.get_full_filename(f"logos_menu/{self.favorite_entry(game)[0].replace(' ', '_')}", 'images')
+                 for game in games]
+        return {'rects': rects, 'style': style, 'logos': logos,
+                'names': [self.favorite_entry_label(game).replace('_', ' ') for game in games],
                 'units': units, 'composites': {}}
 
     def game_tile(self, tiles, pristine, index, look):
@@ -7774,11 +7776,58 @@ class Screen(pygame.Surface):
             return file_list
         return None
 
+    # An entry of the list Favoris : a favorite game ('Ho One'), or a numbered favorite of
+    # its game ('Ho One|fav1') : the same game can be there several times, each one with its options
+    FAVORITE_SEPARATOR = '|'
+
+    def favorite_entries(self, favorite_games):
+        '''
+        The list Favoris : the favorite games (screen Jeux favoris), then each numbered favorite
+        (fav1... : a game and its options)
+        '''
+        entries = sorted(self.get_games_list('favoris', favorites=favorite_games))
+        try:
+            for slot, favorite in self.favorites().numbered():
+                entries.append(f"{favorite['game'].replace('_', ' ')}{self.FAVORITE_SEPARATOR}{slot}")
+        except Exception as error:    # pylint: disable=broad-except
+            self.logs.error(f"Favorites : numbered favorites not read ({error})")
+        return entries
+
+    def favorite_entry(self, entry):
+        '''
+        An entry of the lists of games : (its game, the slot of its numbered favorite or None)
+        '''
+        game, _, slot = str(entry).partition(self.FAVORITE_SEPARATOR)
+        return game, slot or None
+
+    def favorite_entry_options(self, entry, favorite_games):
+        '''
+        Options of an entry of the list Favoris : those of its numbered favorite, or those of
+        its favorite game (screen Jeux favoris), None if none
+        '''
+        game, slot = self.favorite_entry(entry)
+        try:
+            if slot:
+                favorite = self.favorites().get(slot)
+                return dict(favorite['options']) if favorite and favorite.get('options') else None
+            if game in [name.strip() for name in str(favorite_games or '').split(',')]:
+                return self.favorites().game_options(game)
+        except Exception as error:    # pylint: disable=broad-except
+            self.logs.error(f"Favorites : options of {entry} not read ({error})")
+        return None
+
+    def favorite_entry_label(self, entry):
+        '''
+        Name of an entry : the game, and the number of its numbered favorite
+        '''
+        game, slot = self.favorite_entry(entry)
+        return f"{game} · {self.lang.translate('favorite')} {slot[3:]}" if slot else game
+
     def get_games_list(self, category='classic', favorites=None):
         '''
         Get Game List from local game folder
         '''
-        if self.games.get(category) is None:
+        if self.games.get(category) is None or category == 'favoris':
             if category == 'favoris':
                 fileiter = (os.path.join(root, f)
                         for root, _, files in chain(os.walk(f'games/classic'), os.walk(f'games/fun'), os.walk(f'games/sport'))
@@ -7859,7 +7908,10 @@ class Screen(pygame.Surface):
                         selected = index
                     index += 1
         else:
-            games = sorted(games)
+            # Favoris : its entries (favorite games, then numbered favorites : a game may be there
+            # several times)
+            games = list(games_list)
+            selected = next((position for position, entry in enumerate(games, 1) if entry == selected_game), 1)
 
         nb_elements = len(games)
         if nb_elements > 16:
@@ -7896,7 +7948,8 @@ class Screen(pygame.Surface):
                     pristine = self.screen.copy()
 
             index = 1
-            for game in games:     # Display Game menu
+            for entry in games:     # Display Game menu
+                game, slot = self.favorite_entry(entry)
                 shortcut = f'F{index}'
                 try:
                     min_max_players_per_game = self.config.get_value('NbOfPlayersPerGame', game.replace(" ", "_"))
@@ -7912,11 +7965,17 @@ class Screen(pygame.Surface):
                         good_nb_players = False
                 
                 if index == selected:
-                    game_desc_rect = self.game_description(game, False, min_max_players=min_max_players_per_game, goodNbPlayers=good_nb_players)
+                    # A favorite with options : its options instead of the description
+                    options = self.favorite_entry_options(entry, favorites) if category == 'favoris' else None
+                    game_desc_rect = self.game_description(game, False, min_max_players=min_max_players_per_game, goodNbPlayers=good_nb_players,
+                                                           favorite_options=options, title=self.favorite_entry_label(entry))
                     game_desc_rect = [(game_desc_rect[0], game_desc_rect[1], game_desc_rect[2], game_desc_rect[3])]
                 
                 if tiles is None:
                     click_zones[shortcut] = self.logo_item((index, len(games), selected), game.replace(' ', '_'), nb_column, 'Left', border_radius=25, available=good_nb_players)
+                    if slot:
+                        # Its number on its logo : the same game may be there several times
+                        self.favorite_badge(click_zones[shortcut], slot[3:])
                 else:
                     states.append((index, 'selected' if index == selected else 'normal' if good_nb_players else 'disabled'))
 
@@ -7972,7 +8031,7 @@ class Screen(pygame.Surface):
                     item_per_line=nb_column, left_right=True)
             
             if selected <= nb_elements:
-                self.dmd.send_text(games[selected - 1].replace('_', ' '))
+                self.dmd.send_text(self.favorite_entry_label(games[selected - 1]).replace('_', ' '))
             else:
                 self.dmd.send_text(self.lang.translate('back'))
             # Keyboard cases
@@ -7980,7 +8039,8 @@ class Screen(pygame.Surface):
                 return 'escape'
 
             if (key in ENTER_KEYS + SAVE_KEYS + CONTINUE_KEYS) and validate[selected-1] == True:
-                self.selectedgame = games[selected - 1]
+                # A numbered favorite : its game (the entry tells it to raspydarts.py)
+                self.selectedgame = self.favorite_entry(games[selected - 1])[0]
                 if category == 'favoris':
                     tmp = f"{self.selectedgame.replace(' ', '_')}.py"
                     if os.path.isfile(f"{self.config.gamesDir}/classic/{tmp}"):
@@ -7992,7 +8052,7 @@ class Screen(pygame.Surface):
                     else:
                         return None
 
-                return f'{category}.{self.selectedgame}'
+                return f'{category}.{games[selected - 1]}'
 
             old_selection = selection
 
@@ -8208,13 +8268,39 @@ class Screen(pygame.Surface):
                 if key in ENTER_KEYS and selected <= nb_elements:
                     return game_list[selected-2]['GAMENAME']    # Header not counted
 
-    def game_description(self, game, full=False, versionGame = '', min_max_players = None, goodNbPlayers=True):
+    def favorite_badge(self, rect, number):
         '''
-        Display game's description
+        The number of a numbered favorite, in a corner of its logo
+        '''
+        side = max(12, int(rect[3] / 4))
+        badge = pygame.Rect(rect[0] + rect[2] - side - 4, rect[1] + 4, side, side)
+        pygame.draw.circle(self.screen, self.colorset.get('menu-favorite') or (255, 215, 0), badge.center, side // 2)
+        font = self.font(self.defaultfontpath, int(side * 0.8))
+        text = font.render(str(number), True, (0, 0, 0))
+        self.screen.blit(text, text.get_rect(center=badge.center))
+
+    def favorite_options_text(self, game, options):
+        '''
+        The options of a favorite, one per line (as the screen of the options names them)
+        '''
+        lines = [f"{self.lang.translate('favorite-options-title')} :", '']
+        for name, value in options.items():
+            if isinstance(value, bool):
+                value = self.lang.translate('yes' if value else 'no')
+            label = self.lang.translate('colorset') if name == 'theme' else self.translate_option(game.replace(' ', '_'), name)
+            lines.append(f"{label} : {value}")
+        return '\n'.join(lines)
+
+    def game_description(self, game, full=False, versionGame = '', min_max_players = None, goodNbPlayers=True, favorite_options=None, title=None):
+        '''
+        Display game's description (a favorite with options : its options instead, and its name
+        with its number)
         '''
 
         # Game description
         description = self.get_description(game)
+        if favorite_options:
+            description = self.favorite_options_text(game, favorite_options)
         
         # Marges
         marge_x = int(self.res['x'] / 64)
@@ -8295,6 +8381,9 @@ class Screen(pygame.Surface):
             game_name = self.lang.translate(f"{game.replace(' ', '_')}-name")
             if game_name == f"{game.replace(' ', '_')}-name":
                 game_name = game
+            if title and title != game:
+                # A numbered favorite : its number with the name of its game
+                game_name = f"{game_name}{title[len(game):]}"
 
             text = font.render(game_name, True, self.colorset['description-text'])
             self.blit(text, [title_pos_x + (title_width - font.size(game_name)[0]) / 2, \

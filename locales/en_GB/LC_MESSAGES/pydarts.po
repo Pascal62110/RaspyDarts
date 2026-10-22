@@ -3009,3 +3009,6 @@ msgstr "Display started"
 msgid "raspy2dmd-start-failed"
 msgstr "The display did not start (logs in /Medias/Logs)"
 
+msgid "favorite-options-title"
+msgstr "Options of the favorite"
+

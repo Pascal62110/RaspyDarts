@@ -72,6 +72,17 @@ class Favorites:
         return {'game': game, 'category': cmenus.game_category(game), 'options': dict(favorite.get('options') or {}),
                 'players': players, 'mode': mode if mode in MODES else 'last', 'names': names}
 
+    def numbered(self):
+        '''
+        The numbered favorites saved : [(fav1, favorite)...] (those whose game exists)
+        '''
+        found = []
+        for number in range(1, SLOTS + 1):
+            favorite = self.get(f'fav{number}')
+            if favorite is not None:
+                found.append((f'fav{number}', favorite))
+        return found
+
     def save(self, name, game, options, players, mode, names):
         '''
         Saves a favorite (the others are kept)

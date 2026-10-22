@@ -1175,7 +1175,8 @@ try:
                 # Display game category
                 dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])
 
-                if config_favorites['games'] == '':
+                # Favoris : favorite games, or numbered favorites (with their options)
+                if not display.favorite_entries(config_favorites['games']):
                     response = display.game_category_menu(False, category=category)
                 else:
                     response = display.game_category_menu(True, category=category)
@@ -1205,7 +1206,7 @@ try:
                 # GAME SELECTION
                 # Display game choice and option only for game creators (local and netcreate)
                 if category == 'favoris':
-                    games = display.get_games_list(category, favorites=config_favorites['games'])
+                    games = display.favorite_entries(config_favorites['games'])
                 else:
                     games = display.get_games_list(category)
 
@@ -1233,6 +1234,11 @@ try:
                         menu = 'players'
                         category = ''
                 else:
+                    # A numbered favorite of the list Favoris : its game, with its options
+                    Game, favorite_slot = display.favorite_entry(Game)
+                    if favorite_slot:
+                        favorite = display.favorites().get(favorite_slot)
+                        favorite_options = dict(favorite['options']) if favorite else None
                     choosed_game = __import__(f"games.{Game.replace(' ', '_')}", fromlist=["games"])
                     Game = Game.split('.')[1]
                     try:

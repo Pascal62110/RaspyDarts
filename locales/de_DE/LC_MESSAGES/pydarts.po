@@ -773,3 +773,6 @@ msgstr "Anzeige gestartet"
 msgid "raspy2dmd-start-failed"
 msgstr "Die Anzeige ist nicht gestartet (Protokolle in /Medias/Logs)"
 
+msgid "favorite-options-title"
+msgstr "Optionen des Favoriten"
+

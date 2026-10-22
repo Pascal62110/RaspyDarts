@@ -3463,3 +3463,6 @@ msgstr "Display avviato"
 msgid "raspy2dmd-start-failed"
 msgstr "Il display non si è avviato (registri in /Medias/Logs)"
 
+msgid "favorite-options-title"
+msgstr "Opzioni del preferito"
+

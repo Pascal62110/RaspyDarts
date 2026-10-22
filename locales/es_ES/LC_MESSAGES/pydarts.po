@@ -779,3 +779,6 @@ msgstr "Pantalla iniciada"
 msgid "raspy2dmd-start-failed"
 msgstr "La pantalla no se ha iniciado (registros en /Medias/Logs)"
 
+msgid "favorite-options-title"
+msgstr "Opciones del favorito"
+

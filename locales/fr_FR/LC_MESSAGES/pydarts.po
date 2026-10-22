@@ -4097,3 +4097,6 @@ msgstr "Afficheur démarré"
 msgid "raspy2dmd-start-failed"
 msgstr "L'afficheur n'a pas démarré (journaux dans /Medias/Logs)"
 
+msgid "favorite-options-title"
+msgstr "Options du favori"
+
