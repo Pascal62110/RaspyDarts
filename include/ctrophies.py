@@ -3,6 +3,7 @@ import json
 import os
 import pygame
 
+from include import cemoji
 from include import cpaths
 
 # Dans le dossier du joueur (~/.raspydarts), avec ses scores et sa configuration
@@ -67,8 +68,8 @@ def show_trophy_popup(trophy_id):
         font_title = pygame.font.SysFont("Impact", int(popup_h * 0.30))
         font_desc = pygame.font.SysFont("Arial", int(popup_h * 0.25), bold=True)
 
-        # Suppression des emojis pour éviter le carré/croix
-        title_surf = font_title.render("!!!   NOUVEAU TROPHEE   !!!", True, (255, 215, 0))
+        # Les coupes en emoji (police Noto Color Emoji ; sans elle, le titre seul, sans carre)
+        title_surf = cemoji.render(font_title, "🏆 NOUVEAU TROPHÉE ! 🏆", (255, 215, 0))
         
         # Nettoyage de l'ID du trophée pour un affichage plus propre
         clean_name = str(trophy_id).replace("_", " ")
