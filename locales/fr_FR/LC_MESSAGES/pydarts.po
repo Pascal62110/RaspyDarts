@@ -4145,3 +4145,66 @@ msgstr "Modifier les joueurs"
 msgid "player-exists"
 msgstr "Ce nom est déjà dans la liste"
 
+msgid "edit-screens"
+msgstr "Modifier les écrans"
+
+msgid "editor-title"
+msgstr "Modifier l'écran"
+
+msgid "editor-screen-main"
+msgstr "Écran principal"
+
+msgid "editor-screen-miscellaneous"
+msgstr "Paramètres"
+
+msgid "editor-screen-settings"
+msgstr "Paramétrage"
+
+msgid "editor-help-select"
+msgstr "Flèches : choisir un bouton · Valider : le déplacer, le redimensionner ou le supprimer · Retour : ajouter, enregistrer, quitter"
+
+msgid "editor-help-move"
+msgstr "Flèches : déplacer (pas {step} %) · + / - : pas · Valider : terminer · Retour : annuler"
+
+msgid "editor-help-resize"
+msgstr "Flèches : déplacer la poignée · + / - : autre poignée · Valider : terminer · Retour : annuler"
+
+msgid "editor-move"
+msgstr "Déplacer"
+
+msgid "editor-resize"
+msgstr "Redimensionner"
+
+msgid "editor-delete"
+msgstr "Supprimer"
+
+msgid "editor-delete-confirm"
+msgstr "Supprimer ce bouton ?"
+
+msgid "editor-add-title"
+msgstr "Ajouter un bouton"
+
+msgid "editor-add-game"
+msgstr "Un jeu…"
+
+msgid "editor-category"
+msgstr "Catégorie"
+
+msgid "editor-discard"
+msgstr "Abandonner les modifications ?"
+
+msgid "editor-saved"
+msgstr "Écran enregistré"
+
+msgid "editor-not-saved"
+msgstr "L'écran n'a pas pu être enregistré"
+
+msgid "editor-save-quit"
+msgstr "Enregistrer et quitter"
+
+msgid "editor-quit"
+msgstr "Quitter sans enregistrer"
+
+msgid "editor-continue"
+msgstr "Continuer"
+

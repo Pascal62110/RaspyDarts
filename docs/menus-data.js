@@ -220,6 +220,12 @@ const MENUS_DATA = {
       "shortcut": "F10"
      },
      {
+      "id": "edit-screens",
+      "action": "edit_screens",
+      "text": "edit-screens",
+      "shortcut": "F11"
+     },
+     {
       "id": "back",
       "action": "back",
       "text": "back",
@@ -361,6 +367,7 @@ const MENUS_DATA = {
   "backups",
   "customization",
   "desktop",
+  "edit_screens",
   "exhibition",
   "favorite_games",
   "favorite_players",
@@ -2085,6 +2092,7 @@ const MENUS_DATA = {
    "dmd-player-favorites": "Joueurs favoris",
    "dmd-server-favorites": "Serveurs favoris",
    "down": "Bas",
+   "edit-screens": "Modifier les écrans",
    "exhibition": "Mode exposition",
    "exit": "Quitter",
    "favorite": "Favori",
@@ -2181,6 +2189,7 @@ const MENUS_DATA = {
    "dmd-player-favorites": "Favorite players",
    "dmd-server-favorites": "Favorite servers",
    "down": "Down",
+   "edit-screens": "Edit the screens",
    "exhibition": "Exhibition mode",
    "exit": "Exit",
    "favorite": "Favorite",
@@ -2257,6 +2266,7 @@ const MENUS_DATA = {
    "yes": "Yes"
   },
   "de": {
+   "edit-screens": "Bildschirme bearbeiten",
    "exhibition": "Ausstellungsmodus",
    "exit": "Ausgang",
    "favorite": "Favorit",
@@ -2310,6 +2320,7 @@ const MENUS_DATA = {
    "raspy2dmd": "DMD-Anzeige (Raspy2DMD)"
   },
   "es": {
+   "edit-screens": "Modificar las pantallas",
    "exhibition": "Modo exposición",
    "exit": "Salir",
    "favorite": "Favorito",
@@ -2381,6 +2392,7 @@ const MENUS_DATA = {
    "dmd-player-favorites": "Joueurs favoris",
    "dmd-server-favorites": "Serveurs favoris",
    "down": "Giù",
+   "edit-screens": "Modifica le schermate",
    "exhibition": "Modalità esposizione",
    "exit": "Esci",
    "favorite": "Preferito",

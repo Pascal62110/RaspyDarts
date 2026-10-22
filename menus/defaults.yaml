@@ -135,6 +135,11 @@ menus:
         action: raspy2dmd
         text: raspy2dmd
         shortcut: F10
+      # Editor of the screens of menus on the borne (include/cmenueditor.py)
+      - id: edit-screens
+        action: edit_screens
+        text: edit-screens
+        shortcut: F11
       - id: back
         action: back
         text: back

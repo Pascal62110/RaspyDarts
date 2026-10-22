@@ -3057,3 +3057,66 @@ msgstr "Change the players"
 msgid "player-exists"
 msgstr "This name is already in the list"
 
+msgid "edit-screens"
+msgstr "Edit the screens"
+
+msgid "editor-title"
+msgstr "Edit the screen"
+
+msgid "editor-screen-main"
+msgstr "Main screen"
+
+msgid "editor-screen-miscellaneous"
+msgstr "Parameters"
+
+msgid "editor-screen-settings"
+msgstr "Setup"
+
+msgid "editor-help-select"
+msgstr "Arrows: choose a button · Validate: move, resize or delete it · Back: add, save, leave"
+
+msgid "editor-help-move"
+msgstr "Arrows: move (step {step} %) · + / -: step · Validate: done · Back: cancel"
+
+msgid "editor-help-resize"
+msgstr "Arrows: move the handle · + / -: other handle · Validate: done · Back: cancel"
+
+msgid "editor-move"
+msgstr "Move"
+
+msgid "editor-resize"
+msgstr "Resize"
+
+msgid "editor-delete"
+msgstr "Delete"
+
+msgid "editor-delete-confirm"
+msgstr "Delete this button?"
+
+msgid "editor-add-title"
+msgstr "Add a button"
+
+msgid "editor-add-game"
+msgstr "A game…"
+
+msgid "editor-category"
+msgstr "Category"
+
+msgid "editor-discard"
+msgstr "Give up the changes?"
+
+msgid "editor-saved"
+msgstr "Screen saved"
+
+msgid "editor-not-saved"
+msgstr "The screen could not be saved"
+
+msgid "editor-save-quit"
+msgstr "Save and leave"
+
+msgid "editor-quit"
+msgstr "Leave without saving"
+
+msgid "editor-continue"
+msgstr "Continue"
+

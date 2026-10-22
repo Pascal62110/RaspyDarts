@@ -7793,6 +7793,15 @@ class Screen(pygame.Surface):
             return 'local'
         return menus.result(button)
 
+    def edit_screens(self):
+        '''
+        Paramètres > Modifier les écrans : the buttons of the main screens placed, resized,
+        added or deleted on the borne (include/cmenueditor.py)
+        '''
+        from include import cmenueditor    # pylint: disable=import-outside-toplevel
+        cmenueditor.screens_menu(self, {'plus': PLUS_KEYS, 'minus': MINUS_KEYS, 'enter': ENTER_KEYS,
+                                        'escape': ESCAPE_KEYS})
+
     def exhibition_menu(self):
         '''
         Exhibition mode : on or off, and the buttons of the main menu it shows

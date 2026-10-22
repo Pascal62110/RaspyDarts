@@ -429,6 +429,7 @@ Une action par bouton. Le jeu refuse une action inconnue (§3).
 | `players_bank` | banque de prénoms |
 | `backups` | sauvegardes |
 | `exhibition` | mode exposition |
+| `edit_screens` | éditeur des écrans sur la borne : l'écran principal, Paramètres ou Paramétrage affiché tel quel, chaque bouton déplacé, redimensionné par ses poignées, ajouté ou supprimé au clavier, aux boutons ou aux fléchettes (touches de la navigation, §9 ; `+`/`-` : pas du déplacement ou poignée suivante ; Retour : ajouter un bouton, enregistrer, quitter) ; l'écran est figé à l'ouverture (chaque bouton reçoit un placement libre, §7.5) et s'enregistre dans le `menus.yaml` du thème (l'ancien gardé en `menus.yaml.bak`) |
 | `raspy2dmd` | l'afficheur DMD Raspy2DMD sur la borne (panneaux pilotés par un Raspberry Pico en USB) : installé, QR code de sa page web, message d'essai, mire de test du Pico, horloge, démo (commandes publiées sur le sujet MQTT `raspy2dmd`) ; pas installé, il propose de l'installer (mode « Pico seul », en tâche de fond) |
 | `update` | vérifier les mises à jour |
 

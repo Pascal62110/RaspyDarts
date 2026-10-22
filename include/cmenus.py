@@ -43,6 +43,7 @@ ACTIONS = {
     'backups': 'backups',
     'exhibition': 'exhibition',
     'raspy2dmd': 'raspy2dmd',
+    'edit_screens': 'edit-screens',
     'update': 'update',
     'back': 'escape',
     'setup_buttons': 'setup-buttons',

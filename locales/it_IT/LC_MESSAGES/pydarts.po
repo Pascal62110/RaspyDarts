@@ -3511,3 +3511,66 @@ msgstr "Modifica i giocatori"
 msgid "player-exists"
 msgstr "Questo nome è già nell'elenco"
 
+msgid "edit-screens"
+msgstr "Modifica le schermate"
+
+msgid "editor-title"
+msgstr "Modifica la schermata"
+
+msgid "editor-screen-main"
+msgstr "Schermata principale"
+
+msgid "editor-screen-miscellaneous"
+msgstr "Parametri"
+
+msgid "editor-screen-settings"
+msgstr "Configurazione"
+
+msgid "editor-help-select"
+msgstr "Frecce: scegli un pulsante · Conferma: sposta, ridimensiona o elimina · Indietro: aggiungi, salva, esci"
+
+msgid "editor-help-move"
+msgstr "Frecce: sposta (passo {step} %) · + / -: passo · Conferma: fine · Indietro: annulla"
+
+msgid "editor-help-resize"
+msgstr "Frecce: sposta la maniglia · + / -: altra maniglia · Conferma: fine · Indietro: annulla"
+
+msgid "editor-move"
+msgstr "Sposta"
+
+msgid "editor-resize"
+msgstr "Ridimensiona"
+
+msgid "editor-delete"
+msgstr "Elimina"
+
+msgid "editor-delete-confirm"
+msgstr "Eliminare questo pulsante?"
+
+msgid "editor-add-title"
+msgstr "Aggiungi un pulsante"
+
+msgid "editor-add-game"
+msgstr "Un gioco…"
+
+msgid "editor-category"
+msgstr "Categoria"
+
+msgid "editor-discard"
+msgstr "Annullare le modifiche?"
+
+msgid "editor-saved"
+msgstr "Schermata salvata"
+
+msgid "editor-not-saved"
+msgstr "Impossibile salvare la schermata"
+
+msgid "editor-save-quit"
+msgstr "Salva ed esci"
+
+msgid "editor-quit"
+msgstr "Esci senza salvare"
+
+msgid "editor-continue"
+msgstr "Continua"
+

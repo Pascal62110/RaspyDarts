@@ -821,3 +821,66 @@ msgstr "Spieler ändern"
 msgid "player-exists"
 msgstr "Dieser Name ist bereits in der Liste"
 
+msgid "edit-screens"
+msgstr "Bildschirme bearbeiten"
+
+msgid "editor-title"
+msgstr "Bildschirm bearbeiten"
+
+msgid "editor-screen-main"
+msgstr "Hauptbildschirm"
+
+msgid "editor-screen-miscellaneous"
+msgstr "Parameter"
+
+msgid "editor-screen-settings"
+msgstr "Einrichtung"
+
+msgid "editor-help-select"
+msgstr "Pfeile: Taste wählen · Bestätigen: verschieben, Größe ändern, löschen · Zurück: hinzufügen, speichern, beenden"
+
+msgid "editor-help-move"
+msgstr "Pfeile: verschieben (Schritt {step} %) · + / -: Schritt · Bestätigen: fertig · Zurück: abbrechen"
+
+msgid "editor-help-resize"
+msgstr "Pfeile: Griff verschieben · + / -: anderer Griff · Bestätigen: fertig · Zurück: abbrechen"
+
+msgid "editor-move"
+msgstr "Verschieben"
+
+msgid "editor-resize"
+msgstr "Größe ändern"
+
+msgid "editor-delete"
+msgstr "Löschen"
+
+msgid "editor-delete-confirm"
+msgstr "Diese Taste löschen?"
+
+msgid "editor-add-title"
+msgstr "Taste hinzufügen"
+
+msgid "editor-add-game"
+msgstr "Ein Spiel…"
+
+msgid "editor-category"
+msgstr "Kategorie"
+
+msgid "editor-discard"
+msgstr "Änderungen verwerfen?"
+
+msgid "editor-saved"
+msgstr "Bildschirm gespeichert"
+
+msgid "editor-not-saved"
+msgstr "Der Bildschirm konnte nicht gespeichert werden"
+
+msgid "editor-save-quit"
+msgstr "Speichern und beenden"
+
+msgid "editor-quit"
+msgstr "Beenden ohne Speichern"
+
+msgid "editor-continue"
+msgstr "Weiter"
+

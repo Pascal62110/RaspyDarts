@@ -827,3 +827,66 @@ msgstr "Modificar los jugadores"
 msgid "player-exists"
 msgstr "Este nombre ya está en la lista"
 
+msgid "edit-screens"
+msgstr "Modificar las pantallas"
+
+msgid "editor-title"
+msgstr "Modificar la pantalla"
+
+msgid "editor-screen-main"
+msgstr "Pantalla principal"
+
+msgid "editor-screen-miscellaneous"
+msgstr "Parámetros"
+
+msgid "editor-screen-settings"
+msgstr "Configuración"
+
+msgid "editor-help-select"
+msgstr "Flechas: elegir un botón · Validar: moverlo, cambiar su tamaño o borrarlo · Volver: añadir, guardar, salir"
+
+msgid "editor-help-move"
+msgstr "Flechas: mover (paso {step} %) · + / -: paso · Validar: terminar · Volver: cancelar"
+
+msgid "editor-help-resize"
+msgstr "Flechas: mover el tirador · + / -: otro tirador · Validar: terminar · Volver: cancelar"
+
+msgid "editor-move"
+msgstr "Mover"
+
+msgid "editor-resize"
+msgstr "Cambiar el tamaño"
+
+msgid "editor-delete"
+msgstr "Borrar"
+
+msgid "editor-delete-confirm"
+msgstr "¿Borrar este botón?"
+
+msgid "editor-add-title"
+msgstr "Añadir un botón"
+
+msgid "editor-add-game"
+msgstr "Un juego…"
+
+msgid "editor-category"
+msgstr "Categoría"
+
+msgid "editor-discard"
+msgstr "¿Abandonar los cambios?"
+
+msgid "editor-saved"
+msgstr "Pantalla guardada"
+
+msgid "editor-not-saved"
+msgstr "No se pudo guardar la pantalla"
+
+msgid "editor-save-quit"
+msgstr "Guardar y salir"
+
+msgid "editor-quit"
+msgstr "Salir sin guardar"
+
+msgid "editor-continue"
+msgstr "Continuar"
+

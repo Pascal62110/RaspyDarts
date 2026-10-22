@@ -1090,6 +1090,11 @@ try:
                     # EXHIBITION MODE : on or off, buttons of the main menu shown
                     display.exhibition_menu()
 
+                elif menu == 'edit-screens':
+                    # EDITOR OF THE SCREENS : buttons of the menus moved, resized, added, deleted
+                    dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])
+                    display.edit_screens()
+
                 elif menu == 'backups':
                     # BACKUP MENU
                     dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])
