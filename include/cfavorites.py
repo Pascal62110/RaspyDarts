@@ -1,10 +1,10 @@
 """
-Favorites (docs/menu/menus.md, section 13), kept in ~/.raspydarts/favorites.yaml :
-- the options of the favorite games (screen Jeux favoris) : such a game starts without its
-  screen of options ;
-- the buttons fav1, fav2... of the main menu : a game, its options, the number of players
-  planned and how the players are chosen. The files of menus only place them (action
-  favorite:fav1)
+Favorites (docs/menu/menus.md, section 13), kept in ~/.raspydarts/favorites.yaml : a game
+and its options (none : chosen at its launch), several for a game if wanted, all in the list
+Favoris :
+- without number (key list) ;
+- numbered fav1, fav2... : a button of the main menu too, with the number of players planned
+  and how the players are chosen. The files of menus only place them (action favorite:fav1)
 """
 
 import os
@@ -22,8 +22,11 @@ except ImportError:
 FILE_NAME = 'favorites.yaml'
 # Favorites which can be saved : fav1 to fav9 (F1 to F9 in the screen which saves them)
 SLOTS = 9
-# Key of the file holding the options of the favorite games (not a button fav1...)
+# Key of the file holding the options of the favorite games, before the favorites without
+# number (read as long as there is no key list)
 GAMES = 'games'
+# Key of the file holding the favorites without number : [{game, options}]
+LIST = 'list'
 # How the players of a favorite are chosen (ask : in the screen of the players, at its launch)
 MODES = ('choose', 'generic', 'last', 'ask')
 
@@ -103,29 +106,36 @@ class Favorites:
         self.write(data)
         self.logs.info(f"Favorites : {name} removed")
 
-    def game_options(self, game):
+    def unnumbered(self, legacy_games=''):
         '''
-        Options defined for a favorite game (screen Jeux favoris), None if none
-        '''
-        games = self.read().get(GAMES)
-        options = games.get(str(game).replace(' ', '_')) if isinstance(games, dict) else None
-        return dict(options) if isinstance(options, dict) else None
-
-    def set_games_options(self, changes):
-        '''
-        Options of favorite games : {game : options, or None to remove them}
+        The favorites without number (list Favoris) : [{'game', 'options'}], options {} : chosen
+        at its launch. As long as none is saved : the favorite games of raspydarts.cfg
+        (legacy_games, 'Ho One, Cricket') with the options saved for them (key games)
         '''
         data = self.read()
-        games = data.get(GAMES) if isinstance(data.get(GAMES), dict) else {}
-        for game, options in changes.items():
-            key = str(game).replace(' ', '_')
-            if options is None:
-                games.pop(key, None)
-            else:
-                games[key] = dict(options)
-        data[GAMES] = games
+        entries = data.get(LIST)
+        if not isinstance(entries, list):
+            options = data.get(GAMES) if isinstance(data.get(GAMES), dict) else {}
+            names = [name.strip().replace(' ', '_') for name in str(legacy_games or '').split(',') if name.strip()]
+            entries = [{'game': name, 'options': options.get(name)} for name in names]
+        found = []
+        for entry in entries:
+            game = str(entry.get('game') or '') if isinstance(entry, dict) else ''
+            if cmenus.game_category(game) is not None:
+                options = entry.get('options')
+                found.append({'game': game, 'options': dict(options) if isinstance(options, dict) else {}})
+        return found
+
+    def set_unnumbered(self, entries):
+        '''
+        Saves the favorites without number (those of the key games are then in them)
+        '''
+        data = self.read()
+        data[LIST] = [{'game': str(entry['game']).replace(' ', '_'), 'options': dict(entry['options'] or {})}
+                      for entry in entries]
+        data.pop(GAMES, None)
         self.write(data)
-        self.logs.info(f"Favorites : options of favorite games {sorted(changes)} saved")
+        self.logs.info(f"Favorites : {len(entries)} favorites without number saved")
 
     def write(self, data):
         '''

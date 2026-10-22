@@ -1243,9 +1243,8 @@ try:
                     # A numbered favorite of the list Favoris : its game, with its options
                     Game, favorite_slot = display.favorite_entry(Game)
                     if favorite_slot:
-                        favorite = display.favorites().get(favorite_slot)
                         # Without options ({}) : its screen of options
-                        favorite_options = dict(favorite['options']) if favorite else None
+                        favorite_options = display.favorite_slot_options(favorite_slot, config_favorites['games'])
                     choosed_game = __import__(f"games.{Game.replace(' ', '_')}", fromlist=["games"])
                     Game = Game.split('.')[1]
                     try:
@@ -1297,10 +1296,9 @@ try:
                 game_options.update(config_game_options)
 
                 dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])
-                # A favorite game whose options were defined (screen Jeux favoris) : no screen
-                # of options, those options
-                favorite_games = [name.strip() for name in str(config_favorites.get('games') or '').split(',')]
-                preset = display.favorites().game_options(Game) if Game in favorite_games else None
+                # A favorite (list Favoris, button of the main menu) : no screen of options, its
+                # options
+                preset = None
                 if favorite_options is not None:
                     # A favorite whose players were chosen at its launch, or chosen in the list
                     # Favoris : its options ; without options ({}) : its screen of options

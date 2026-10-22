@@ -803,3 +803,15 @@ msgstr "Reemplazar el favorito"
 msgid "favorite-no-options"
 msgstr "Sin opciones: se eligen en cada inicio"
 
+msgid "favorite-with-options"
+msgstr "con opciones"
+
+msgid "favorite-without-options"
+msgstr "sin opciones"
+
+msgid "favorite-to-button"
+msgstr "Ponerlo en un botón del menú principal"
+
+msgid "favorite-exists"
+msgstr "Este favorito ya existe"
+

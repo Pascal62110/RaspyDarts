@@ -4121,3 +4121,15 @@ msgstr "Remplacer le favori"
 msgid "favorite-no-options"
 msgstr "Sans options : elles sont choisies à chaque lancement"
 
+msgid "favorite-with-options"
+msgstr "avec options"
+
+msgid "favorite-without-options"
+msgstr "sans options"
+
+msgid "favorite-to-button"
+msgstr "Le placer sur un bouton du menu principal"
+
+msgid "favorite-exists"
+msgstr "Ce favori existe déjà"
+

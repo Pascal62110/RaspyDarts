@@ -3033,3 +3033,15 @@ msgstr "Replace the favorite"
 msgid "favorite-no-options"
 msgstr "No options: they are chosen at each launch"
 
+msgid "favorite-with-options"
+msgstr "with options"
+
+msgid "favorite-without-options"
+msgstr "without options"
+
+msgid "favorite-to-button"
+msgstr "Place it on a button of the main menu"
+
+msgid "favorite-exists"
+msgstr "This favorite already exists"
+
