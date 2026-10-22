@@ -320,7 +320,8 @@ if os.path.isfile(update_lib):
         logs.info("Install additional librairies succeed !\n")
         os.remove(update_lib)
     else:
-        logs.erreur(f"Erreur lors de l'exécution du script (code {code_retour})")
+        # (gardé : nouvel essai au prochain démarrage)
+        logs.error(f"Erreur lors de l'exécution du script (code {code_retour})")
     logs.info("================================================================")
 
 #####################
