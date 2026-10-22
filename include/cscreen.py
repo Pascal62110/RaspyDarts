@@ -3746,8 +3746,10 @@ class Screen(pygame.Surface):
             if all(options for _, _, options in favorites):
                 items.append({'id': 'plain', 'action': 'plain', 'text': 'favorite-add-plain'})
             for ident, number, options in favorites:
+                # A numbered favorite : its players first
+                players = [self.favorite_players_text(numbered[ident])] if number else []
                 items.append({'id': ident, 'action': 'favorite', 'text': self.favorite_text(number, options),
-                              'details': self.favorite_options_lines(game, options)})
+                              'details': players + self.favorite_options_lines(game, options)})
             for number, item in enumerate(items, 1):
                 item['shortcut'] = f'F{number}'
             choice = self.run_menu('favorite_game', items + [back], items + [back], title=game).get('id')
@@ -3858,39 +3860,104 @@ class Screen(pygame.Surface):
         '''
         return self.favorite_save(game, options)
 
+    def favorite_players_text(self, favorite):
+        '''
+        The players of a numbered favorite, as the screens of the favorites write them
+        '''
+        if favorite['mode'] == 'choose' and favorite['names']:
+            players = ', '.join(favorite['names'])
+        elif favorite['mode'] == 'generic':
+            players = self.generic_players_text(favorite['players'])
+        elif favorite['mode'] == 'last':
+            players = f"{self.lang.translate('favorite-last')} ({favorite['players']})"
+        else:
+            players = self.lang.translate('favorite-ask')
+        return f"{self.lang.translate('favorite-players')} : {players}"
+
+    def generic_players_text(self, count):
+        '''
+        Joueur 1, Joueur 2... (Joueur 1 ... Joueur 5 beyond 4)
+        '''
+        player = self.lang.translate('favorite-player')
+        names = [f"{player} {index}" for index in range(1, count + 1)]
+        return ', '.join(names) if count <= 4 else f"{names[0]} … {names[-1]}"
+
+    def known_players(self):
+        '''
+        The players the borne knows : the favorite players, then those of the bank of
+        firstnames (Divers > Banque de prénoms)
+        '''
+        names = list(self.favorite_players())
+        bank = self.config.get_value('SectionAdvanced', 'localplayers', False, None, split=',') or []
+        for name in [str(name).strip() for name in bank]:
+            if name and name not in names:
+                names.append(name)
+        return names
+
     def pick_favorite_players(self, names):
         '''
-        The players of a favorite chosen among the favorite players (all at first) : validating
-        one takes or leaves it. None : back
+        The players of a favorite chosen among those the borne knows (the favorite players are
+        taken at first) : green taken, pink left, as the favorite games. None : back
         '''
-        chosen = list(names)
-        back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
-        done = {'id': 'done', 'action': 'done', 'text': 'validate', 'footer': 'right', 'shortcut': 'space'}
-        current = None
+        favorites = self.favorite_players()
+        chosen = [name for name in names if name in favorites]
+        nb_elements = len(names)
+        selected = 1
+        old_selection = None
+        refresh = True
         while True:
-            items = []
+            click_zones = {}
+            shortcuts = []
+            self.display_background()
+            self.menu_header('favorite-players', 'favorite-pick-sub')
             for index, name in enumerate(names, 1):
-                taken = self.lang.translate('yes' if name in chosen else 'no')
-                item = {'id': f'player{index}', 'action': 'player', 'text': f"{name} : {taken}"}
-                if index <= 9:
-                    item['shortcut'] = f'F{index}'
-                items.append(item)
+                click_zones[f'F{index}'] = self.game_item((index, nb_elements, selected), (f'F{index}', name, name in chosen))
+                shortcuts.append(f'F{index}')
+            click_zones['escape'] = self.display_button(nb_elements + 1 == selected, 'back', special='escape')
             # Validate : at least one player
-            done['unavailable'] = not chosen
-            choice = self.run_menu('favorite_players', items + [back, done], items + [back, done], initial=current,
-                                   title=self.lang.translate('favorite-players'),
-                                   subtitle=self.lang.translate('favorite-pick-sub')).get('id')
-            if choice == 'back':
-                return None
-            if choice == 'done':
-                # In the order of the favorite players
-                return [name for name in names if name in chosen]
-            current = choice
-            name = names[int(choice[6:]) - 1]
-            if name in chosen:
-                chosen.remove(name)
+            click_zones['save'] = self.display_button(nb_elements + 2 == selected, 'validate', special='return')
+
+            if 1 <= selected <= nb_elements:
+                selection = [click_zones[f'F{index}'] for index in range(max(1, selected - 2), min(nb_elements, selected + 2) + 1)]
+            elif selected == nb_elements + 1:
+                selection = [click_zones['escape']]
+            elif selected == nb_elements + 2:
+                selection = [click_zones['save']]
             else:
-                chosen.append(name)
+                selection = None
+            if refresh:
+                self.update_screen()
+                refresh = False
+            elif old_selection is None or selection is None:
+                self.update_screen(rect_array=[click_zones[zone] for zone in click_zones])
+            else:
+                self.update_screen(rect_array=old_selection)
+                self.update_screen(rect_array=selection)
+
+            key_pressed = self.rpi.listen_inputs(['arrows', 'fx'],
+                                                 ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON', 'single-click', 'enter', 'space'],
+                                                 events=[(self.wait_event_time, 'EVENT', 'wait')])
+            clicked = self.is_clicked(click_zones, key_pressed)
+            if clicked:
+                key_pressed = clicked
+            selected = self.navigate(selected, key_pressed, nb_elements, 2, 2, item_per_line=2, left_right=True)
+            if key_pressed in shortcuts:
+                selected = int(key_pressed.replace('F', ''))
+                key_pressed = 'enter'
+
+            if key_pressed in ESCAPE_KEYS or (key_pressed in ENTER_KEYS and selected == nb_elements + 1):
+                return None
+            if (key_pressed in SAVE_KEYS or (key_pressed in ENTER_KEYS and selected == nb_elements + 2)) and chosen:
+                # In the order of the list
+                return [name for name in names if name in chosen]
+            if key_pressed in ENTER_KEYS and 1 <= selected <= nb_elements:
+                name = names[selected - 1]
+                if name in chosen:
+                    chosen.remove(name)
+                else:
+                    chosen.append(name)
+                refresh = True
+            old_selection = selection
 
     def favorite_count(self, game, generic=False):
         '''
@@ -3909,9 +3976,7 @@ class Screen(pygame.Surface):
         for count in range(low, min(high, 12) + 1):
             text = str(count)
             if generic:
-                player = self.lang.translate('favorite-player')
-                names = [f"{player} {index}" for index in range(1, count + 1)]
-                text = ', '.join(names) if count <= 4 else f"{names[0]} … {names[-1]}"
+                text = self.generic_players_text(count)
             item = {'id': f'count{count}', 'action': 'count', 'text': text}
             if count <= 9:
                 item['shortcut'] = f'F{count}'
@@ -6851,10 +6916,10 @@ class Screen(pygame.Surface):
                 taken[name] = what
             slots.append({'id': name, 'action': f'favorite:{name}', 'text': f"{number} : {what}", 'shortcut': f'F{number}'})
         free = next((slot['id'] for slot in slots if slot['id'] not in taken), None)
-        names = self.favorite_players()
+        names = self.known_players()
         modes = []
         if names:
-            # Chosen among the favorite players (Divers > Joueurs favoris)
+            # Chosen among the favorite players and the bank of firstnames
             modes.append({'id': 'choose', 'action': 'favorite:choose', 'shortcut': 'F1',
                           'text': self.lang.translate('favorite-choose')})
         modes.append({'id': 'generic', 'action': 'favorite:generic', 'shortcut': f'F{len(modes) + 1}',

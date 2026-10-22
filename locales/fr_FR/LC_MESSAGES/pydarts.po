@@ -3966,7 +3966,7 @@ msgid "favorite-players-sub"
 msgstr "Avec quels joueurs le lancer ?"
 
 msgid "favorite-choose"
-msgstr "Choisir dans la liste des joueurs favoris"
+msgstr "Choisir dans la liste des joueurs"
 
 msgid "favorite-generic"
 msgstr "Joueur 1, Joueur 2…"
@@ -4134,7 +4134,7 @@ msgid "favorite-exists"
 msgstr "Ce favori existe déjà"
 
 msgid "favorite-pick-sub"
-msgstr "Validez un joueur pour le prendre ou le laisser"
+msgstr "Joueurs favoris et banque de prénoms : vert = pris, rose = laissé"
 
 msgid "favorite-count"
 msgstr "Nombre de joueurs du favori"

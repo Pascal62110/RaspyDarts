@@ -3332,7 +3332,7 @@ msgid "favorite-players-sub"
 msgstr "Con quali giocatori avviarlo?"
 
 msgid "favorite-choose"
-msgstr "Scegli tra i giocatori preferiti"
+msgstr "Scegli dall'elenco dei giocatori"
 
 msgid "favorite-generic"
 msgstr "Giocatore 1, Giocatore 2…"
@@ -3500,7 +3500,7 @@ msgid "favorite-exists"
 msgstr "Questo preferito esiste già"
 
 msgid "favorite-pick-sub"
-msgstr "Conferma un giocatore per prenderlo o lasciarlo"
+msgstr "Giocatori preferiti e banca dei nomi: verde = preso, rosa = lasciato"
 
 msgid "favorite-count"
 msgstr "Numero di giocatori del preferito"
