@@ -2869,7 +2869,7 @@ msgid "favorite-save"
 msgstr "Save as a favorite"
 
 msgid "favorite-save-sub"
-msgstr "Choose its number (a favorite already saved is replaced)"
+msgstr "Choose its number (a favorite already saved is replaced only once confirmed)"
 
 msgid "favorite-players"
 msgstr "Players of the favorite"
@@ -3011,4 +3011,25 @@ msgstr "The display did not start (logs in /Medias/Logs)"
 
 msgid "favorite-options-title"
 msgstr "Options of the favorite"
+
+msgid "favorite-add-game"
+msgstr "Add to the favorites"
+
+msgid "favorite-add-options"
+msgstr "New favorite with its options"
+
+msgid "favorite-add-plain"
+msgstr "New favorite without options"
+
+msgid "favorite-numbered-remove"
+msgstr "Remove this favorite"
+
+msgid "favorite-removed"
+msgstr "Favorite removed:"
+
+msgid "favorite-replace"
+msgstr "Replace the favorite"
+
+msgid "favorite-no-options"
+msgstr "No options: they are chosen at each launch"
 

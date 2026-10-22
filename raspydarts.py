@@ -758,19 +758,25 @@ try:
                                 versionGame = choosed_game.VERSION
                             except AttributeError:
                                 versionGame = ''
-                            # Options of the game, those of the favorite over them (the ones the
-                            # game does not know any more are left)
-                            game_options = dict(choosed_game.OPTIONS)
-                            game_options.update({option: value for option, value in favorite['options'].items()
-                                                 if option in game_options})
                             local_players = favorite_players[:]
                             players_count = len(local_players)
                             nb_sets = int(Config.get_value('SectionAdvanced', 'nb_sets', False, None))
                             selected_game = Game
                             display.selectedgame = Game
-                            display.game_options = game_options
                             logs.info(f"Favorite {name} : {Game}, players {local_players}")
-                            menu = True
+                            if favorite['options']:
+                                # Options of the game, those of the favorite over them (the ones
+                                # the game does not know any more are left)
+                                game_options = dict(choosed_game.OPTIONS)
+                                game_options.update({option: value for option, value in favorite['options'].items()
+                                                     if option in game_options})
+                                display.game_options = game_options
+                                menu = True
+                            else:
+                                # Without options : its screen of options
+                                category = favorite['category']
+                                favorite_options = {}
+                                menu = 'gameoptions'
                     except Exception as error:    # pylint: disable=broad-except
                         logs.error(f"Favorite {name} not started : {error}")
                         display.message([Lang.translate('favorite-empty')], 2500, 'menu-ko', 'middle', 'big')
@@ -1238,6 +1244,7 @@ try:
                     Game, favorite_slot = display.favorite_entry(Game)
                     if favorite_slot:
                         favorite = display.favorites().get(favorite_slot)
+                        # Without options ({}) : its screen of options
                         favorite_options = dict(favorite['options']) if favorite else None
                     choosed_game = __import__(f"games.{Game.replace(' ', '_')}", fromlist=["games"])
                     Game = Game.split('.')[1]
@@ -1295,8 +1302,9 @@ try:
                 favorite_games = [name.strip() for name in str(config_favorites.get('games') or '').split(',')]
                 preset = display.favorites().game_options(Game) if Game in favorite_games else None
                 if favorite_options is not None:
-                    # A favorite whose players were chosen at its launch : its options
-                    preset, favorite_options = favorite_options, None
+                    # A favorite whose players were chosen at its launch, or chosen in the list
+                    # Favoris : its options ; without options ({}) : its screen of options
+                    preset, favorite_options = favorite_options or None, None
                     display.menu_target = None
                 if preset is not None:
                     game_options.update({option: value for option, value in preset.items() if option in game_options})

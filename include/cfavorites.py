@@ -88,10 +88,20 @@ class Favorites:
         Saves a favorite (the others are kept)
         '''
         data = self.read()
-        data[str(name)] = {'game': str(game).replace(' ', '_'), 'options': dict(options), 'players': int(players),
+        # Options None : chosen in the screen of the options at its launch
+        data[str(name)] = {'game': str(game).replace(' ', '_'), 'options': dict(options or {}), 'players': int(players),
                            'mode': mode, 'names': [str(player) for player in names] if mode == 'choose' else []}
         self.write(data)
         self.logs.info(f"Favorites : {name} saved ({game}, {players} players, {mode})")
+
+    def remove(self, name):
+        '''
+        Removes a numbered favorite (the others are kept)
+        '''
+        data = self.read()
+        data.pop(str(name), None)
+        self.write(data)
+        self.logs.info(f"Favorites : {name} removed")
 
     def game_options(self, game):
         '''

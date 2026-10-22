@@ -3323,7 +3323,7 @@ msgid "favorite-save"
 msgstr "Salva come preferito"
 
 msgid "favorite-save-sub"
-msgstr "Scegli il numero (un preferito già salvato viene sostituito)"
+msgstr "Scegli il numero (un preferito già salvato viene sostituito solo dopo conferma)"
 
 msgid "favorite-players"
 msgstr "Giocatori del preferito"
@@ -3465,4 +3465,25 @@ msgstr "Il display non si è avviato (registri in /Medias/Logs)"
 
 msgid "favorite-options-title"
 msgstr "Opzioni del preferito"
+
+msgid "favorite-add-game"
+msgstr "Aggiungi ai preferiti"
+
+msgid "favorite-add-options"
+msgstr "Nuovo preferito con le sue opzioni"
+
+msgid "favorite-add-plain"
+msgstr "Nuovo preferito senza opzioni"
+
+msgid "favorite-numbered-remove"
+msgstr "Rimuovi questo preferito"
+
+msgid "favorite-removed"
+msgstr "Preferito rimosso:"
+
+msgid "favorite-replace"
+msgstr "Sostituire il preferito"
+
+msgid "favorite-no-options"
+msgstr "Senza opzioni: si scelgono a ogni avvio"
 

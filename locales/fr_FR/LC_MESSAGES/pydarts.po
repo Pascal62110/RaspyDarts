@@ -3957,7 +3957,7 @@ msgid "favorite-save"
 msgstr "Enregistrer comme favori"
 
 msgid "favorite-save-sub"
-msgstr "Choisissez son numéro (un favori déjà enregistré est remplacé)"
+msgstr "Choisissez son numéro (un favori déjà enregistré n'est remplacé qu'après confirmation)"
 
 msgid "favorite-players"
 msgstr "Joueurs du favori"
@@ -4099,4 +4099,25 @@ msgstr "L'afficheur n'a pas démarré (journaux dans /Medias/Logs)"
 
 msgid "favorite-options-title"
 msgstr "Options du favori"
+
+msgid "favorite-add-game"
+msgstr "Ajouter aux favoris"
+
+msgid "favorite-add-options"
+msgstr "Nouveau favori avec ses options"
+
+msgid "favorite-add-plain"
+msgstr "Nouveau favori sans options"
+
+msgid "favorite-numbered-remove"
+msgstr "Retirer ce favori"
+
+msgid "favorite-removed"
+msgstr "Favori retiré :"
+
+msgid "favorite-replace"
+msgstr "Remplacer le favori"
+
+msgid "favorite-no-options"
+msgstr "Sans options : elles sont choisies à chaque lancement"
 
