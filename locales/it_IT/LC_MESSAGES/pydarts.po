@@ -3527,13 +3527,13 @@ msgid "editor-screen-settings"
 msgstr "Configurazione"
 
 msgid "editor-help-select"
-msgstr "Frecce: scegli un pulsante · Conferma: sposta, ridimensiona o elimina · Indietro: aggiungi, salva, esci"
+msgstr "Frecce: scegli · Conferma: azioni del pulsante · Mouse: clic, trascina il pulsante o le maniglie · Indietro o Menu: aggiungi, salva, esci"
 
 msgid "editor-help-move"
-msgstr "Frecce: sposta (passo {step} %) · + / -: passo · Conferma: fine · Indietro: annulla"
+msgstr "Frecce: sposta (passo {step}) · + / -: passo · Conferma o Indietro: fine"
 
 msgid "editor-help-resize"
-msgstr "Frecce: sposta la maniglia · + / -: altra maniglia · Conferma: fine · Indietro: annulla"
+msgstr "Frecce: sposta la maniglia (passo {step}) · Conferma: maniglia successiva · + / -: passo · Indietro: fine"
 
 msgid "editor-move"
 msgstr "Sposta"
@@ -3573,4 +3573,34 @@ msgstr "Esci senza salvare"
 
 msgid "editor-continue"
 msgstr "Continua"
+
+msgid "editor-menu-button"
+msgstr "Menu"
+
+msgid "editor-shortcut"
+msgstr "Scorciatoia"
+
+msgid "editor-shortcut-none"
+msgstr "nessuna"
+
+msgid "editor-shortcut-change"
+msgstr "Cambia la scorciatoia"
+
+msgid "editor-shortcut-remove"
+msgstr "Rimuovi la scorciatoia"
+
+msgid "editor-shortcut-press"
+msgstr "Premi il tasto della scorciatoia: da F1 a F12, una lettera o una cifra (Indietro: annulla)"
+
+msgid "editor-shortcut-taken"
+msgstr "{key} è già la scorciatoia di «{button}»: toglierla?"
+
+msgid "editor-key-escape"
+msgstr "Esc"
+
+msgid "editor-key-enter"
+msgstr "Invio"
+
+msgid "editor-key-space"
+msgstr "Spazio"
 

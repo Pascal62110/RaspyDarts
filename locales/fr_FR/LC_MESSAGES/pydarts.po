@@ -4161,13 +4161,13 @@ msgid "editor-screen-settings"
 msgstr "Paramétrage"
 
 msgid "editor-help-select"
-msgstr "Flèches : choisir un bouton · Valider : le déplacer, le redimensionner ou le supprimer · Retour : ajouter, enregistrer, quitter"
+msgstr "Flèches : choisir · Valider : actions du bouton · Souris : cliquer, glisser le bouton ou ses poignées · Retour ou Menu : ajouter, enregistrer, quitter"
 
 msgid "editor-help-move"
-msgstr "Flèches : déplacer (pas {step} %) · + / - : pas · Valider : terminer · Retour : annuler"
+msgstr "Flèches : déplacer (pas {step}) · + / - : pas · Valider ou Retour : terminer"
 
 msgid "editor-help-resize"
-msgstr "Flèches : déplacer la poignée · + / - : autre poignée · Valider : terminer · Retour : annuler"
+msgstr "Flèches : déplacer la poignée (pas {step}) · Valider : poignée suivante · + / - : pas · Retour : terminer"
 
 msgid "editor-move"
 msgstr "Déplacer"
@@ -4207,4 +4207,34 @@ msgstr "Quitter sans enregistrer"
 
 msgid "editor-continue"
 msgstr "Continuer"
+
+msgid "editor-menu-button"
+msgstr "Menu"
+
+msgid "editor-shortcut"
+msgstr "Raccourci"
+
+msgid "editor-shortcut-none"
+msgstr "aucun"
+
+msgid "editor-shortcut-change"
+msgstr "Changer le raccourci"
+
+msgid "editor-shortcut-remove"
+msgstr "Supprimer le raccourci"
+
+msgid "editor-shortcut-press"
+msgstr "Appuyez sur la touche du raccourci : F1 à F12, une lettre ou un chiffre (Retour : annuler)"
+
+msgid "editor-shortcut-taken"
+msgstr "{key} est déjà le raccourci de « {button} » : le lui retirer ?"
+
+msgid "editor-key-escape"
+msgstr "Échap"
+
+msgid "editor-key-enter"
+msgstr "Entrée"
+
+msgid "editor-key-space"
+msgstr "Espace"
 

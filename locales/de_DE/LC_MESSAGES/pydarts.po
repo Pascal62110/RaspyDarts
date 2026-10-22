@@ -837,13 +837,13 @@ msgid "editor-screen-settings"
 msgstr "Einrichtung"
 
 msgid "editor-help-select"
-msgstr "Pfeile: Taste wählen · Bestätigen: verschieben, Größe ändern, löschen · Zurück: hinzufügen, speichern, beenden"
+msgstr "Pfeile: wählen · Bestätigen: Aktionen der Taste · Maus: klicken, Taste oder Griffe ziehen · Zurück oder Menü: hinzufügen, speichern, beenden"
 
 msgid "editor-help-move"
-msgstr "Pfeile: verschieben (Schritt {step} %) · + / -: Schritt · Bestätigen: fertig · Zurück: abbrechen"
+msgstr "Pfeile: verschieben (Schritt {step}) · + / -: Schritt · Bestätigen oder Zurück: fertig"
 
 msgid "editor-help-resize"
-msgstr "Pfeile: Griff verschieben · + / -: anderer Griff · Bestätigen: fertig · Zurück: abbrechen"
+msgstr "Pfeile: Griff verschieben (Schritt {step}) · Bestätigen: nächster Griff · + / -: Schritt · Zurück: fertig"
 
 msgid "editor-move"
 msgstr "Verschieben"
@@ -883,4 +883,34 @@ msgstr "Beenden ohne Speichern"
 
 msgid "editor-continue"
 msgstr "Weiter"
+
+msgid "editor-menu-button"
+msgstr "Menü"
+
+msgid "editor-shortcut"
+msgstr "Tastenkürzel"
+
+msgid "editor-shortcut-none"
+msgstr "keins"
+
+msgid "editor-shortcut-change"
+msgstr "Tastenkürzel ändern"
+
+msgid "editor-shortcut-remove"
+msgstr "Tastenkürzel entfernen"
+
+msgid "editor-shortcut-press"
+msgstr "Taste des Kürzels drücken: F1 bis F12, Buchstabe oder Ziffer (Zurück: abbrechen)"
+
+msgid "editor-shortcut-taken"
+msgstr "{key} ist bereits das Kürzel von „{button}“: dort entfernen?"
+
+msgid "editor-key-escape"
+msgstr "Esc"
+
+msgid "editor-key-enter"
+msgstr "Eingabe"
+
+msgid "editor-key-space"
+msgstr "Leertaste"
 

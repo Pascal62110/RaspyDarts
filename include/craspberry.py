@@ -920,7 +920,9 @@ class Craspberry():
                         y_finger = event.y * h
                         position = (int(x_finger), int(y_finger))
                     else:
-                        position = pygame.mouse.get_pos()
+                        # Where the click was : the pointer as pygame last saw it may be
+                        # elsewhere (a pointer moved by a jump, without motion read before)
+                        position = event.pos
                     return position
             elif event.type == pygame.MOUSEMOTION and not getattr(event, 'touch', False):
                 pygame.mouse.set_visible(True)

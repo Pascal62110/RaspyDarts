@@ -843,13 +843,13 @@ msgid "editor-screen-settings"
 msgstr "Configuración"
 
 msgid "editor-help-select"
-msgstr "Flechas: elegir un botón · Validar: moverlo, cambiar su tamaño o borrarlo · Volver: añadir, guardar, salir"
+msgstr "Flechas: elegir · Validar: acciones del botón · Ratón: clic, arrastrar el botón o sus tiradores · Volver o Menú: añadir, guardar, salir"
 
 msgid "editor-help-move"
-msgstr "Flechas: mover (paso {step} %) · + / -: paso · Validar: terminar · Volver: cancelar"
+msgstr "Flechas: mover (paso {step}) · + / -: paso · Validar o Volver: terminar"
 
 msgid "editor-help-resize"
-msgstr "Flechas: mover el tirador · + / -: otro tirador · Validar: terminar · Volver: cancelar"
+msgstr "Flechas: mover el tirador (paso {step}) · Validar: tirador siguiente · + / -: paso · Volver: terminar"
 
 msgid "editor-move"
 msgstr "Mover"
@@ -889,4 +889,34 @@ msgstr "Salir sin guardar"
 
 msgid "editor-continue"
 msgstr "Continuar"
+
+msgid "editor-menu-button"
+msgstr "Menú"
+
+msgid "editor-shortcut"
+msgstr "Atajo"
+
+msgid "editor-shortcut-none"
+msgstr "ninguno"
+
+msgid "editor-shortcut-change"
+msgstr "Cambiar el atajo"
+
+msgid "editor-shortcut-remove"
+msgstr "Quitar el atajo"
+
+msgid "editor-shortcut-press"
+msgstr "Pulse la tecla del atajo: F1 a F12, una letra o una cifra (Volver: cancelar)"
+
+msgid "editor-shortcut-taken"
+msgstr "{key} ya es el atajo de «{button}»: ¿quitárselo?"
+
+msgid "editor-key-escape"
+msgstr "Esc"
+
+msgid "editor-key-enter"
+msgstr "Intro"
+
+msgid "editor-key-space"
+msgstr "Espacio"
 

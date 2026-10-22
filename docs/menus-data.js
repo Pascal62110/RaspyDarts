@@ -358,6 +358,10 @@ const MENUS_DATA = {
    "favorite_players": {
     "title": "favorite-players",
     "subtitle": "favorite-players-sub"
+   },
+   "editor_games": {
+    "layout": "grid",
+    "columns": 4
    }
   }
  },

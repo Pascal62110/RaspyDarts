@@ -429,7 +429,7 @@ Une action par bouton. Le jeu refuse une action inconnue (§3).
 | `players_bank` | banque de prénoms |
 | `backups` | sauvegardes |
 | `exhibition` | mode exposition |
-| `edit_screens` | éditeur des écrans sur la borne : l'écran principal, Paramètres ou Paramétrage affiché tel quel, chaque bouton déplacé, redimensionné par ses poignées, ajouté ou supprimé au clavier, aux boutons ou aux fléchettes (touches de la navigation, §9 ; `+`/`-` : pas du déplacement ou poignée suivante ; Retour : ajouter un bouton, enregistrer, quitter) ; l'écran est figé à l'ouverture (chaque bouton reçoit un placement libre, §7.5) et s'enregistre dans le `menus.yaml` du thème (l'ancien gardé en `menus.yaml.bak`) |
+| `edit_screens` | éditeur des écrans sur la borne : l'écran principal, Paramètres ou Paramétrage affiché tel quel (son titre en haut, les touches du moment dans une bande fine en bas), chaque bouton déplacé, redimensionné par ses poignées, son raccourci changé ou retiré (une touche déjà prise par un autre bouton lui est retirée si on le veut), ajouté ou supprimé ; au clavier (une touche maintenue se répète), aux boutons, aux fléchettes (touches de la navigation, §9 ; `+`/`-` : pas, d'un pixel à 5 % de l'écran ; Valider : poignée suivante), à la souris ou au doigt (cliquer, glisser un bouton ou ses poignées) ; Retour ou le bouton Menu : ajouter un bouton, enregistrer, quitter. L'écran est figé à l'ouverture (chaque bouton reçoit un placement libre, §7.5) et s'enregistre dans le `menus.yaml` du thème (l'ancien gardé en `menus.yaml.bak`) |
 | `raspy2dmd` | l'afficheur DMD Raspy2DMD sur la borne (panneaux pilotés par un Raspberry Pico en USB) : installé, QR code de sa page web, message d'essai, mire de test du Pico, horloge, démo (commandes publiées sur le sujet MQTT `raspy2dmd`) ; pas installé, il propose de l'installer (mode « Pico seul », en tâche de fond) |
 | `update` | vérifier les mises à jour |
 
@@ -511,7 +511,7 @@ Deux logiques :
   gauche/droite) passent d'abord : la rangée la plus proche, puis celui qui lui fait le plus
   face (en part de sa propre largeur, au dixième près), puis le premier dans le sens de
   lecture (le plus à gauche, le plus haut). Les autres ensuite : `écart + 2 × écart
-  perpendiculaire des centres`. Aucun candidat : droite et gauche continuent dans le sens de
+  perpendiculaire entre leurs bords` (un bouton proche en diagonale passe avant un bouton lointain aligné). Aucun candidat : droite et gauche continuent dans le sens de
   lecture (au bout d'une rangée, le premier bouton de la rangée suivante ; gauche, le
   précédent ; après le dernier, le premier) : tout le menu se parcourt avec droite seule.
   Haut et bas font le tour, vers le plus éloigné qui lui fait face du côté opposé.

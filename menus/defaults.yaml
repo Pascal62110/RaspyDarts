@@ -243,3 +243,8 @@ menus:
   favorite_players:
     title: favorite-players
     subtitle: favorite-players-sub
+
+  # Editor of the screens (include/cmenueditor.py) : the games which can be added, in columns
+  editor_games:
+    layout: grid
+    columns: 4

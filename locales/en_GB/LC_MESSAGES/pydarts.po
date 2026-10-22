@@ -3073,13 +3073,13 @@ msgid "editor-screen-settings"
 msgstr "Setup"
 
 msgid "editor-help-select"
-msgstr "Arrows: choose a button · Validate: move, resize or delete it · Back: add, save, leave"
+msgstr "Arrows: choose · Validate: actions of the button · Mouse: click, drag the button or its handles · Back or Menu: add, save, leave"
 
 msgid "editor-help-move"
-msgstr "Arrows: move (step {step} %) · + / -: step · Validate: done · Back: cancel"
+msgstr "Arrows: move (step {step}) · + / -: step · Validate or Back: done"
 
 msgid "editor-help-resize"
-msgstr "Arrows: move the handle · + / -: other handle · Validate: done · Back: cancel"
+msgstr "Arrows: move the handle (step {step}) · Validate: next handle · + / -: step · Back: done"
 
 msgid "editor-move"
 msgstr "Move"
@@ -3119,4 +3119,34 @@ msgstr "Leave without saving"
 
 msgid "editor-continue"
 msgstr "Continue"
+
+msgid "editor-menu-button"
+msgstr "Menu"
+
+msgid "editor-shortcut"
+msgstr "Shortcut"
+
+msgid "editor-shortcut-none"
+msgstr "none"
+
+msgid "editor-shortcut-change"
+msgstr "Change the shortcut"
+
+msgid "editor-shortcut-remove"
+msgstr "Remove the shortcut"
+
+msgid "editor-shortcut-press"
+msgstr "Press the key of the shortcut: F1 to F12, a letter or a digit (Back: cancel)"
+
+msgid "editor-shortcut-taken"
+msgstr "{key} is already the shortcut of \"{button}\": take it from it?"
+
+msgid "editor-key-escape"
+msgstr "Esc"
+
+msgid "editor-key-enter"
+msgstr "Enter"
+
+msgid "editor-key-space"
+msgstr "Space"
 

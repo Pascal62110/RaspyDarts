@@ -7091,7 +7091,7 @@ class Screen(pygame.Surface):
         under it below it, even far from its centre). In the direction : the buttons beyond its
         edge ; those facing it (sharing part of its width, or of its height) first : the closest
         row, the one facing it the most, the first in reading order ; then the others : gap + 2 x
-        distance across. None : right and left go on in reading order (the end of a row : the
+        distance across between the edges. None : right and left go on in reading order (the end of a row : the
         first button of the next row ; left : the one before) ; up and down go around, to the
         farthest one facing it on the other side
         '''
@@ -7116,9 +7116,11 @@ class Screen(pygame.Surface):
             _, (low, high) = spans(rect)
             return min(high, across_end) - max(low, across_start)
 
-        def middle(rect):
+        def apart(rect):
+            # Distance across between its edges and those of the selected one (it does not
+            # face it) : by the centres, a far button in line with it won over a near one
             _, (low, high) = spans(rect)
-            return (low + high) / 2
+            return max(low - across_end, across_start - high, 0)
 
         best, wrap = None, None
         for index, rect in rects.items():
@@ -7132,7 +7134,7 @@ class Screen(pygame.Surface):
                     part = round(shared / max(1, spans(rect)[1][1] - spans(rect)[1][0]), 1)
                     score = (0, round(gap), -part, spans(rect)[1][0], index)
                 else:
-                    score = (1, gap + 2 * abs(middle(rect) - (across_start + across_end) / 2), 0, 0, index)
+                    score = (1, gap + 2 * apart(rect), 0, 0, index)
                 if best is None or score < best[0]:
                     best = (score, index)
             elif not horizontal and shared > 0 and beyond(rect, -sign)[0]:
