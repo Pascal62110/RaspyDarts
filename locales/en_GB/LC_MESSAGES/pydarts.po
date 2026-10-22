@@ -2890,7 +2890,7 @@ msgid "favorite-player"
 msgstr "Player"
 
 msgid "favorite-saved"
-msgstr "Favorite saved:"
+msgstr "Favorite {number} saved"
 
 msgid "favorite-not-saved"
 msgstr "The favorite could not be saved"
@@ -3025,7 +3025,7 @@ msgid "favorite-numbered-remove"
 msgstr "Remove this favorite"
 
 msgid "favorite-removed"
-msgstr "Favorite removed:"
+msgstr "Favorite {number} removed"
 
 msgid "favorite-replace"
 msgstr "Replace the favorite"
@@ -3046,7 +3046,7 @@ msgid "favorite-exists"
 msgstr "This favorite already exists"
 
 msgid "favorite-pick-sub"
-msgstr "Favorite players and bank of firstnames: green = taken, pink = left"
+msgstr "Favorite players and bank of firstnames"
 
 msgid "favorite-count"
 msgstr "Number of players of the favorite"

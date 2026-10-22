@@ -3844,7 +3844,7 @@ class Screen(pygame.Surface):
             try:
                 if choice == 'remove':
                     self.favorites().remove(slot)
-                    self.message([f"{self.lang.translate('favorite-removed')} {slot[3:]}"], 1500, None, 'middle', 'big')
+                    self.message([self.lang.translate('favorite-removed').replace('{number}', slot[3:])], 1500, None, 'middle', 'big')
                     return
                 if choice == 'players':
                     chosen = self.favorite_players_choice(game, favorite)
@@ -3852,13 +3852,13 @@ class Screen(pygame.Surface):
                         continue
                     mode, count, names = chosen
                     self.favorites().save(slot, game, favorite['options'], count, mode, names)
-                    self.message([f"{self.lang.translate('favorite-saved')} {slot[3:]}"], 1500, None, 'middle', 'big')
+                    self.message([self.lang.translate('favorite-saved').replace('{number}', slot[3:])], 1500, None, 'middle', 'big')
                     return
                 options = self.favorite_options_screen(game, favorite['options'] or None)
                 if options is None:
                     continue
                 self.favorites().save(slot, game, options, favorite['players'], favorite['mode'], favorite['names'])
-                self.message([f"{self.lang.translate('favorite-saved')} {slot[3:]}"], 1500, None, 'middle', 'big')
+                self.message([self.lang.translate('favorite-saved').replace('{number}', slot[3:])], 1500, None, 'middle', 'big')
             except Exception as error:    # pylint: disable=broad-except
                 self.logs.error(f"Favorites : {slot} not changed ({error})")
                 self.message([self.lang.translate('favorite-not-saved')], 2500, 'menu-ko', 'middle', 'big')
@@ -6957,7 +6957,7 @@ class Screen(pygame.Surface):
                 return False
             mode, count, players = chosen
             favorites.save(slot['id'], game, options, count, mode, players)
-            self.message([f"{self.lang.translate('favorite-saved')} {slot['id'][3:]}"], 1500, None, 'middle', 'big')
+            self.message([self.lang.translate('favorite-saved').replace('{number}', slot['id'][3:])], 1500, None, 'middle', 'big')
             return True
         except Exception as error:    # pylint: disable=broad-except
             self.logs.error(f"Favorites : not saved ({error})")
