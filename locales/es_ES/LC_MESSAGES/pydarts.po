@@ -906,7 +906,7 @@ msgid "editor-shortcut-remove"
 msgstr "Quitar el atajo"
 
 msgid "editor-shortcut-press"
-msgstr "Pulse la tecla del atajo: F1 a F12, una letra o una cifra (Volver: cancelar)"
+msgstr "Pulse la tecla del atajo: F1 a F12, una letra o una cifra (Esc: cancelar)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} ya es el atajo de «{button}»: ¿quitárselo?"

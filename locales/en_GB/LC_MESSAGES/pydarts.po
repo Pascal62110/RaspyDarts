@@ -3136,7 +3136,7 @@ msgid "editor-shortcut-remove"
 msgstr "Remove the shortcut"
 
 msgid "editor-shortcut-press"
-msgstr "Press the key of the shortcut: F1 to F12, a letter or a digit (Back: cancel)"
+msgstr "Press the key of the shortcut: F1 to F12, a letter or a digit (Esc: cancel)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} is already the shortcut of \"{button}\": take it from it?"

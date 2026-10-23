@@ -900,7 +900,7 @@ msgid "editor-shortcut-remove"
 msgstr "Tastenkürzel entfernen"
 
 msgid "editor-shortcut-press"
-msgstr "Taste des Kürzels drücken: F1 bis F12, Buchstabe oder Ziffer (Zurück: abbrechen)"
+msgstr "Taste des Kürzels drücken: F1 bis F12, Buchstabe oder Ziffer (Esc: abbrechen)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} ist bereits das Kürzel von „{button}“: dort entfernen?"

@@ -4224,7 +4224,7 @@ msgid "editor-shortcut-remove"
 msgstr "Supprimer le raccourci"
 
 msgid "editor-shortcut-press"
-msgstr "Appuyez sur la touche du raccourci : F1 à F12, une lettre ou un chiffre (Retour : annuler)"
+msgstr "Appuyez sur la touche du raccourci : F1 à F12, une lettre ou un chiffre (Échap : annuler)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} est déjà le raccourci de « {button} » : le lui retirer ?"

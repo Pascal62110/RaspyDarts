@@ -281,10 +281,12 @@ class CStrip(object):
             self.Reset()
 
     def FadePin(self, value, fade_value):
+        # In integers of Python : with numpy 2, fade_value * value (a uint8) overflowed and
+        # a light faded by 1 a step (the trail of Fireworks went on and on)
+        value = int(value)
         if value <= 10:
             return 0
-        else:
-            return np.uint8(value - (fade_value * value / 256))
+        return int(value - fade_value * value / 256)
 
     def FadeToBlack(self, led, fade_value):
         return [self.FadePin(self.handle[led][0], fade_value),\

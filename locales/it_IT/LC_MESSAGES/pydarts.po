@@ -3590,7 +3590,7 @@ msgid "editor-shortcut-remove"
 msgstr "Rimuovi la scorciatoia"
 
 msgid "editor-shortcut-press"
-msgstr "Premi il tasto della scorciatoia: da F1 a F12, una lettera o una cifra (Indietro: annulla)"
+msgstr "Premi il tasto della scorciatoia: da F1 a F12, una lettera o una cifra (Esc: annulla)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} è già la scorciatoia di «{button}»: toglierla?"
