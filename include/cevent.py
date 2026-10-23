@@ -13,6 +13,18 @@ import re
 import time
 
 import paho.mqtt.client as mqtt
+
+
+def new_mqtt_client(client_id=''):
+    '''
+    A client of paho-mqtt 1.x or 2.x : with 2.x (installed by Raspy2DMD), Client(client_id)
+    raised "Unsupported callback API version" and the game had no MQTT at all (no DMD, no LED
+    animation) ; the callbacks of 1.x are kept
+    '''
+    versions = getattr(mqtt, 'CallbackAPIVersion', None)
+    if versions is not None:
+        return mqtt.Client(versions.VERSION1, client_id)
+    return mqtt.Client(client_id)
 #from threading import Thread
 
 class Event:
@@ -66,7 +78,7 @@ class Event:
         self.logs.debug(f"broker={broker}")
         self.loop_running = False
         try:
-            self.mqtt_client = mqtt.Client(client_id)
+            self.mqtt_client = new_mqtt_client(client_id)
             self.mqtt_client.connect(broker, port)
             # Network loop in the background : the keepalive pings are sent (without them the
             # broker closed the connection after a minute without message, and the first
@@ -74,7 +86,9 @@ class Event:
             # the connection is made again by itself
             self.mqtt_client.loop_start()
             self.loop_running = True
-        except: # pylint: disable=bare-except
+        except Exception as error: # pylint: disable=broad-except
+            # Said : without it, nothing was published and nothing told why
+            self.logs.error(f"Mqtt : no connection to {broker}:{port} ({type(error).__name__} : {error})")
             self.mqtt_client = None
 
     def add_rpi(self, rpi):
