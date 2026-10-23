@@ -17,14 +17,10 @@ import paho.mqtt.client as mqtt
 
 def new_mqtt_client(client_id=''):
     '''
-    A client of paho-mqtt 1.x or 2.x : with 2.x (installed by Raspy2DMD), Client(client_id)
-    raised "Unsupported callback API version" and the game had no MQTT at all (no DMD, no LED
-    animation) ; the callbacks of 1.x are kept
+    A client of paho-mqtt 2 (its callback API 2, as Raspy2DMD) : the bornes installed with
+    paho-mqtt 1.x get it from scripts/update_lib.sh, run before this client is made
     '''
-    versions = getattr(mqtt, 'CallbackAPIVersion', None)
-    if versions is not None:
-        return mqtt.Client(versions.VERSION1, client_id)
-    return mqtt.Client(client_id)
+    return mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id)
 #from threading import Thread
 
 class Event:
@@ -249,6 +245,15 @@ class Event:
         messages = []
 
         if device == 'DMD':
+            if event in (self.dispatcher or {}):
+                # An event of the game (wait, menu...) : the DMD commands set for it (Events of
+                # the configuration), none : nothing. Its name alone was sent before, which the
+                # DMD does not know (Raspy2DMD : "Unknown message format" every 90 s for wait)
+                for message in (self.dispatcher.get(event) or {}).get('DMD') or []:
+                    if '|' in str(message):
+                        self.mqtt_publish(topic, message)
+                return
+            # A message (msg|..., time|...) : as it is
             self.mqtt_publish(topic, event)
             return
 

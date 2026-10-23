@@ -9,7 +9,7 @@ import paho.mqtt.client as mqtt
 # Perso
 
 # The callback for when the client receives a connect response from the server.
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, reason_code, properties):
     # on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
     client.subscribe(MQTT_TOPIC)
     print(f"[DEBUG] Listen {MQTT_TOPIC} on {MQTT_HOST}", flush=True)
@@ -23,7 +23,7 @@ def on_message(client, userdata, msg):
 MQTT_HOST="localhost"
 MQTT_TOPIC = "raspydarts/#"
 
-client = mqtt.Client()
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)    # paho-mqtt 2
 client.on_connect = on_connect
 client.on_message = on_message
 

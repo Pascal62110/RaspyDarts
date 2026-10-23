@@ -255,7 +255,7 @@ def change_color(gateway, username, light, X, Y, Z=None):
     put = requests.put(f'http://{gateway}{API}/{username}/lights/{light}/state', data=data)
     debug(f"Respond {put.json()}")
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, reason_code, properties):
     """
     The callback for when the client receives a connect response from the server.
     """
@@ -385,7 +385,7 @@ else :
     Colors = CColors.CColors()
 
     try:
-        client = mqtt.Client()
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)    # paho-mqtt 2
         client.on_connect = on_connect
         client.on_message = on_message
 

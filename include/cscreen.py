@@ -7984,7 +7984,11 @@ class Screen(pygame.Surface):
             return
         from include import cgallery
         import qrcode
-        url = f"http://{cgallery.local_ip()}/"
+        import socket
+        # Its address by the name of the Raspberry (raspydarts.local) : it stays when the IP
+        # changes ; the IP written under it, if a device does not know the .local names
+        url = f"http://{socket.gethostname()}.local/"
+        address = f"http://{cgallery.local_ip()}/"
         picture = qrcode.make(url)
         picture = (picture.get_image() if hasattr(picture, 'get_image') else picture).convert('RGB')
         side = int(self.res['y'] * 0.5)
@@ -8006,6 +8010,7 @@ class Screen(pygame.Surface):
             self.blit(code, (pos_x, pos_y))
             line = int(self.res['y'] / 20)
             self.blit_text(url, pos_x, pos_y + side + self.margin, side, line, self.colorset['menu-text-white'])
+            self.blit_text(address, pos_x, pos_y + side + self.margin + line, side, int(line * 0.8), self.colorset['menu-text-white'])
             if not running:
                 # Installed, not started (just installed, out of its operating hours...)
                 self.blit_text(self.lang.translate('raspy2dmd-not-running'), 0, pos_y + side + self.margin + line,

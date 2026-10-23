@@ -109,6 +109,26 @@ try:
     # Update logs system with loglevel set in config
     logs.set_level(Config.get_value('SectionGlobals', 'debuglevel', 0))
 
+    #################################
+    # Install additional librairies #
+    #    Delete script if succeed   #
+    #################################
+    # Before the client MQTT and the LED servers : it may install the modules they need
+    # (paho-mqtt 2). The screen is not shown yet : the log only
+
+    update_lib = f"{cpaths.ROOT_DIR}/scripts/update_lib.sh"
+    if os.path.isfile(update_lib):
+        logs.info("================================================================")
+        logs.info("Install additional librairies\n")
+        code_retour = os.system(f"sh {update_lib}")
+        if code_retour == 0:
+            logs.info("Install additional librairies succeed !\n")
+            os.remove(update_lib)
+        else:
+            # (gardé : nouvel essai au prochain démarrage)
+            logs.error(f"Erreur lors de l'exécution du script (code {code_retour})")
+        logs.info("================================================================")
+
     # dispatcher dispatcher
     subsribers = []
     if config_leds['PIN_STRIPLED'] in ('10', '12', '18', '21'):
@@ -304,25 +324,6 @@ cgallery.ensure_running(logs)
 NetMasterClient = cclient.MasterClient(logs)
 # v1.2 SQlite score storage
 scores = cscores.Scores(Config, logs)
-
-#################################
-# Install additional librairies # 
-#    Delete script if succeed   #
-#################################
-
-update_lib = f"{cpaths.ROOT_DIR}/scripts/update_lib.sh"
-if os.path.isfile(update_lib):
-    logs.info("================================================================")
-    logs.info("Install additional librairies\n")
-    display.message(['Install_additional_librairies'], 0, None, 'middle')
-    code_retour = os.system(f"sh {update_lib}")
-    if code_retour == 0:
-        logs.info("Install additional librairies succeed !\n")
-        os.remove(update_lib)
-    else:
-        # (gardé : nouvel essai au prochain démarrage)
-        logs.error(f"Erreur lors de l'exécution du script (code {code_retour})")
-    logs.info("================================================================")
 
 #####################
 # Update librairies #

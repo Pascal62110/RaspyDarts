@@ -23,7 +23,7 @@ MATRIX_COUNT=7
 MATRIX_ORIENTATION=-90
 MATRIX_ROTATE=2
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, reason_code, properties):
     print("Connected")
 
     # on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
@@ -271,7 +271,7 @@ if __name__ == "__main__":
         time.sleep(2)
         device.clear()
 
-        client = mqtt.Client()
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)    # paho-mqtt 2
         client.on_connect = on_connect
 
         client.connect(MQTT_SERVER, 1883, 60)

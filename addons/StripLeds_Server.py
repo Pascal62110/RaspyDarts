@@ -22,7 +22,7 @@ def usage(msg):
     sys.exit(9)
 
 # The callback for when the client receives a connect response from the server.
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, reason_code, properties):
     # on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
     client.subscribe(MQTT_TOPIC)
     print("[DEBUG] StripLeds_Server : Listen ", MQTT_TOPIC, " on ", MQTT_HOST, flush=True)
@@ -284,7 +284,7 @@ else:
     Colors = CColors.CColors()
 
     try:
-        client = mqtt.Client()
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)    # paho-mqtt 2
         client.on_connect = on_connect
         t_event = Event()
         client.on_message = on_message

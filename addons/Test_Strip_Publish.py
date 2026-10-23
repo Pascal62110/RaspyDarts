@@ -20,8 +20,7 @@ Port=1883
 client_id='pydarts-mqtt-{}'.format(random.randint(0,1000))
 
 CONTINUE=True
-# paho-mqtt 2.x : the callback API version first
-MqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id) if hasattr(mqtt, 'CallbackAPIVersion') else mqtt.Client(client_id)
+MqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id)    # paho-mqtt 2
 MqttClient.connect(Broker,Port)
 
 def MessageIsAck(client,userdata,msg):

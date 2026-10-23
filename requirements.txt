@@ -24,7 +24,7 @@ luma.led-matrix
 rgbxy
 
 # --- Reseau et domotique ---
-paho-mqtt
+paho-mqtt>=2
 PyBluez
 
 # --- Envoi des photos webcam vers Google Drive (optionnel) ---
