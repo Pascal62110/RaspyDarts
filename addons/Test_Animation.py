@@ -7,7 +7,6 @@ import time
 import colorsys
 import random
 import ast
-import numpy as np
 
 #import neopixel
 from rpi_ws281x import PixelStrip, Color
@@ -16,7 +15,7 @@ from rpi_ws281x import PixelStrip, Color
 import Colors as CL
 
 # Pour des bandes NeoPixel RGBW, changez ORDER de RGBW à recordBW.
-OFF = [np.uint8(0), np.uint8(0), np.uint8(0)]
+OFF = [0, 0, 0]
 MULT_COLOR = {'S': [0, 255, 0], 'D': [0, 0, 255], 'T': [255, 0, 0], 'E': [129, 12, 128]}
 TARGET_ORDER = [1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5, 20]
 
@@ -38,7 +37,7 @@ class CStrip(object):
 
         self.strip.begin()
         self.strip_length = strip_length
-        self.handle = [[np.uint8(0), np.uint8(0), np.uint8(0)] for _a in range(self.strip_length)]
+        self.handle = [[0, 0, 0] for _a in range(self.strip_length)]
 
         if device == 'TARGET' and configuration is not None:
             if leds_type == 'raspyleds':
@@ -270,7 +269,7 @@ class CStrip(object):
             pixel_max = self.strip_length
 
         for pixel in range(pixel_min, pixel_max):
-            self.strip.setPixelColor(pixel, int(Color(self.handle[pixel][0], self.handle[pixel][1], self.handle[pixel][2])))
+            self.strip.setPixelColor(pixel, int(Color(int(self.handle[pixel][0]), int(self.handle[pixel][1]), int(self.handle[pixel][2]))))
 
         self.strip.show()
 

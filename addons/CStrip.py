@@ -9,7 +9,6 @@ import time
 import colorsys
 import random
 import ast
-import numpy as np
 from datetime import datetime
 
 #import neopixel
@@ -18,7 +17,7 @@ from rpi_ws281x import PixelStrip, Color, WS2811_STRIP_RGB, WS2811_STRIP_GRB
 # Parametrage Leds
 import Colors as CL
 
-OFF = [np.uint8(0), np.uint8(0), np.uint8(0)]
+OFF = [0, 0, 0]
 MULT_COLOR = {'S': [0, 255, 0], 'D': [0, 0, 255], 'T': [255, 0, 0], 'E': [129, 12, 128]}
 TARGET_ORDER = [1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5, 20]
 
@@ -49,7 +48,7 @@ class CStrip(object):
 
         self.strip.begin()
         self.strip_length = strip_length
-        self.handle = [[np.uint8(0), np.uint8(0), np.uint8(0)] for _a in range(self.strip_length)]
+        self.handle = [[0, 0, 0] for _a in range(self.strip_length)]
         self.pixel_min = None
         self.pixel_max = None
         self.customs = {}
@@ -375,7 +374,7 @@ class CStrip(object):
             pixel_max = self.strip_length
 
         for pixel in range(pixel_min, pixel_max):
-            self.strip.setPixelColor(pixel, int(Color(self.handle[pixel][0], self.handle[pixel][1], self.handle[pixel][2])))
+            self.strip.setPixelColor(pixel, int(Color(int(self.handle[pixel][0]), int(self.handle[pixel][1]), int(self.handle[pixel][2]))))
 
         self.strip.show()
 
@@ -624,8 +623,8 @@ class CStrip(object):
 
     def Blink(self, event, wait_time, color, segment):
 
-        handle_on = [[np.uint8(0), np.uint8(0), np.uint8(0)] for _a in range(self.strip_length)]
-        handle_off = [[np.uint8(0), np.uint8(0), np.uint8(0)] for _a in range(self.strip_length)]
+        handle_on = [[0, 0, 0] for _a in range(self.strip_length)]
+        handle_off = [[0, 0, 0] for _a in range(self.strip_length)]
 
         for pixel in range(self.strip_length):
             color = self.strip.getPixelColor(pixel)

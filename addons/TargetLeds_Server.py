@@ -131,8 +131,6 @@ def animation(t_event, msg, restoring=False):
             CStrip.TA_FadeInOut(t_event, delay, C, iterations)
         elif animation == 'FadeRGB':
             CStrip.TA_FadeRGB(t_event, delay, C, iterations)
-        elif animation == 'Georges':
-            CStrip.TA_Georges(t_event, delay, C, iterations)
         elif animation == 'Hue':
             CStrip.TA_Hue(t_event, delay, C, iterations)
         elif animation == 'Light':
