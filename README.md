@@ -79,6 +79,21 @@ menus, puis dépôt de ces fichiers sur la carte. Les étapes ci-dessous en sont
 Le jeu est installé dans `/raspydarts` ; la configuration, les thèmes, les scores et les
 trophées sont dans `~/.raspydarts`.
 
+### Sur un Raspberry Pi OS neuf (dernière version du dépôt)
+
+Sur une carte Raspberry Pi OS 13 (Trixie) **avec bureau** écrite par Raspberry Pi Imager,
+connectez-vous avec le compte qui fera tourner le jeu (`raspydarts` conseillé, pas root) et
+lancez :
+
+```
+curl -fsSL https://raw.githubusercontent.com/rmdelcelier/RaspyDarts/main/install.sh | sudo bash
+```
+
+Le script télécharge le code (environ 1 Go) et la configuration d'exemple (environ 400 Mo),
+installe les paquets nécessaires puis configure le démarrage ; prévoyez 6 Go libres.
+Redémarrez le Pi à la fin. Options, après `sudo bash -s --` : `--oui` (aucune question),
+`--sans-exemple` (garder `~/.raspydarts` tel quel), `--version <branche ou étiquette>`.
+
 ### Venir d'une borne en 4.5 (Raspberry Pi OS Buster)
 
 La 4.6.1 change de système : elle s'installe avec la nouvelle image, pas par une mise à jour.
