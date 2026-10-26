@@ -4391,3 +4391,18 @@ msgstr "Raspy2DMD est installé"
 
 msgid "raspy2dmd-install-error"
 msgstr "Installation échouée : voir logs/raspy2dmd_install.log"
+
+msgid "sound_output"
+msgstr "Sortie du son"
+
+msgid "sound-output-auto"
+msgstr "Automatique (carte USB si branchée)"
+
+msgid "sound-output-hdmi"
+msgstr "HDMI (écran)"
+
+msgid "sound-output-jack"
+msgstr "Prise jack du Raspberry"
+
+msgid "sound-output-usb"
+msgstr "Carte son USB"

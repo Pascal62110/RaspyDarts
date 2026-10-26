@@ -6575,6 +6575,10 @@ class Screen(pygame.Surface):
             elif option == 'preferedcategory':
                 option_type = 'dropdown'
                 option_values = [('classic', 'classic'), ('fun', 'fun'), ('sport', 'sport')]
+            elif option == 'sound_output':
+                # HDMI, jack of the Raspberry, USB sound card (include/caudio.py)
+                option_type = 'dropdown'
+                option_values = [(output, f'sound-output-{output}') for output in ('auto', 'hdmi', 'jack', 'usb')]
             elif option == 'illumination_color':
                 option_type = 'dropdown_colors'
                 option_values = [(val, val) for val in colors_available]

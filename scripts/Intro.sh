@@ -51,9 +51,28 @@ if [ "$video" = "" ]; then
 	fi
 fi
 
+# Output of the sound, as the game (include/caudio.py) : PipeWire is not started yet, the card
+# is used directly. auto (and usb) : a USB sound card when one is plugged, else HDMI
+sound_output() {
+	output="`grep '^sound_output:' $PYDARTS_HOME/$PYDARTS_CFG 2> /dev/null | cut -d':' -f 2 | tr -d ' \r'`"
+	# A USB card with a playback (a webcam is a USB card too, with a microphone only)
+	usb=""
+	for card in /proc/asound/card[0-9]*; do
+		if [ -f "$card/usbid" ] && ls -d "$card"/pcm*p > /dev/null 2>&1; then
+			usb="`cat "$card/id"`"
+			break
+		fi
+	done
+	case "$output" in
+		jack) echo local ;;
+		hdmi) echo hdmi ;;
+		*) if [ -n "$usb" ]; then echo "alsa:plughw:CARD=$usb"; else echo hdmi; fi ;;
+	esac
+}
+
 # omxplayer only exists on Raspbian Buster
 if command -v omxplayer > /dev/null 2>&1; then
-	omxplayer -o hdmi "$video"
+	omxplayer -o "`sound_output`" "$video"
 elif command -v cvlc > /dev/null 2>&1; then
 	# The game starts at the same time : it loads behind the video and goes up to its menu
 	# in a hidden window, shown as soon as this script is finished (see intro_is_playing

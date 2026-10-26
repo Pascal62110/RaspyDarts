@@ -238,6 +238,7 @@ print("##############################################################")
 ########################
 # from include import CBluetooth
 from include import craspberry
+from include import caudio
 from include import cdmd
 from include import cvideos
 from include import cimages
@@ -336,6 +337,10 @@ if not Config.file_exists and False:
     cmd = f'{cpaths.ROOT_DIR}/scripts/update_tool.sh'
     os.system(cmd)
     logs.info("================================================================")
+
+# Output of the sound : HDMI, jack, USB sound card or automatic (in a thread : PipeWire may come
+# after the game)
+caudio.apply(Config.get_value('SectionGlobals', 'sound_output', False) or 'auto', logs)
 
 ##############
 # AUTO UPDATE
@@ -1142,6 +1147,7 @@ try:
                         idle_light(False)
                         idle_light(True)
 
+                        caudio.apply(Config.get_value('SectionGlobals', 'sound_output', False) or 'auto', logs)
                         logs.update_facility(int(Config.get_value('SectionGlobals', 'debuglevel')))
                         display.wait_event_time = int(Config.get_value('SectionGlobals', 'waitevent_time'))
                         display.file_class.reset_theme(Config.get_value('SectionGlobals', 'colorset'))

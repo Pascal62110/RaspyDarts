@@ -76,7 +76,10 @@ DefaultConfig['SectionGlobals'] = {
     'illumination_color': 'white',    
     'fast_games_mode': False,
     'only_favorites_games_mode': False,
-    'check_for_updates': True
+    'check_for_updates': True,
+    # Output of the sound : auto (a USB card when plugged, else HDMI), hdmi, jack, usb
+    # (include/caudio.py)
+    'sound_output': 'auto'
     }
 #
 DefaultConfig['SectionAdvanced'] = {
@@ -1306,6 +1309,8 @@ class Config:
         self.conf += f"only_favorites_games_mode:{Global['only_favorites_games_mode']}\n"
         self.conf += "### Check for update available\n"
         self.conf += f"check_for_updates:{Global['check_for_updates']}\n"
+        self.conf += "### Output of the sound : auto (USB sound card when plugged, else HDMI), hdmi, jack, usb\n"
+        self.conf += f"sound_output:{Global.get('sound_output', 'auto')}\n"
 
         Advanced = self.config["SectionAdvanced"]
 

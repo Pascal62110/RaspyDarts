@@ -3303,3 +3303,18 @@ msgstr "Raspy2DMD is installed"
 
 msgid "raspy2dmd-install-error"
 msgstr "Installation failed: see logs/raspy2dmd_install.log"
+
+msgid "sound_output"
+msgstr "Sound output"
+
+msgid "sound-output-auto"
+msgstr "Automatic (USB card if plugged)"
+
+msgid "sound-output-hdmi"
+msgstr "HDMI (screen)"
+
+msgid "sound-output-jack"
+msgstr "Raspberry jack socket"
+
+msgid "sound-output-usb"
+msgstr "USB sound card"
