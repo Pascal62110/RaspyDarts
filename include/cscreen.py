@@ -24,6 +24,7 @@ import importlib
 import time
 
 import shutil
+import json
 # For IP addresses
 from netifaces import interfaces
 from netifaces import ifaddresses
@@ -497,6 +498,16 @@ class Screen(pygame.Surface):
         try:
             # A theme made on another installation keeps the path it had there
             font = cpaths.relocate(self.colorset['font'])
+            if not os.path.isfile(font):
+                # Saved there under another name of theme (the sombre theme of the example :
+                # /home/pi/.pydarts/themes/remi/font/CompactaBT.ttf) : the font of this name in
+                # the theme, else in the game
+                name = os.path.basename(str(self.colorset['font']))
+                for candidate in (os.path.join(str(getattr(self.file_class, 'theme_dir', '')), 'font', name),
+                                  os.path.join(self.config.fontsDir, name)):
+                    if os.path.isfile(candidate):
+                        font = candidate
+                        break
             if os.path.isfile(font):
                 self.defaultfontpath = font
                 self.colorset['font'] = font
@@ -506,6 +517,8 @@ class Screen(pygame.Surface):
             if not os.path.isfile(self.defaultfontpath):
                 self.logs.warning(f"Font {self.defaultfontpath} not found : default font is used")
                 self.defaultfontpath = f"{self.config.fontsDir}/FreeSansBold.ttf"
+                # The descriptions of the games open this one too (the path not found stopped the game)
+                self.colorset['font'] = self.defaultfontpath
         except Exception as e:
             self.logs.info("No font defined in your colorset")
 
@@ -1753,6 +1766,14 @@ class Screen(pygame.Surface):
             else:
                 selected = nb_elements
 
+        elif key in LEFT_KEYS + RIGHT_KEYS and left_right:
+            # Reading order over all : the tabs (zero < 0), the list, the buttons at the bottom,
+            # then the start again (with tabs, they went round between them or stayed on the
+            # last button)
+            first = min(zero, 1)
+            total = nb_elements + add - first + 1
+            selected = first + (selected - first + (1 if key in RIGHT_KEYS else -1)) % total
+
         elif key in LEFT_KEYS:
             if zero < 0 and selected == zero:
                 selected = 0
@@ -1787,6 +1808,21 @@ class Screen(pygame.Surface):
             self.adjust_volume(key, False)
 
         return selected
+
+    @staticmethod
+    def grid_step(cursor, selected, nb_elements, footers, key):
+        '''
+        Right and left on a screen of boxes in lines (cursor : 'line-column' of each box) : the
+        next box in reading order, the buttons at the bottom after the last line (lines
+        nb_elements + 1...), then the first box. A knob set on right and left goes through the
+        whole screen (they stayed in a line)
+        '''
+        cells = sorted({tuple(int(number) for number in str(name).split('-')) for name in cursor})
+        cells = [cell for cell in cells if cell[0] <= nb_elements] + \
+                [(line, 0) for line in range(nb_elements + 1, nb_elements + footers + 1)]
+        current = (selected[0], 0) if selected[0] > nb_elements else tuple(selected)
+        position = cells.index(current) if current in cells else 0
+        return list(cells[(position + (1 if key in RIGHT_KEYS else -1)) % len(cells)])
 
     @with_look('players')
     def players_menu(self, favorites, context='game', bank=None, sets=None, competition_mode=False, colors_available = None, players_color = None):
@@ -1824,16 +1860,18 @@ class Screen(pygame.Surface):
             selected = len(players) + 2
         
         # For players color dropdown
-        colors_list = []
+        # For operation via Colorset with player1, player2, etc : first (last, it was hidden by the
+        # scrolling of a hundred colours)
+        colors_list = [('AUTO COLORSET', 'Auto')]
         if colors_available is not None:
             for val in colors_available:
                 if val in pygame.color.THECOLORS:
                     colors_list.append((val, (pygame.Color(val).r, pygame.Color(val).g, pygame.Color(val).b)))
-        # For operation via Colorset with player1, player2, etc
-        colors_list.append(('AUTO COLORSET', (128, 128, 128)))
         
         # Init enabled F keys
         key_pressed = ''
+        # Box of the selected player reached by right and left, None : its name
+        part = None
 
         while True:
             nb_elements = len(players)
@@ -1856,7 +1894,8 @@ class Screen(pygame.Surface):
             for player in players:
                 shortcut = f'F{i}'
                 # Display player name
-                tmp = self.player_item((i, nb_elements, selected), shortcut, player, special=special, specific_color=players_color)
+                tmp = self.player_item((i, nb_elements, selected), shortcut, player, special=special, specific_color=players_color,
+                                       part=part)
 
                 # Add clickable zones
                 for (e, f) in tmp:
@@ -1967,7 +2006,27 @@ class Screen(pygame.Surface):
                 zero = -1
             else:
                 zero = 1
-            if btn_random:
+            if clicked or key_pressed in UP_KEYS + DOWN_KEYS:
+                part = None
+            if key_pressed in LEFT_KEYS + RIGHT_KEYS:
+                # Right and left go through the whole screen in reading order, as in the menus :
+                # sets and mode, each player then its boxes (colour, PNJ, +, -), the buttons at
+                # the bottom (they stayed on these)
+                boxes = ['*', '/'] + (['+'] if special != 'last' else []) + (['-'] if special != 'first' else [])
+                order = [(number, None) for number in ([-1, 0] if sets is not None and context == 'game' else
+                                                       [0] if sets is not None else [])]
+                for number in range(1, nb_elements + 1):
+                    order += [(number, None)] + [(number, box) for box in boxes]
+                order += [(number, None) for number in range(nb_elements + 1, nb_elements + (3 if btn_random else 2) + 1)]
+                position = order.index((selected, part)) if (selected, part) in order else 0
+                selected, part = order[(position + (1 if key_pressed in RIGHT_KEYS else -1)) % len(order)]
+            elif part is not None and key_pressed in ENTER_KEYS:
+                # A box of the player : as clicked
+                clic = part
+                if part != '*':
+                    key_pressed = part
+                part = None if part in ('+', '-') else part
+            elif btn_random:
                 selected = self.navigate(selected, key_pressed, nb_elements, 3, 3, sound=False, zero=zero)
             else:
                 selected = self.navigate(selected, key_pressed, nb_elements, 2, 2, sound=False, zero=zero)
@@ -2061,15 +2120,21 @@ class Screen(pygame.Surface):
                     return sets, new_players, True, players_color
                 return sets, new_players, competition_mode, players_color
             
-            elif ((key_pressed in ENTER_KEYS and clic == "*") or (key_pressed == "*")) and nb_elements > 1 and selected <= nb_elements:
+            elif ((key_pressed in ENTER_KEYS and clic == "*") or (key_pressed == "*")) and players_color is not None \
+                    and selected <= nb_elements:
+                # Alone too (a single player went to the edition of his name). The list on the
+                # colour of the player (Auto : none chosen)
+                current = players_color.get(players[selected - 1])
+                current = next((name for name, value in colors_list if current is not None and tuple(value) == tuple(current)),
+                               'AUTO COLORSET')
                 tmp = self.dropdown(self.res['x'] * 6 / 16,
                                     3 * self.res_y_16,
                                     colors_list,
                                     special='colors',
-                                    navigate='white') 
+                                    navigate=current)
                 if tmp != 'escape':
                     if tmp == 'AUTO COLORSET':
-                        players_color.pop(players[selected - 1])
+                        players_color.pop(players[selected - 1], None)
                     else:
                         players_color[str(players[selected - 1])] = tuple([color[1] for color in colors_list if color[0] == str(tmp)][0])
 
@@ -2543,7 +2608,8 @@ class Screen(pygame.Surface):
             clicked = self.is_clicked(click_zones, key_pressed)
 
             # Navigation
-            selected = self.navigate(selected, key_pressed, nb_elements, 0, 0)
+            # Right and left too : a vertical list in reading order (a knob set on them did nothing)
+            selected = self.navigate(selected, key_pressed, nb_elements, 0, 0, left_right=True)
 
             if clicked:
                 if clicked == 'scrolldown':
@@ -2596,6 +2662,13 @@ class Screen(pygame.Surface):
             text_color = self.colorset['menu-text-white']
         else:
             text_color = self.colorset['menu-text-black']
+        if special == 'colors':
+            # Its name readable on the colour : black on a light one (white, gold...), else white
+            try:
+                shown = pygame.Color(value)
+                text_color = (0, 0, 0) if 0.299 * shown.r + 0.587 * shown.g + 0.114 * shown.b > 150 else (255, 255, 255)
+            except ValueError:
+                pass
 
         if special == 'font':
             minus = int(rect.height * 0.1)
@@ -2606,8 +2679,9 @@ class Screen(pygame.Surface):
         elif special == 'pattern':
             self.blit_text2(value, rect, text_color, image=f'patterns/{value}')
         else:
-            # (a list of colours : the name shown of a value which is not a colour, Off...)
-            self.blit_text2(label if label is not None else value, rect, text_color)
+            # (a list of colours : the name shown of a value which is not a colour, Off... ; not
+            # its (r, g, b), given by the colours of the players and of the segments)
+            self.blit_text2(label if isinstance(label, str) else value, rect, text_color)
         return (rect.x, rect.y, rect.w, rect.h)
 
     def display_button(self, selected, text, special):
@@ -3090,10 +3164,15 @@ class Screen(pygame.Surface):
 
         return (pos_x, pos_y, width, height)
 
-    def player_item(self, item, shortcut, name, special, alpha=None, specific_color=None):
+    # Border of the box of a player reached by right and left (colour, PNJ, +, -)
+    PLAYER_PART_COLOR = (255, 215, 0)
+
+    def player_item(self, item, shortcut, name, special, alpha=None, specific_color=None, part=None):
         '''
         Display Players' menu items
         item is : (item_id, total, selected)
+        part : box of the selected player reached by right and left ('*' colour, '/' PNJ,
+        '+', '-'), a golden border around it
         '''
         
         pict_shortcut = self.colorset['players-menu-shortcuts']
@@ -3198,6 +3277,12 @@ class Screen(pygame.Surface):
             rect = pygame.Rect(minus_x, inside_y, height - minus, inside_h)
             self.new_blit_rect2(rect, minus_bg_color, alpha=alpha, corners='Right')
             self.blit_text2('-', rect, color=text_color)
+
+            boxes = {'*': specific_x, '/': pnj_x, '+': plus_x, '-': minus_x}
+            if part in boxes:
+                box_width = height - minus if part == '-' else height
+                pygame.draw.rect(self.screen, self.PLAYER_PART_COLOR, (boxes[part], inside_y, box_width, inside_h),
+                                 max(2, int(self.colorset['border-size'])))
 
         else:
             corners = self.compute_corners(item[0], item[1], item[2], collapsed=True)
@@ -3573,7 +3658,7 @@ class Screen(pygame.Surface):
                 key_pressed = clicked
 
             # Navigation
-            selected = self.navigate(selected, key_pressed, nb_elements, 3, 3)
+            selected = self.navigate(selected, key_pressed, nb_elements, 3, 3, left_right=True)
 
             #Shortcuts
             if key_pressed in shortcuts:
@@ -4166,7 +4251,7 @@ class Screen(pygame.Surface):
                 key_pressed = clicked
 
             # Navigation
-            selected = self.navigate(selected, key_pressed, nb_elements, add, add)
+            selected = self.navigate(selected, key_pressed, nb_elements, add, add, left_right=True)
 
             # Shotcuts
             if key_pressed in shortcuts:
@@ -4268,9 +4353,45 @@ class Screen(pygame.Surface):
                 keys[(rect.x, rect.y, rect.w, rect.h)] = name
         return panel, keys
 
-    def input_value_item(self, v_type, value, v_min, v_max, character=None, align='Center', text=None, zero=False):
+    # Choices of the wheel of characters of a knob, besides the characters : delete the last one,
+    # end the typing
+    KNOB_DELETE = '<'
+    KNOB_OK = 'OK'
+
+    def input_value_item(self, *args, **kwargs):
+        '''
+        Input value item (see typed_value) : a knob of a USB pad changes the value while it is
+        typed (a number : its value, faster when turned fast ; a text : a wheel of characters),
+        its press validates (a text : keeps the character), held : validates
+        '''
+        pads = getattr(self.rpi, 'usb_pads', None)
+        if pads is not None:
+            pads.set_value_input(True)
+        try:
+            return self.typed_value(*args, **kwargs)
+        finally:
+            if pads is not None:
+                pads.set_value_input(False)
+
+    def knob_wheel(self, v_type):
+        '''
+        Characters of the wheel of a knob for a text (the order of up and down), then delete
+        and end
+        '''
+        first = '0' if v_type == 'leds' else 'a'
+        wheel = [first]
+        while len(wheel) < 200:
+            character = self.next_key(wheel[-1], context=v_type)
+            if character in wheel:
+                break
+            wheel.append(character)
+        return wheel + [self.KNOB_DELETE, self.KNOB_OK]
+
+    def typed_value(self, v_type, value, v_min, v_max, character=None, align='Center', text=None, zero=False, knob_start=None):
         '''
         Input value item
+        knob_start : a number typed from nothing (a new value by the keyboard) : the knob
+        starts from it (the value of the option)
 
         v_type : string, number , numeric(=number + . + , )
         v_min : Min length or min value
@@ -4329,6 +4450,9 @@ class Screen(pygame.Surface):
         shift = False
         panel = None
         keyboard_keys = {}
+        # Wheel of characters of a knob (a text) : its choices, the one shown (None : not turned)
+        wheel = self.knob_wheel(v_type) if v_type in ('string', 'leds') else []
+        wheel_at = None
         while True:
             if keyboard:
                 panel, keyboard_keys = self.draw_keyboard(v_type, shift)
@@ -4341,7 +4465,9 @@ class Screen(pygame.Surface):
             else:
                 self.new_blit_rect2(v_rect, self.colorset['menu-selected'], corners='All', border_radius=inside_border_radius, alpha=255)
 
-            self.blit_text2(value, v_rect, self.colorset['menu-text-black'], align=align)
+            # The choice of the wheel after the text, between brackets : not written yet
+            shown = value if wheel_at is None else f"{value}[{wheel[wheel_at]}]"
+            self.blit_text2(shown, v_rect, self.colorset['menu-text-black'], align=align)
 
             self.update_screen(rect_array=[rect] + ([panel] if keyboard else []))
 
@@ -4369,6 +4495,39 @@ class Screen(pygame.Surface):
                 if panel is not None and self.game_background is not None:
                     self.screen.blit(self.game_background, panel, panel)
                     self.update_screen(panel)
+
+            if isinstance(key, str) and key.startswith('KNOB_'):
+                # Knob of a USB pad (include/cusbpads.py) : turned (KNOB_RIGHT:step), pressed,
+                # held (KNOB_LONG : validates)
+                turned = key.startswith(('KNOB_RIGHT', 'KNOB_LEFT'))
+                if turned and wheel:
+                    # A text : the next choice of the wheel
+                    move = 1 if key.startswith('KNOB_RIGHT') else -1
+                    wheel_at = 0 if wheel_at is None else (wheel_at + move) % len(wheel)
+                    continue
+                if turned:
+                    # A number : its value, between its limits
+                    step = int(key.split(':')[1]) * (1 if key.startswith('KNOB_RIGHT') else -1)
+                    if not value.isdigit() and str(knob_start).isdigit():
+                        value = str(knob_start)
+                    if value.isdigit():
+                        value = str(min(max(int(value) + step, v_min), v_max))
+                    else:
+                        value = str(v_min if step > 0 else v_max)
+                    character = value[-1]
+                    continue
+                if key == 'KNOB_PRESS' and wheel_at is not None:
+                    choice = wheel[wheel_at]
+                    if choice == self.KNOB_DELETE:
+                        value = value[:-1]
+                    elif choice != self.KNOB_OK:
+                        if len(value) < v_max:
+                            value = f"{value}{choice}"
+                        continue
+                    if choice != self.KNOB_OK:
+                        continue
+                # Press of a number, OK of the wheel, held : validated
+                key = 'enter'
 
             if key in ENTER_KEYS :    # Valid and quit
                 if v_type == 'leds' and len(value) > 0:
@@ -4570,7 +4729,7 @@ class Screen(pygame.Surface):
                 key = clicked
 
             # Navigation
-            selected = self.navigate(selected, key, nb_elements, 2, 2)
+            selected = self.navigate(selected, key, nb_elements, 2, 2, left_right=True)
 
             # Shortcuts
             if key in shortcuts:
@@ -4713,7 +4872,7 @@ class Screen(pygame.Surface):
                 key_press = clicked
 
             # Navigation
-            selected = self.navigate(selected, key_press, nb_elements, 2, 1)
+            selected = self.navigate(selected, key_press, nb_elements, 2, 1, left_right=True)
 
             # Keyboard cases
             if key_press in shortcuts:
@@ -4915,7 +5074,7 @@ class Screen(pygame.Surface):
                 key = clicked
 
             # Navigation
-            selected = self.navigate(selected, key, nb_elements, 1, 2)
+            selected = self.navigate(selected, key, nb_elements, 1, 2, left_right=True)
                 
             # Key analysis
             if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):           
@@ -5143,8 +5302,9 @@ class Screen(pygame.Surface):
                 selected =[shortcuts[key][0], shortcuts[key][1]]
                 key = 'enter'
 
-            # Navigation
-            selected =[self.navigate(selected[0], key, nb_elements, 2, 2), selected[1]]
+            # Navigation (right and left : see grid_step)
+            if key not in LEFT_KEYS + RIGHT_KEYS:
+                selected = [self.navigate(selected[0], key, nb_elements, 2, 2), selected[1]]
 
             if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected[0] == nb_elements + 1):
                 return 'escape'
@@ -5184,17 +5344,8 @@ class Screen(pygame.Surface):
                         ret += f"-E:{values['E']}"
                     return ret
 
-            elif key in RIGHT_KEYS:
-                if selected[1] == 4:
-                    selected = [selected[0], 2]
-                else:
-                    selected = [selected[0], selected[1] + 1]
-
-            elif key in LEFT_KEYS:
-                if selected[1] == 2:
-                    selected = [selected[0], 4]
-                else:
-                    selected = [selected[0], selected[1] - 1]
+            elif key in LEFT_KEYS + RIGHT_KEYS:
+                selected = self.grid_step(cursor, selected, nb_elements, 2, key)
 
     def setup_leds_menu(self, leds, sel_y, sel_x, Nmoy):
         '''
@@ -5353,19 +5504,11 @@ class Screen(pygame.Surface):
                 selected = [shortcuts[key][0], shortcuts[key][1]]
                 key = 'enter'
 
-            # Navigation
-            selected = [self.navigate(selected[0], key, nb_elements, 2, 2), selected[1]]
-
-            if key in RIGHT_KEYS:
-                if selected[1] == 5:
-                    selected = [selected[0], 1]
-                else:
-                    selected = [selected[0], 5]
-            elif key in LEFT_KEYS:
-                if selected[1] == 1:
-                    selected = [selected[0], 5]
-                else:
-                    selected = [selected[0], 1]
+            # Navigation (right and left : see grid_step)
+            if key in LEFT_KEYS + RIGHT_KEYS:
+                selected = self.grid_step(cursor, selected, nb_elements, 2, key)
+            else:
+                selected = [self.navigate(selected[0], key, nb_elements, 2, 2), selected[1]]
 
             if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected[0] == nb_elements + 1) :    # Previous menu
                 return 'escape'
@@ -5682,7 +5825,7 @@ class Screen(pygame.Surface):
                 key = clicked
 
             # Navigation
-            selected = self.navigate(selected, key, nb_elements, 1, 1)
+            selected = self.navigate(selected, key, nb_elements, 1, 1, left_right=True)
 
             # Keyboard cases
             if key in shortcuts:
@@ -6138,24 +6281,8 @@ class Screen(pygame.Surface):
                 except:
                     act = act
                 refresh = True
-            elif key in LEFT_KEYS and self.selected[0] > nb_elements + 1:
-                self.selected = [self.selected[0] - 1, self.selected[1]]
-            elif key in LEFT_KEYS and self.selected[0] <= nb_elements:
-                if self.selected[1] == 1 and self.selected[0] in left:
-                    self.selected = [self.selected[0], 0]
-                elif self.selected[1] in (0, 1):
-                    self.selected = [self.selected[0], 9]
-                else:
-                    self.selected =[self.selected[0], self.selected[1]-1]
-            elif key in RIGHT_KEYS and self.selected[0] > nb_elements and self.selected[0] < nb_elements + 3:
-                self.selected = [self.selected[0] + 1, self.selected[1]]
-            elif key in RIGHT_KEYS and self.selected[0] <= nb_elements:
-                if self.selected[1] == 9 and self.selected[0] in left:
-                    self.selected = [self.selected[0], 0]
-                elif self.selected[1] == 9:
-                    self.selected = [self.selected[0], 1]
-                else:
-                    self.selected = [self.selected[0], self.selected[1] + 1]
+            elif key in LEFT_KEYS + RIGHT_KEYS:
+                self.selected = self.grid_step(cursor, self.selected, nb_elements, 3, key)
             elif key in UP_KEYS:
                 if self.selected[0] == 1:
                     self.selected = [nb_elements + 2, 1]
@@ -6318,7 +6445,7 @@ class Screen(pygame.Surface):
                 key = clicked
 
             # Navigation
-            selected = self.navigate(selected, key, nb_elements, 1, 1)
+            selected = self.navigate(selected, key, nb_elements, 1, 1, left_right=True)
             if selected <= nb_elements:
                 text = f"event-{shortcuts[selected - 1]}"
             else:
@@ -6333,7 +6460,9 @@ class Screen(pygame.Surface):
             if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
                 return 'escape'
 
-            if key in ENTER_KEYS or key in RIGHT_KEYS:
+            # (Right goes to the next one, as everywhere : a knob set on right and left goes
+            # through the list ; it opened the selected one)
+            if key in ENTER_KEYS:
                 return shortcuts[selected - 1]
 
     def customization_menu(self, customization, colors_available):
@@ -6575,8 +6704,14 @@ class Screen(pygame.Surface):
             if clicked:
                 key = clicked
 
-            # Navigation in menu
-            selected = self.navigate(selected, key, nb_elements, 2, 2, zero=-1, tab=tab)
+            # Navigation in menu. Right and left in reading order : the two tabs, the options, the
+            # buttons at the bottom (they went between the tabs, and opened an option)
+            if key in LEFT_KEYS + RIGHT_KEYS:
+                order = list(range(-1, nb_elements + 3))
+                position = order.index(selected) if selected in order else 0
+                selected = order[(position + (1 if key in RIGHT_KEYS else -1)) % len(order)]
+            else:
+                selected = self.navigate(selected, key, nb_elements, 2, 2, zero=-1, tab=tab)
 
             if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
                 return 'escape'
@@ -6592,10 +6727,6 @@ class Screen(pygame.Surface):
 
             if key in shortcuts:
                 selected = int(key.replace('F', ''))
-                key = 'enter'
-            elif key in RIGHT_KEYS and selected <= nb_elements:
-                key = 'enter'
-            elif key in LEFT_KEYS and selected <= nb_elements and selected_customization[selected - 1][2] == 'check':
                 key = 'enter'
             elif isinstance(key, str) and len(key) == 1 and selected <= nb_elements and selected_customization[selected - 1][2] == 'Alpha':
                 key = 'enter'
@@ -6745,15 +6876,15 @@ class Screen(pygame.Surface):
                     key = clicked
 
                 # Navigation menu
-                selected = self.navigate(selected, key, nb_elements, 1, 1)
+                selected = self.navigate(selected, key, nb_elements, 1, 1, left_right=True)
 
                 #Shortcuts
                 if key in shortcuts:
                     key = 'enter'
                     selected = int(clicked.replace('F', ''))
 
-                # Keyboard cases
-                if key in ENTER_KEYS or key in RIGHT_KEYS:
+                # Keyboard cases (right goes to the next one, as everywhere : it validated)
+                if key in ENTER_KEYS:
                     if selected == nb_elements + 1:
                         key = 'escape'
                     elif selected == nb_elements + 2:
@@ -7090,8 +7221,8 @@ class Screen(pygame.Surface):
         buttons (not their centres : a button as wide as the screen has the buttons of the row
         under it below it, even far from its centre). In the direction : the buttons beyond its
         edge ; those facing it (sharing part of its width, or of its height) first : the closest
-        row, the one facing it the most, the first in reading order ; then the others : gap + 2 x
-        distance across between the edges. None : right and left go on in reading order (the end of a row : the
+        row, the one facing it the most, the first in reading order ; then, up and down only, the
+        others : gap + 2 x distance across between the edges. None : right and left go on in reading order (the end of a row : the
         first button of the next row ; left : the one before) ; up and down go around, to the
         farthest one facing it on the other side
         '''
@@ -7113,8 +7244,11 @@ class Screen(pygame.Surface):
             return gap >= -0.3 * (high - low), max(0, gap)
 
         def facing(rect):
+            # A few pixels shared are not facing : the selected button, drawn larger, reached
+            # the row under it
             _, (low, high) = spans(rect)
-            return min(high, across_end) - max(low, across_start)
+            shared = min(high, across_end) - max(low, across_start)
+            return shared if shared > 0.1 * min(high - low, across_end - across_start) else min(shared, 0)
 
         def apart(rect):
             # Distance across between its edges and those of the selected one (it does not
@@ -7133,8 +7267,13 @@ class Screen(pygame.Surface):
                     # The part of it facing the selected one (in tenths : one pixel apart is equal)
                     part = round(shared / max(1, spans(rect)[1][1] - spans(rect)[1][0]), 1)
                     score = (0, round(gap), -part, spans(rect)[1][0], index)
-                else:
+                elif not horizontal:
                     score = (1, gap + 2 * apart(rect), 0, 0, index)
+                else:
+                    # Right and left stay on the row : a button above or below it is reached
+                    # in reading order (in diagonal, a free placement went round in circles
+                    # on three buttons, the others never reached)
+                    continue
                 if best is None or score < best[0]:
                     best = (score, index)
             elif not horizontal and shared > 0 and beyond(rect, -sign)[0]:
@@ -7148,7 +7287,16 @@ class Screen(pygame.Surface):
             return wrap[1]
         # Right at the end of a row (left at its start) : the next button in reading order (the
         # one before), as a text is read ; all the menu is gone through with right alone
-        order = sorted(rects, key=lambda index: (round(rects[index][1]), rects[index][0], index))
+        # Rows by the middles of the buttons (the same when a button is drawn larger ; a few
+        # pixels higher, the top of a button put it before the row)
+        rows = []
+        for index in sorted(rects, key=lambda index: (rects[index][1] + rects[index][3] / 2, index)):
+            middle = rects[index][1] + rects[index][3] / 2
+            if rows and middle < rows[-1][0]:
+                rows[-1][1].append(index)
+            else:
+                rows.append((rects[index][1] + rects[index][3], [index]))
+        order = [index for _bottom, row in rows for index in sorted(row, key=lambda index: (rects[index][0], index))]
         if len(order) < 2:
             return selected
         return order[(order.index(selected) + sign) % len(order)]
@@ -7804,6 +7952,248 @@ class Screen(pygame.Surface):
         cmenueditor.screens_menu(self, {'plus': PLUS_KEYS, 'minus': MINUS_KEYS, 'enter': ENTER_KEYS,
                                         'escape': ESCAPE_KEYS})
 
+    # Columns of elements on a line of the screen of the USB pads (beyond : a second line)
+    USB_PADS_COLUMNS = 11
+
+    def usb_pads_menu(self):
+        '''
+        Paramètres > Pavés USB : the pad chosen (several can be plugged), its numbers of keys
+        and knobs, written in it (« Programmer le pavé »), then the button of each key in the
+        menus and in a game. A key pressed on a pad is lit on the screen (include/cusbpads.py)
+        '''
+        from include import cusbpads    # pylint: disable=import-outside-toplevel
+        pads = self.rpi.usb_pads
+        # Changed here, kept by « Enregistrer » (or by programming a pad)
+        settings = json.loads(json.dumps(pads.settings))
+        pads.set_capture(True)
+        try:
+            self.usb_pads_loop(cusbpads, pads, settings)
+        finally:
+            pads.set_capture(False)
+
+    def usb_pads_loop(self, cusbpads, pads, settings):
+        '''
+        Screen of the USB pads, until back (see usb_pads_menu)
+        '''
+        port = None
+        row, column = 0, 0
+        lit = {}
+        status = None
+        while True:
+            plugged = pads.plugged()
+            if port not in plugged:
+                port = plugged[0] if plugged else None
+            if port is not None and port not in settings:
+                settings[port] = json.loads(json.dumps(pads.settings_of(port)))
+            pad = settings.get(port)
+            names = cusbpads.elements(pad['keys'], pad['knobs']) if pad else []
+            # Lines : 0 the pad, 1 menus, 2 game, 3 back and save
+            lengths = [4, len(names), len(names), 2] if pad else [0, 0, 0, 1]
+            if lengths[row] == 0:
+                row = 3
+            column = min(column, lengths[row] - 1)
+            now = time.monotonic()
+            lit = {name: moment for name, moment in lit.items() if now - moment < 0.25}
+
+            click_zones = self.usb_pads_draw(cusbpads, plugged, port, pad, names, (row, column), lit, status)
+            self.update_screen()
+
+            key = self.rpi.listen_inputs(['arrows'], ['escape', 'enter', 'space', 'single-click',
+                                                      'PLAYERBUTTON', 'BACKUPBUTTON', 'GAMEBUTTON'],
+                                         timeout=250 if lit else 1000)
+            clicked = self.is_clicked(click_zones, key)
+            if clicked:
+                key = clicked
+            if key is False or key is None:
+                continue
+            if isinstance(key, str) and key.startswith('USBPAD:'):
+                _usbpad, pressed_port, element = key.split(':')
+                if element == 'unknown':
+                    status = ('usb-pads-not-programmed', self.colorset['menu-ko'])
+                    port = pressed_port
+                    continue
+                if pressed_port != port:
+                    port = pressed_port
+                    continue
+                status = None
+                lit[element] = time.monotonic()
+                continue
+            if isinstance(key, str) and key.startswith('cell:'):
+                row, column = (int(number) for number in key.split(':')[1:])
+                key = 'enter'
+            elif key == 'save':
+                row, column, key = 3, 1, 'enter'
+
+            if key == 'escape' or key in ESCAPE_KEYS:
+                return
+            if key in UP_KEYS:
+                row = max(0, row - 1)
+                while row > 0 and lengths[row] == 0:
+                    row -= 1
+            elif key in DOWN_KEYS:
+                row = min(3, row + 1)
+                while row < 3 and lengths[row] == 0:
+                    row += 1
+            elif key in LEFT_KEYS + RIGHT_KEYS:
+                # Reading order, from a line to the next one (a knob set on right and left goes
+                # through the whole screen)
+                cells = [(line, place) for line in range(4) for place in range(lengths[line])]
+                position = cells.index((row, column)) if (row, column) in cells else 0
+                row, column = cells[(position + (1 if key in RIGHT_KEYS else -1)) % len(cells)]
+            elif key in ENTER_KEYS + PLUS_KEYS + MINUS_KEYS + ['space']:
+                if row == 3:
+                    if column == 0:
+                        return
+                    pads.save(settings)
+                    self.message([self.lang.translate('usb-pads-saved')], 1000, self.colorset['menu-ok'], 'middle', 'big')
+                    return
+                if row == 0 and column == 3:
+                    status = self.usb_pads_program(pads, settings, port)
+                    continue
+                # The values of the cell : its list (as the pins of the MCP), + and - go one by one
+                if row == 0 and column == 0:
+                    values = [[number, f"{self.lang.translate('usb-pads-pad')} {number + 1} (USB {name})"]
+                              for number, name in enumerate(plugged)]
+                    current = plugged.index(port)
+                elif row == 0:
+                    name = 'keys' if column == 1 else 'knobs'
+                    most = cusbpads.MAX_KEYS if column == 1 else cusbpads.MAX_KNOBS
+                    other = pad['knobs'] if column == 1 else pad['keys']
+                    # At least one element on the pad
+                    values = [[number, str(number)] for number in range(0 if other else 1, most + 1)]
+                    current = pad[name]
+                else:
+                    context = 'menus' if row == 1 else 'game'
+                    values = [[action[0], self.lang.translate(action[1])] for action in cusbpads.actions(context)]
+                    current = pad[context].get(names[column], '')
+                if key in PLUS_KEYS + MINUS_KEYS:
+                    index = next((number for number, value in enumerate(values) if value[0] == current), 0)
+                    chosen = values[(index + (-1 if key in MINUS_KEYS else 1)) % len(values)][0]
+                else:
+                    chosen = self.usb_pads_choose(values, current)
+                    if chosen is None:
+                        continue
+                if row == 0 and column == 0:
+                    port = plugged[chosen]
+                elif row == 0:
+                    if chosen != pad[name]:
+                        self.usb_pads_count(cusbpads, pad, name, chosen)
+                        status = ('usb-pads-to-program', self.colorset['menu-warning'])
+                else:
+                    pad[context][names[column]] = chosen
+
+    def usb_pads_choose(self, values, current):
+        '''
+        List of the values of a cell of the screen of the USB pads, in the middle of the
+        screen as everywhere. Returns the value chosen, None if none
+        '''
+        chosen = self.dropdown(self.res['x'] * 6 / 16, 3 * self.res_y_16, values, navigate=current)
+        return None if chosen == 'escape' else chosen
+
+    @staticmethod
+    def usb_pads_count(cusbpads, pad, name, value):
+        '''
+        Number of keys or knobs of a pad changed : the buttons of its elements kept, the
+        defaults for the new ones
+        '''
+        pad[name] = value
+        defaults = cusbpads.default_settings(pad['keys'], pad['knobs'])
+        for context in ('menus', 'game'):
+            pad[context] = {element: pad[context].get(element, defaults[context][element])
+                            for element in cusbpads.elements(pad['keys'], pad['knobs'])}
+
+    def usb_pads_program(self, pads, settings, port):
+        '''
+        « Programmer le pavé » : its codes written in it, then its settings kept (they go
+        together). Returns the line of state shown under the line of the pad
+        '''
+        pad = settings[port]
+        error = pads.program(port, pad['keys'], pad['knobs'])
+        if error is None:
+            pads.save(settings)
+            return ('usb-pads-programmed', self.colorset['menu-ok'])
+        if 'Access denied' in error or 'Errno 13' in error:
+            return ('usb-pads-program-denied', self.colorset['menu-ko'])
+        return ('usb-pads-program-error', self.colorset['menu-ko'])
+
+    def usb_pads_draw(self, cusbpads, plugged, port, pad, names, selected, lit, status):
+        '''
+        Screen of the USB pads drawn : the line of the pad, then the elements in columns with
+        the button of each in the menus and in a game. Returns the zones to click
+        '''
+        self.display_background()
+        self.menu_header(self.lang.translate('usb-pads'), self.lang.translate('usb-pads-sub'))
+        click_zones = {}
+        unit_x, unit_y = self.res_x_16, self.res_y_16
+        gap = max(2, int(unit_x / 10))
+        if pad is None:
+            self.blit_text(self.lang.translate('usb-pads-none'), 0, 6 * unit_y, self.res['x'], unit_y, self.colorset['menu-text-white'])
+            click_zones['escape'] = self.display_button(selected == (3, 0), 'back', special='escape')
+            return click_zones
+
+        def cell(rect, text, color, text_color, zone):
+            self.new_blit_rect2(pygame.Rect(rect), color, corners='All', border_radius=int(rect[3] / 4))
+            self.blit_text(text, rect[0], rect[1], rect[2], rect[3], text_color)
+            if zone:
+                click_zones[zone] = tuple(int(value) for value in rect)
+
+        def colors(is_selected):
+            if is_selected:
+                return self.colorset['menu-selected'], self.colorset['menu-text-white']
+            return self.colorset['menu-buttons'], self.colorset['menu-text-black']
+
+        # Line of the pad
+        translate = self.lang.translate
+        texts = [f"{translate('usb-pads-pad')} {plugged.index(port) + 1}/{len(plugged)} (USB {port})",
+                 f"{translate('usb-pads-keys')} : {pad['keys']}",
+                 f"{translate('usb-pads-knobs')} : {pad['knobs']}",
+                 translate('usb-pads-program')]
+        width = (14 * unit_x - 3 * gap) / 4
+        for index, text in enumerate(texts):
+            cell((unit_x + index * (width + gap), 3 * unit_y, width, unit_y), text, *colors(selected == (0, index)),
+                 f'cell:0:{index}')
+        if status is not None:
+            self.blit_text(translate(status[0]), unit_x, 4.1 * unit_y, 14 * unit_x, 0.8 * unit_y, status[1])
+
+        # Elements in columns, a second line beyond USB_PADS_COLUMNS
+        labels = {'menus': translate('usb-pads-menus'), 'game': translate('usb-pads-game')}
+        texts = {action[0]: translate(action[1]) for action in cusbpads.ACTIONS}
+        columns = min(self.USB_PADS_COLUMNS, len(names))
+        label_width = 2 * unit_x
+        width = (12 * unit_x - (columns - 1) * gap) / columns
+        heights = (unit_y, 1.2 * unit_y, 1.2 * unit_y)
+        block = sum(heights) + 3 * gap
+        top = 5 * unit_y
+        for index, name in enumerate(names):
+            line, place = divmod(index, self.USB_PADS_COLUMNS)
+            pos_x = unit_x + label_width + gap + place * (width + gap)
+            pos_y = top + line * (block + gap)
+            if place == 0:
+                for number, context in enumerate(('menus', 'game')):
+                    label_y = pos_y + heights[0] + gap + number * (heights[1] + gap)
+                    self.blit_text(labels[context], unit_x, label_y, label_width, heights[1], self.colorset['menu-text-white'], align='Left')
+            header = self.colorset['menu-ok'] if name in lit else self.colorset['menu-shortcut']
+            cell((pos_x, pos_y, width, heights[0]), self.usb_pads_element(name), header, self.colorset['menu-text-black'], None)
+            for number, context in enumerate(('menus', 'game')):
+                cell((pos_x, pos_y + heights[0] + gap + number * (heights[1] + gap), width, heights[1]),
+                     texts.get(pad[context].get(name, ''), ''), *colors(selected == (number + 1, index)),
+                     f'cell:{number + 1}:{index}')
+
+        click_zones['escape'] = self.display_button(selected == (3, 0), 'back', special='escape')
+        click_zones['save'] = self.display_button(selected == (3, 1), 'save', special='return')
+        return click_zones
+
+    def usb_pads_element(self, name):
+        '''
+        Name of an element of a pad shown : Touche 1, Molette gauche (Molette gauche 2 with
+        several knobs)
+        '''
+        if name.startswith('k'):
+            return f"{self.lang.translate('usb-pads-key')} {name[1:]}"
+        knob, action = name[1:].split('-')
+        text = self.lang.translate(f'usb-pads-knob-{action}')
+        return text if knob == '1' else f"{text} {knob}"
+
     def exhibition_menu(self):
         '''
         Exhibition mode : on or off, and the buttons of the main menu it shows
@@ -7836,7 +8226,7 @@ class Screen(pygame.Surface):
             clicked = self.is_clicked(click_zones, key)
             if clicked:
                 key = clicked
-            selected = self.navigate(selected, key, nb_elements, 1, 2)
+            selected = self.navigate(selected, key, nb_elements, 1, 2, left_right=True)
 
             if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
                 return
@@ -8030,7 +8420,7 @@ class Screen(pygame.Surface):
             if key in [f'F{index}' for index in range(1, nb_elements + 1)]:
                 selected = int(key[1:])
                 key = 'enter'
-            selected = self.navigate(selected, key, nb_elements, 1, 1)
+            selected = self.navigate(selected, key, nb_elements, 1, 1, left_right=True)
             if key in ESCAPE_KEYS or key == 'escape' or (key in ENTER_KEYS and selected == nb_elements + 1):
                 return
             if key in ENTER_KEYS and 1 <= selected <= nb_elements:
@@ -8614,7 +9004,9 @@ class Screen(pygame.Surface):
 
                 # Navigation menu
                 # Avoid 1st line => titles
-                selected = max(self.navigate(selected, key, nb_elements, 2, 2), 2)
+                # Right and left too, in reading order ; left on the first one : the last button
+                moved = self.navigate(selected, key, nb_elements, 2, 2, left_right=True)
+                selected = moved if moved >= 2 else (nb_elements + 2 if key in LEFT_KEYS else 2)
 
                 # Keyboard
                 if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
@@ -8938,8 +9330,9 @@ class Screen(pygame.Surface):
             else:
                 key = str(key)
 
-            # Navigation in menu
-            selected = self.navigate(selected, key, nb_elements, len(footers), len(footers))
+            # Navigation in menu (right and left too, in reading order : they ticked a box, as
+            # validate does)
+            selected = self.navigate(selected, key, nb_elements, len(footers), len(footers), left_right=True)
 
             if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
                 self.qrlogo = ''
@@ -9003,16 +9396,11 @@ class Screen(pygame.Surface):
                         min_value = 0
                         max_value = 500
                     translate = self.translate_option(game,options[selected][2])
-                    tmp = self.input_value_item('number', '', min_value, max_value, text=translate)
+                    tmp = self.input_value_item('number', '', min_value, max_value, text=translate,
+                                                knob_start=game_options.get(options[selected][2]))
 
                     if tmp != 'escape':
                         game_options[options[selected][2]] = tmp
-            elif key in LEFT_KEYS + RIGHT_KEYS and selected <= nb_elements and \
-                    options[selected][1] == BTN_CHECK:
-                if options[selected][0]:
-                    game_options[options[selected][2]] = False
-                else:
-                    game_options[options[selected][2]] = True
 
         old_selection = selection
         self.qrlogo = ''

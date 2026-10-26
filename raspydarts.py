@@ -979,6 +979,10 @@ try:
                         if setup == 'test-buttons':
                             display.test_buttons_menu()
 
+                        elif setup == 'usb-pads':
+                            # USB BUTTONS AND KNOBS : programmed, tested, given a button
+                            display.usb_pads_menu()
+
                         elif setup == 'test-target':
                             display.test_target_menu()
 
@@ -1095,6 +1099,10 @@ try:
                     # EDITOR OF THE SCREENS : buttons of the menus moved, resized, added, deleted
                     dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER'])
                     display.edit_screens()
+
+                elif menu == 'usb-pads':
+                    # USB PADS : their keys and knobs, programmed, tested, given a button
+                    display.usb_pads_menu()
 
                 elif menu == 'backups':
                     # BACKUP MENU

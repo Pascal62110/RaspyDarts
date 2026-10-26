@@ -3604,3 +3604,114 @@ msgstr "Invio"
 msgid "editor-key-space"
 msgstr "Spazio"
 
+
+msgid "usb-pads"
+msgstr "Configurazione pulsanti e manopole USB"
+
+msgid "usb-pads-sub"
+msgstr "Il tasto o la manopola azionati si illuminano qui"
+
+msgid "usb-pads-none"
+msgstr "Nessun dispositivo USB di pulsanti collegato"
+
+msgid "usb-pads-pad"
+msgstr "Dispositivo"
+
+msgid "usb-pads-keys"
+msgstr "Tasti"
+
+msgid "usb-pads-knobs"
+msgstr "Manopole"
+
+msgid "usb-pads-program"
+msgstr "Programmare il dispositivo"
+
+msgid "usb-pads-programmed"
+msgstr "Dispositivo programmato: provare ogni tasto"
+
+msgid "usb-pads-program-error"
+msgstr "Programmazione impossibile: scollegare e ricollegare il dispositivo"
+
+msgid "usb-pads-program-denied"
+msgstr "Programmazione rifiutata dal sistema: aggiornare RaspyDarts e riavviare"
+
+msgid "usb-pads-not-programmed"
+msgstr "Questo dispositivo non è programmato: scegliere «Programmare il dispositivo»"
+
+msgid "usb-pads-to-program"
+msgstr "Numero cambiato: programmare il dispositivo"
+
+msgid "usb-pads-saved"
+msgstr "Impostazioni di pulsanti e manopole salvate"
+
+msgid "usb-pads-menus"
+msgstr "Menu"
+
+msgid "usb-pads-game"
+msgstr "Partita"
+
+msgid "usb-pads-key"
+msgstr "Tasto"
+
+msgid "usb-pads-knob-left"
+msgstr "Manopola sinistra"
+
+msgid "usb-pads-knob-press"
+msgstr "Manopola premuta"
+
+msgid "usb-pads-knob-right"
+msgstr "Manopola destra"
+
+msgid "usb-pads-none-action"
+msgstr "Niente"
+
+msgid "usb-pads-validate"
+msgstr "Convalidare"
+
+msgid "usb-pads-back"
+msgstr "Indietro"
+
+msgid "usb-pads-up"
+msgstr "Su"
+
+msgid "usb-pads-down"
+msgstr "Giù"
+
+msgid "usb-pads-left"
+msgstr "Sinistra"
+
+msgid "usb-pads-right"
+msgstr "Destra"
+
+msgid "usb-pads-plus"
+msgstr "Più"
+
+msgid "usb-pads-minus"
+msgstr "Meno"
+
+msgid "usb-pads-nextplayer"
+msgstr "Giocatore successivo"
+
+msgid "usb-pads-miss"
+msgstr "Freccetta mancata"
+
+msgid "usb-pads-stop"
+msgstr "Fermare la partita"
+
+msgid "usb-pads-volume-up"
+msgstr "Volume +"
+
+msgid "usb-pads-volume-down"
+msgstr "Volume -"
+
+msgid "usb-pads-volume-mute"
+msgstr "Muto"
+
+msgid "usb-pads-system-volume-up"
+msgstr "Volume generale +"
+
+msgid "usb-pads-system-volume-down"
+msgstr "Volume generale -"
+
+msgid "usb-pads-knob-long"
+msgstr "Manopola pressione lunga"

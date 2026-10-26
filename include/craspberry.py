@@ -13,6 +13,7 @@ from include import cpaths
 # For GPIO Extender
 from RPi import GPIO as gpio
 from . import cgpio_extender
+from . import cusbpads
 
 MAX_GPIO = 27
 LAST_GPIO = None
@@ -237,6 +238,8 @@ class Craspberry():
             self.reset_gpio()
 
         self.gpio = cgpio_extender.Gpio_extender(self.logs, self.buttons)
+        # Pads of keys and knobs plugged in USB (Paramètres > Pavés USB)
+        self.usb_pads = cusbpads.shared(self.logs)
 
         # Init MCP according to configuration
 
@@ -753,6 +756,18 @@ class Craspberry():
                         miss = 1
                     else:
                         return (inputs.replace('PIN_', 'BTN_') if not isinstance(inputs, list) else inputs[0].replace('PIN_', 'BTN_'))
+
+            # Read the pads plugged in USB : the button chosen for their key, in the menus or
+            # in a game
+            self.usb_pads.context = 'game' if context in ('game', 'waitcomputer') else 'menus'
+            inputs = self.usb_pads.take()
+            if inputs and miss == 0:
+                self.logs.debug(f"Input debug (USB pad) : {inputs}")
+                if timeout > 0:
+                    pygame.time.set_timer(USEREVENT, 0)
+                self.reset_timers()
+                wake_up(video_process, sound_process)
+                return inputs
 
             # Read target
             if not self.target_enabled:

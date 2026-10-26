@@ -430,6 +430,7 @@ Une action par bouton. Le jeu refuse une action inconnue (§3).
 | `backups` | sauvegardes |
 | `exhibition` | mode exposition |
 | `edit_screens` | éditeur des écrans sur la borne : l'écran principal, Paramètres ou Paramétrage affiché tel quel (son titre en haut, les touches du moment dans une bande fine en bas), chaque bouton déplacé, redimensionné par ses poignées, son raccourci changé ou retiré (une touche déjà prise par un autre bouton lui est retirée si on le veut), ajouté ou supprimé ; au clavier (une touche maintenue se répète), aux boutons, aux fléchettes (touches de la navigation, §9 ; `+`/`-` : pas, d'un pixel à 5 % de l'écran ; Valider : poignée suivante), à la souris ou au doigt (cliquer, glisser un bouton ou ses poignées) ; Retour ou le bouton Menu : ajouter un bouton, enregistrer, quitter. L'écran est figé à l'ouverture (chaque bouton reçoit un placement libre, §7.5) et s'enregistre dans le `menus.yaml` du thème (l'ancien gardé en `menus.yaml.bak`) |
+| `usb_pads` | « Paramétrage boutons et molettes USB » (menu Paramétrage, avant Test des boutons) : boîtiers USB de touches et de molettes (1189:8890, puce CH57x) : le boîtier choisi (plusieurs peuvent être branchés, reconnus par leur port USB), ses nombres de touches et de molettes, « Programmer le boîtier » (le jeu écrit ses propres codes dans le boîtier : livré, tout envoie « C »), puis une colonne par élément (touches ; molette gauche, appui, appui long — tenu 0,6 s —, droite) avec le bouton qu'il donne dans les menus et en partie (Valider, Retour, Haut… / Joueur suivant, Fléchette ratée, Arrêter la partie, volume du jeu ou du système) ; un élément actionné s'allume à l'écran. Pendant une saisie, la molette change le nombre (plus vite quand on tourne vite) ou fait défiler les caractères d'un texte (avec « < » effacer et « OK ») ; l'appui garde le caractère ou valide le nombre, l'appui long valide. Réglages dans `~/.raspydarts/usb_pads.json` |
 | `raspy2dmd` | l'afficheur DMD Raspy2DMD sur la borne (panneaux pilotés par un Raspberry Pico en USB) : installé, QR code de sa page web, message d'essai, mire de test du Pico, horloge, démo (commandes publiées sur le sujet MQTT `raspy2dmd`) ; pas installé, il propose de l'installer (mode « Pico seul », en tâche de fond) |
 | `update` | vérifier les mises à jour |
 
@@ -510,8 +511,10 @@ Deux logiques :
   Ceux qui lui font face (une partie de sa largeur pour haut/bas, de sa hauteur pour
   gauche/droite) passent d'abord : la rangée la plus proche, puis celui qui lui fait le plus
   face (en part de sa propre largeur, au dixième près), puis le premier dans le sens de
-  lecture (le plus à gauche, le plus haut). Les autres ensuite : `écart + 2 × écart
-  perpendiculaire entre leurs bords` (un bouton proche en diagonale passe avant un bouton lointain aligné). Aucun candidat : droite et gauche continuent dans le sens de
+  lecture (le plus à gauche, le plus haut). Pour haut et bas seulement, les autres ensuite :
+  `écart + 2 × écart perpendiculaire entre leurs bords` (un bouton proche en diagonale passe
+  avant un bouton lointain aligné) ; droite et gauche restent sur la rangée (en diagonale, un
+  placement libre tournait en rond sur trois boutons). Aucun candidat : droite et gauche continuent dans le sens de
   lecture (au bout d'une rangée, le premier bouton de la rangée suivante ; gauche, le
   précédent ; après le dernier, le premier) : tout le menu se parcourt avec droite seule.
   Haut et bas font le tour, vers le plus éloigné qui lui fait face du côté opposé.

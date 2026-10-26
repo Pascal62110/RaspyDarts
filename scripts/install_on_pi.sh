@@ -38,7 +38,7 @@ MARK_END='# --- RaspyDarts (fin) ---'
 
 # Paquets systeme indispensables
 APT_REQUIRED="python3-pip python3-dev python3-tk python3-pygame python3-numpy python3-pil python3-psutil
-python3-requests python3-yaml python3-evdev python3-rpi-lgpio python3-lgpio python3-libgpiod python3-smbus python3-serial python3-netifaces python3-qrcode
+python3-requests python3-yaml python3-evdev python3-usb python3-rpi-lgpio python3-lgpio python3-libgpiod python3-smbus python3-serial python3-netifaces python3-qrcode
 python3-googleapi python3-google-auth-oauthlib python3-google-auth-httplib2
 i2c-tools vlc ffmpeg v4l-utils espeak mpg123 alsa-utils pipewire-alsa pulseaudio-utils
 xdotool scrot feh picom gettext git curl swig
@@ -452,6 +452,15 @@ write_fb_seat_rule() {
     cat > "$1" <<'EOF'
 # RaspyDarts : affichage gere par le firmware (sans vc4-kms-v3d) : /dev/fb0 est l'ecran du siege seat0
 SUBSYSTEM=="graphics", KERNEL=="fb0", TAG+="seat", TAG+="master-of-seat"
+EOF
+}
+
+# Paves USB de touches et de molettes (1189:8890) : le jeu les programme lui-meme (pyusb,
+# Parametres > Paves USB), sans etre root
+write_usb_pads_rule() {
+    cat > "$1" <<'EOF'
+# RaspyDarts : paves USB de touches et de molettes (puce CH57x), programmes par le jeu
+SUBSYSTEM=="usb", ATTR{idVendor}=="1189", ATTR{idProduct}=="8890", MODE="0660", GROUP="plugdev"
 EOF
 }
 
@@ -1001,6 +1010,11 @@ CMDLINE=/boot/firmware/cmdline.txt
 [ -f "$CMDLINE" ] && ! grep -q 'vt.global_cursor_default=0' "$CMDLINE" && sed -i '1s/$/ vt.global_cursor_default=0/' "$CMDLINE"
 ok 'Console masquee au demarrage'
 raspi-config nonint do_i2c 0 && ok 'I2C active (MCP23017)' || warn "Activation de l'I2C echouee"
+# Paves USB : lus (input) et programmes (plugdev) par le jeu
+write_usb_pads_rule /etc/udev/rules.d/72-raspydarts-usb-pads.rules
+usermod -aG input,plugdev "$TARGET_USER"
+udevadm control --reload-rules >/dev/null 2>&1
+ok 'Paves USB de touches et de molettes'
 # raspi-config active wayvnc si la session en cours est encore Wayland (carte neuve) : le jeu
 # tourne en X11, c'est le serveur RealVNC qu'il faut
 raspi-config nonint do_vnc 0 >/dev/null 2>&1

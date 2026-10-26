@@ -174,22 +174,27 @@ menus:
         action: setup_camera
         text: setup-cam
         shortcut: F5
+      # Pads of keys and knobs plugged in USB (include/cusbpads.py)
+      - id: usb-pads
+        action: usb_pads
+        text: usb-pads
+        shortcut: F6
       - id: test-buttons
         action: test_buttons
         text: test-buttons
-        shortcut: F6
+        shortcut: F7
       - id: test-target
         action: test_target
         text: test-target
-        shortcut: F7
+        shortcut: F8
       - id: test-toys
         action: test_toys
         text: test-toys
-        shortcut: F8
+        shortcut: F9
       - id: reset
         action: reset
         text: reset
-        shortcut: F9
+        shortcut: F10
       - id: back
         action: back
         text: back

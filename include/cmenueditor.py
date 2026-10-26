@@ -352,7 +352,10 @@ class Editor:
                  {'id': 'quit', 'action': 'quit', 'text': 'editor-quit', 'shortcut': 'F3'}]
         back = {'id': 'back', 'action': 'back', 'text': 'editor-continue', 'footer': 'left', 'shortcut': 'escape'}
         title = f"{self.translate('editor-title')} : {self.translate(dict(SCREENS)[self.name])}"
-        return self.screen.run_menu('editor_menu', items + [back], items + [back], title=title).get('id')
+        # The likely choice selected : save after changes, else leave (Add first : two times down
+        # left without saving)
+        return self.screen.run_menu('editor_menu', items + [back], items + [back], title=title,
+                                    initial='save' if self.changed else 'quit').get('id')
 
     def give_up(self):
         '''
@@ -684,16 +687,14 @@ class Editor:
 
 def screens_menu(screen, keys):
     '''
-    Paramètres > Modifier les écrans : the screen chosen, then its editor, until back
+    Paramètres > Modifier les écrans : the screen chosen, then its editor. Saved or left : back
+    to Paramètres (the list again, its screen selected, opened the editor once more at the next
+    validation : it seemed to go round)
     '''
     back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
     items = [{'id': name, 'action': name, 'text': text, 'shortcut': f'F{number}'}
              for number, (name, text) in enumerate(SCREENS, 1)]
-    choice = None
-    while True:
-        # Back from an editor : its screen chosen again
-        choice = screen.run_menu('edit_screens', items + [back], items + [back], initial=choice,
-                                 title=screen.lang.translate('edit-screens')).get('id')
-        if choice == 'back':
-            return
+    choice = screen.run_menu('edit_screens', items + [back], items + [back],
+                             title=screen.lang.translate('edit-screens')).get('id')
+    if choice != 'back':
         Editor(screen, choice, keys).run()

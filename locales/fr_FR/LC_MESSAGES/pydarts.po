@@ -4238,3 +4238,114 @@ msgstr "Entrée"
 msgid "editor-key-space"
 msgstr "Espace"
 
+
+msgid "usb-pads"
+msgstr "Paramétrage boutons et molettes USB"
+
+msgid "usb-pads-sub"
+msgstr "Une touche ou la molette actionnée s'allume ici"
+
+msgid "usb-pads-none"
+msgstr "Aucun boîtier USB de boutons branché"
+
+msgid "usb-pads-pad"
+msgstr "Boîtier"
+
+msgid "usb-pads-keys"
+msgstr "Touches"
+
+msgid "usb-pads-knobs"
+msgstr "Molettes"
+
+msgid "usb-pads-program"
+msgstr "Programmer le boîtier"
+
+msgid "usb-pads-programmed"
+msgstr "Boîtier programmé : chaque touche peut être essayée"
+
+msgid "usb-pads-program-error"
+msgstr "Programmation impossible : débranchez et rebranchez le boîtier"
+
+msgid "usb-pads-program-denied"
+msgstr "Programmation refusée par le système : mettez à jour RaspyDarts puis redémarrez"
+
+msgid "usb-pads-not-programmed"
+msgstr "Ce boîtier n'est pas programmé : choisissez « Programmer le boîtier »"
+
+msgid "usb-pads-to-program"
+msgstr "Nombre changé : programmez le boîtier"
+
+msgid "usb-pads-saved"
+msgstr "Réglages des boutons et molettes enregistrés"
+
+msgid "usb-pads-menus"
+msgstr "Menus"
+
+msgid "usb-pads-game"
+msgstr "Partie"
+
+msgid "usb-pads-key"
+msgstr "Touche"
+
+msgid "usb-pads-knob-left"
+msgstr "Molette gauche"
+
+msgid "usb-pads-knob-press"
+msgstr "Molette appui"
+
+msgid "usb-pads-knob-right"
+msgstr "Molette droite"
+
+msgid "usb-pads-none-action"
+msgstr "Rien"
+
+msgid "usb-pads-validate"
+msgstr "Valider"
+
+msgid "usb-pads-back"
+msgstr "Retour"
+
+msgid "usb-pads-up"
+msgstr "Haut"
+
+msgid "usb-pads-down"
+msgstr "Bas"
+
+msgid "usb-pads-left"
+msgstr "Gauche"
+
+msgid "usb-pads-right"
+msgstr "Droite"
+
+msgid "usb-pads-plus"
+msgstr "Plus"
+
+msgid "usb-pads-minus"
+msgstr "Moins"
+
+msgid "usb-pads-nextplayer"
+msgstr "Joueur suivant"
+
+msgid "usb-pads-miss"
+msgstr "Fléchette ratée"
+
+msgid "usb-pads-stop"
+msgstr "Arrêter la partie"
+
+msgid "usb-pads-volume-up"
+msgstr "Volume +"
+
+msgid "usb-pads-volume-down"
+msgstr "Volume -"
+
+msgid "usb-pads-volume-mute"
+msgstr "Couper le son"
+
+msgid "usb-pads-system-volume-up"
+msgstr "Volume général +"
+
+msgid "usb-pads-system-volume-down"
+msgstr "Volume général -"
+
+msgid "usb-pads-knob-long"
+msgstr "Molette appui long"

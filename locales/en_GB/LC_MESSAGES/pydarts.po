@@ -3150,3 +3150,114 @@ msgstr "Enter"
 msgid "editor-key-space"
 msgstr "Space"
 
+
+msgid "usb-pads"
+msgstr "USB buttons and knobs setup"
+
+msgid "usb-pads-sub"
+msgstr "A key or knob you use lights up here"
+
+msgid "usb-pads-none"
+msgstr "No USB button device plugged in"
+
+msgid "usb-pads-pad"
+msgstr "Device"
+
+msgid "usb-pads-keys"
+msgstr "Keys"
+
+msgid "usb-pads-knobs"
+msgstr "Knobs"
+
+msgid "usb-pads-program"
+msgstr "Program the device"
+
+msgid "usb-pads-programmed"
+msgstr "Device programmed: try each key"
+
+msgid "usb-pads-program-error"
+msgstr "Programming failed: unplug and plug the device again"
+
+msgid "usb-pads-program-denied"
+msgstr "Programming refused by the system: update RaspyDarts, then restart"
+
+msgid "usb-pads-not-programmed"
+msgstr "This device is not programmed: choose 'Program the device'"
+
+msgid "usb-pads-to-program"
+msgstr "Number changed: program the device"
+
+msgid "usb-pads-saved"
+msgstr "Button and knob settings saved"
+
+msgid "usb-pads-menus"
+msgstr "Menus"
+
+msgid "usb-pads-game"
+msgstr "Game"
+
+msgid "usb-pads-key"
+msgstr "Key"
+
+msgid "usb-pads-knob-left"
+msgstr "Knob left"
+
+msgid "usb-pads-knob-press"
+msgstr "Knob press"
+
+msgid "usb-pads-knob-right"
+msgstr "Knob right"
+
+msgid "usb-pads-none-action"
+msgstr "Nothing"
+
+msgid "usb-pads-validate"
+msgstr "Validate"
+
+msgid "usb-pads-back"
+msgstr "Back"
+
+msgid "usb-pads-up"
+msgstr "Up"
+
+msgid "usb-pads-down"
+msgstr "Down"
+
+msgid "usb-pads-left"
+msgstr "Left"
+
+msgid "usb-pads-right"
+msgstr "Right"
+
+msgid "usb-pads-plus"
+msgstr "Plus"
+
+msgid "usb-pads-minus"
+msgstr "Minus"
+
+msgid "usb-pads-nextplayer"
+msgstr "Next player"
+
+msgid "usb-pads-miss"
+msgstr "Missed dart"
+
+msgid "usb-pads-stop"
+msgstr "Stop the game"
+
+msgid "usb-pads-volume-up"
+msgstr "Volume +"
+
+msgid "usb-pads-volume-down"
+msgstr "Volume -"
+
+msgid "usb-pads-volume-mute"
+msgstr "Mute"
+
+msgid "usb-pads-system-volume-up"
+msgstr "System volume +"
+
+msgid "usb-pads-system-volume-down"
+msgstr "System volume -"
+
+msgid "usb-pads-knob-long"
+msgstr "Knob long press"

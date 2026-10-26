@@ -920,3 +920,114 @@ msgstr "Intro"
 msgid "editor-key-space"
 msgstr "Espacio"
 
+
+msgid "usb-pads"
+msgstr "Configuración de botones y ruedas USB"
+
+msgid "usb-pads-sub"
+msgstr "La tecla o la rueda accionada se ilumina aquí"
+
+msgid "usb-pads-none"
+msgstr "Ningún dispositivo USB de botones conectado"
+
+msgid "usb-pads-pad"
+msgstr "Dispositivo"
+
+msgid "usb-pads-keys"
+msgstr "Teclas"
+
+msgid "usb-pads-knobs"
+msgstr "Ruedas"
+
+msgid "usb-pads-program"
+msgstr "Programar el dispositivo"
+
+msgid "usb-pads-programmed"
+msgstr "Dispositivo programado: pruebe cada tecla"
+
+msgid "usb-pads-program-error"
+msgstr "Programación imposible: desconecte y vuelva a conectar el dispositivo"
+
+msgid "usb-pads-program-denied"
+msgstr "Programación rechazada por el sistema: actualice RaspyDarts y reinicie"
+
+msgid "usb-pads-not-programmed"
+msgstr "Este dispositivo no está programado: elija «Programar el dispositivo»"
+
+msgid "usb-pads-to-program"
+msgstr "Número cambiado: programe el dispositivo"
+
+msgid "usb-pads-saved"
+msgstr "Ajustes de botones y ruedas guardados"
+
+msgid "usb-pads-menus"
+msgstr "Menús"
+
+msgid "usb-pads-game"
+msgstr "Partida"
+
+msgid "usb-pads-key"
+msgstr "Tecla"
+
+msgid "usb-pads-knob-left"
+msgstr "Rueda izquierda"
+
+msgid "usb-pads-knob-press"
+msgstr "Rueda pulsada"
+
+msgid "usb-pads-knob-right"
+msgstr "Rueda derecha"
+
+msgid "usb-pads-none-action"
+msgstr "Nada"
+
+msgid "usb-pads-validate"
+msgstr "Validar"
+
+msgid "usb-pads-back"
+msgstr "Atrás"
+
+msgid "usb-pads-up"
+msgstr "Arriba"
+
+msgid "usb-pads-down"
+msgstr "Abajo"
+
+msgid "usb-pads-left"
+msgstr "Izquierda"
+
+msgid "usb-pads-right"
+msgstr "Derecha"
+
+msgid "usb-pads-plus"
+msgstr "Más"
+
+msgid "usb-pads-minus"
+msgstr "Menos"
+
+msgid "usb-pads-nextplayer"
+msgstr "Siguiente jugador"
+
+msgid "usb-pads-miss"
+msgstr "Dardo fallado"
+
+msgid "usb-pads-stop"
+msgstr "Detener la partida"
+
+msgid "usb-pads-volume-up"
+msgstr "Volumen +"
+
+msgid "usb-pads-volume-down"
+msgstr "Volumen -"
+
+msgid "usb-pads-volume-mute"
+msgstr "Silenciar"
+
+msgid "usb-pads-system-volume-up"
+msgstr "Volumen general +"
+
+msgid "usb-pads-system-volume-down"
+msgstr "Volumen general -"
+
+msgid "usb-pads-knob-long"
+msgstr "Rueda pulsación larga"

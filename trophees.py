@@ -6,6 +6,7 @@ from include import craspberry
 # --- MAPPING DES TOUCHES MATÉRIELLES / CLAVIER ---
 ENTER_KEYS = ['enter', 'return', 'space', 'GAMEBUTTON', 'BTN_VALIDATE', 'VALIDATE', 'BTN_GAMEBUTTON', 'SB', 'DB', 'BTN_NEXTPLAYER']
 ESCAPE_KEYS = ['escape', 'BTN_BACK', 'BACK', 'CANCEL', 'BTN_CANCEL']
+# Right and left go through the lists too (a knob set on them)
 UP_KEYS = ['up', 'BTN_UP', 'S20']
 DOWN_KEYS = ['down', 'BTN_DOWN', 'S3']
 LEFT_KEYS = ['left', 'BTN_LEFT', 'S11']
@@ -445,9 +446,9 @@ class CategorySelectionScreen:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         back_pressed = True
-                    elif event.key == pygame.K_DOWN:
+                    elif event.key in (pygame.K_DOWN, pygame.K_RIGHT):
                         navigation = 1
-                    elif event.key == pygame.K_UP:
+                    elif event.key in (pygame.K_UP, pygame.K_LEFT):
                         navigation = -1
                     elif event.key == pygame.K_RETURN:
                         action_pressed = "SELECT"
@@ -457,9 +458,9 @@ class CategorySelectionScreen:
                     inp = self.rpi.listen_inputs()
                     if inp:
                         key_str = str(inp).strip()
-                        if key_str in UP_KEYS:
+                        if key_str in UP_KEYS + LEFT_KEYS:
                             navigation = -1
-                        elif key_str in DOWN_KEYS:
+                        elif key_str in DOWN_KEYS + RIGHT_KEYS:
                             navigation = 1
                         elif key_str in ENTER_KEYS:
                             action_pressed = "SELECT"
@@ -1057,9 +1058,9 @@ class StatisticsScreen:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         back_pressed = True
-                    elif event.key == pygame.K_DOWN:
+                    elif event.key in (pygame.K_DOWN, pygame.K_RIGHT):
                         navigation = 1
-                    elif event.key == pygame.K_UP:
+                    elif event.key in (pygame.K_UP, pygame.K_LEFT):
                         navigation = -1
 
             if self.rpi and hasattr(self.rpi, "listen_inputs"):
@@ -1067,9 +1068,9 @@ class StatisticsScreen:
                     inp = self.rpi.listen_inputs()
                     if inp:
                         key_str = str(inp).strip()
-                        if key_str in DOWN_KEYS:
+                        if key_str in DOWN_KEYS + RIGHT_KEYS:
                             navigation = 1
-                        elif key_str in UP_KEYS:
+                        elif key_str in UP_KEYS + LEFT_KEYS:
                             navigation = -1
                         elif key_str in ESCAPE_KEYS:
                             back_pressed = True
@@ -1428,9 +1429,9 @@ class PlayerSelectionScreen:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         return "QUIT", None
-                    elif event.key == pygame.K_DOWN:
+                    elif event.key in (pygame.K_DOWN, pygame.K_RIGHT):
                         navigation = 1
-                    elif event.key == pygame.K_UP:
+                    elif event.key in (pygame.K_UP, pygame.K_LEFT):
                         navigation = -1
                     elif event.key == pygame.K_RETURN:
                         action_pressed = "SELECT"
@@ -1440,9 +1441,9 @@ class PlayerSelectionScreen:
                     inp = self.rpi.listen_inputs()
                     if inp:
                         key_str = str(inp).strip()
-                        if key_str in DOWN_KEYS:
+                        if key_str in DOWN_KEYS + RIGHT_KEYS:
                             navigation = 1
-                        elif key_str in UP_KEYS:
+                        elif key_str in UP_KEYS + LEFT_KEYS:
                             navigation = -1
                         elif key_str in ENTER_KEYS:
                             action_pressed = "SELECT"

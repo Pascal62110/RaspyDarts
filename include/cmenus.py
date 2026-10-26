@@ -44,6 +44,7 @@ ACTIONS = {
     'exhibition': 'exhibition',
     'raspy2dmd': 'raspy2dmd',
     'edit_screens': 'edit-screens',
+    'usb_pads': 'usb-pads',
     'update': 'update',
     'back': 'escape',
     'setup_buttons': 'setup-buttons',
@@ -167,8 +168,9 @@ class Menus:
                         button.update(change)
                 menu['buttons'] = buttons
         # A list of buttons of the file : the buttons of the files before which it does not
-        # name (a button of a newer version of the game) are added after its own, before those
-        # at the bottom of the screen, unless it removed them (removed: [ids])
+        # name (a button of a newer version of the game) are added after the one before them in
+        # those files (else after its own, before those at the bottom of the screen), unless it
+        # removed them (removed: [ids])
         for name, menu in (content.get('menus') or {}).items():
             if not isinstance(menu, dict):
                 continue
@@ -179,10 +181,19 @@ class Menus:
             before = (data.get('menus', {}).get(name) or {}).get('buttons') or []
             extra = [dict(button) for button in before if isinstance(button, dict) and
                      self.button_id(button) not in named and self.button_id(button) not in removed]
-            if extra:
-                at = next((index for index, button in enumerate(menu['buttons'])
-                           if isinstance(button, dict) and button.get('footer')), len(menu['buttons']))
-                menu['buttons'][at:at] = extra
+            for button in extra:
+                ids = [self.button_id(other) if isinstance(other, dict) else None for other in menu['buttons']]
+                # Its shortcut already taken by a button of the file (the files moved them) : none
+                if button.get('shortcut') in {other.get('shortcut') for other in menu['buttons'] if isinstance(other, dict)}:
+                    button.pop('shortcut')
+                # The button before it in the files, already in this list : just after it
+                order = [self.button_id(other) if isinstance(other, dict) else None for other in before]
+                previous = order[:order.index(self.button_id(button))]
+                at = next((ids.index(other) + 1 for other in reversed(previous) if other in ids), None)
+                if at is None:
+                    at = next((index for index, other in enumerate(menu['buttons'])
+                               if isinstance(other, dict) and other.get('footer')), len(menu['buttons']))
+                menu['buttons'].insert(at, button)
         self.logs.debug(f"Menus : {path} read in {(time.perf_counter() - started) * 1000:.0f} ms")
         return merge(data, content)
 

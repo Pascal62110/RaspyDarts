@@ -914,3 +914,114 @@ msgstr "Eingabe"
 msgid "editor-key-space"
 msgstr "Leertaste"
 
+
+msgid "usb-pads"
+msgstr "Einrichtung USB-Tasten und Drehknöpfe"
+
+msgid "usb-pads-sub"
+msgstr "Eine betätigte Taste oder der Drehknopf leuchtet hier auf"
+
+msgid "usb-pads-none"
+msgstr "Kein USB-Tastengerät angeschlossen"
+
+msgid "usb-pads-pad"
+msgstr "Gerät"
+
+msgid "usb-pads-keys"
+msgstr "Tasten"
+
+msgid "usb-pads-knobs"
+msgstr "Drehknöpfe"
+
+msgid "usb-pads-program"
+msgstr "Gerät programmieren"
+
+msgid "usb-pads-programmed"
+msgstr "Gerät programmiert: jede Taste kann getestet werden"
+
+msgid "usb-pads-program-error"
+msgstr "Programmierung fehlgeschlagen: Gerät ab- und wieder anstecken"
+
+msgid "usb-pads-program-denied"
+msgstr "Programmierung vom System verweigert: RaspyDarts aktualisieren und neu starten"
+
+msgid "usb-pads-not-programmed"
+msgstr "Dieses Gerät ist nicht programmiert: « Gerät programmieren » wählen"
+
+msgid "usb-pads-to-program"
+msgstr "Anzahl geändert: Gerät programmieren"
+
+msgid "usb-pads-saved"
+msgstr "Einstellungen der Tasten und Drehknöpfe gespeichert"
+
+msgid "usb-pads-menus"
+msgstr "Menüs"
+
+msgid "usb-pads-game"
+msgstr "Spiel"
+
+msgid "usb-pads-key"
+msgstr "Taste"
+
+msgid "usb-pads-knob-left"
+msgstr "Knopf links"
+
+msgid "usb-pads-knob-press"
+msgstr "Knopf drücken"
+
+msgid "usb-pads-knob-right"
+msgstr "Knopf rechts"
+
+msgid "usb-pads-none-action"
+msgstr "Nichts"
+
+msgid "usb-pads-validate"
+msgstr "Bestätigen"
+
+msgid "usb-pads-back"
+msgstr "Zurück"
+
+msgid "usb-pads-up"
+msgstr "Hoch"
+
+msgid "usb-pads-down"
+msgstr "Runter"
+
+msgid "usb-pads-left"
+msgstr "Links"
+
+msgid "usb-pads-right"
+msgstr "Rechts"
+
+msgid "usb-pads-plus"
+msgstr "Plus"
+
+msgid "usb-pads-minus"
+msgstr "Minus"
+
+msgid "usb-pads-nextplayer"
+msgstr "Nächster Spieler"
+
+msgid "usb-pads-miss"
+msgstr "Fehlwurf"
+
+msgid "usb-pads-stop"
+msgstr "Spiel beenden"
+
+msgid "usb-pads-volume-up"
+msgstr "Lautstärke +"
+
+msgid "usb-pads-volume-down"
+msgstr "Lautstärke -"
+
+msgid "usb-pads-volume-mute"
+msgstr "Ton aus"
+
+msgid "usb-pads-system-volume-up"
+msgstr "Systemlautstärke +"
+
+msgid "usb-pads-system-volume-down"
+msgstr "Systemlautstärke -"
+
+msgid "usb-pads-knob-long"
+msgstr "Knopf lang drücken"

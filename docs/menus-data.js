@@ -275,28 +275,34 @@ const MENUS_DATA = {
       "shortcut": "F5"
      },
      {
+      "id": "usb-pads",
+      "action": "usb_pads",
+      "text": "usb-pads",
+      "shortcut": "F6"
+     },
+     {
       "id": "test-buttons",
       "action": "test_buttons",
       "text": "test-buttons",
-      "shortcut": "F6"
+      "shortcut": "F7"
      },
      {
       "id": "test-target",
       "action": "test_target",
       "text": "test-target",
-      "shortcut": "F7"
+      "shortcut": "F8"
      },
      {
       "id": "test-toys",
       "action": "test_toys",
       "text": "test-toys",
-      "shortcut": "F8"
+      "shortcut": "F9"
      },
      {
       "id": "reset",
       "action": "reset",
       "text": "reset",
-      "shortcut": "F9"
+      "shortcut": "F10"
      },
      {
       "id": "back",
@@ -395,7 +401,8 @@ const MENUS_DATA = {
   "test_target",
   "test_toys",
   "trophies",
-  "update"
+  "update",
+  "usb_pads"
  ],
  "prefixes": [
   "menu:",
@@ -2173,6 +2180,7 @@ const MENUS_DATA = {
    "test-toys": "Test des toys",
    "trophees": "Trophées et progression",
    "up": "Haut",
+   "usb-pads": "Paramétrage boutons et molettes USB",
    "yes": "Oui"
   },
   "en": {
@@ -2267,6 +2275,7 @@ const MENUS_DATA = {
    "test-target": "Test de la cible",
    "test-toys": "Test des toys",
    "up": "Up",
+   "usb-pads": "USB buttons and knobs setup",
    "yes": "Yes"
   },
   "de": {
@@ -2321,7 +2330,8 @@ const MENUS_DATA = {
    "left": "Übrig",
    "players-names": "Bitte gebe den Spielern Namen",
    "players-names-subtitle": "Druecke + fuer hinzuzufuegen, - zum entfernen, <Tab> für zufaellig",
-   "raspy2dmd": "DMD-Anzeige (Raspy2DMD)"
+   "raspy2dmd": "DMD-Anzeige (Raspy2DMD)",
+   "usb-pads": "Einrichtung USB-Tasten und Drehknöpfe"
   },
   "es": {
    "edit-screens": "Modificar las pantallas",
@@ -2375,7 +2385,8 @@ const MENUS_DATA = {
    "left": "Faltan",
    "players-names": "Por favor escriba el nombre de los juegadores:",
    "players-names-subtitle": "Presione tecla + para añadir, - para eliminar, <Tab> aleatorio.",
-   "raspy2dmd": "Pantalla DMD (Raspy2DMD)"
+   "raspy2dmd": "Pantalla DMD (Raspy2DMD)",
+   "usb-pads": "Configuración de botones y ruedas USB"
   },
   "it": {
    "animations": "Animations Leds",
@@ -2470,6 +2481,7 @@ const MENUS_DATA = {
    "test-target": "Test de la cible",
    "test-toys": "Test des toys",
    "up": "Su",
+   "usb-pads": "Configurazione pulsanti e manopole USB",
    "yes": "Si"
   }
  },
