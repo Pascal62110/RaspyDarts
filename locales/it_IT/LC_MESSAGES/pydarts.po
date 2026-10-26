@@ -3715,3 +3715,45 @@ msgstr "Volume generale -"
 
 msgid "usb-pads-knob-long"
 msgstr "Manopola pressione lunga"
+
+msgid "raspy2dmd-check-update"
+msgstr "Cerca aggiornamenti"
+
+msgid "raspy2dmd-checking"
+msgstr "Ricerca di un aggiornamento di Raspy2DMD…"
+
+msgid "raspy2dmd-check-failed"
+msgstr "Verifica impossibile: GitHub non risponde (Internet?)"
+
+msgid "raspy2dmd-up-to-date"
+msgstr "Raspy2DMD {version} è aggiornato"
+
+msgid "raspy2dmd-update-disabled"
+msgstr "Aggiornamenti disattivati in Raspy2DMD: attivarli sulla sua pagina web"
+
+msgid "raspy2dmd-update-question"
+msgstr "Installare Raspy2DMD {version}?"
+
+msgid "raspy2dmd-update-explain"
+msgstr "Versione installata: {version}. Il DMD mostra l'avanzamento, poi Raspy2DMD si riavvia (la macchina resta accesa)"
+
+msgid "raspy2dmd-updating"
+msgstr "Installazione di Raspy2DMD {version}: avanzamento sul DMD"
+
+msgid "raspy2dmd-updated"
+msgstr "Raspy2DMD {version} installato"
+
+msgid "raspy2dmd-update-failed"
+msgstr "Aggiornamento non terminato: vedere la pagina web di Raspy2DMD"
+
+msgid "raspy2dmd-install-elapsed"
+msgstr "Tempo trascorso: {time}"
+
+msgid "raspy2dmd-install-continues"
+msgstr "L'installazione continua: seguirla in Impostazioni > Display DMD"
+
+msgid "raspy2dmd-install-done"
+msgstr "Raspy2DMD è installato"
+
+msgid "raspy2dmd-install-error"
+msgstr "Installazione non riuscita: vedere logs/raspy2dmd_install.log"

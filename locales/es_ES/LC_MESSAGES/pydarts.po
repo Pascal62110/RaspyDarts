@@ -1031,3 +1031,45 @@ msgstr "Volumen general -"
 
 msgid "usb-pads-knob-long"
 msgstr "Rueda pulsación larga"
+
+msgid "raspy2dmd-check-update"
+msgstr "Buscar actualizaciones"
+
+msgid "raspy2dmd-checking"
+msgstr "Buscando una actualización de Raspy2DMD…"
+
+msgid "raspy2dmd-check-failed"
+msgstr "Comprobación imposible: GitHub no responde (¿Internet?)"
+
+msgid "raspy2dmd-up-to-date"
+msgstr "Raspy2DMD {version} está actualizado"
+
+msgid "raspy2dmd-update-disabled"
+msgstr "Actualizaciones desactivadas en Raspy2DMD: actívelas en su página web"
+
+msgid "raspy2dmd-update-question"
+msgstr "¿Instalar Raspy2DMD {version}?"
+
+msgid "raspy2dmd-update-explain"
+msgstr "Versión instalada: {version}. El DMD muestra el progreso y luego Raspy2DMD se reinicia (la máquina sigue encendida)"
+
+msgid "raspy2dmd-updating"
+msgstr "Instalando Raspy2DMD {version}: progreso en el DMD"
+
+msgid "raspy2dmd-updated"
+msgstr "Raspy2DMD {version} instalado"
+
+msgid "raspy2dmd-update-failed"
+msgstr "Actualización no terminada: vea la página web de Raspy2DMD"
+
+msgid "raspy2dmd-install-elapsed"
+msgstr "Tiempo transcurrido: {time}"
+
+msgid "raspy2dmd-install-continues"
+msgstr "La instalación continúa: sígala en Ajustes > Pantalla DMD"
+
+msgid "raspy2dmd-install-done"
+msgstr "Raspy2DMD está instalado"
+
+msgid "raspy2dmd-install-error"
+msgstr "Instalación fallida: vea logs/raspy2dmd_install.log"

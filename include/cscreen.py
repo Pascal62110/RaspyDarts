@@ -8258,6 +8258,15 @@ class Screen(pygame.Surface):
     RASPY2DMD_INSTALL_OPTIONS = '--pico-seul --sans-question'
     RASPY2DMD_INSTALL_UNIT = 'raspy2dmd-install'
     RASPY2DMD_INSTALL_LOG = 'logs/raspy2dmd_install.log'
+    # Its updates : its releases vX.Y.Z.W (Raspy2DMD_PiZeroWH_v... on a Pi Zero W), the first one
+    # not a draft, as its engine chooses them (DMDRenderer.searchUpdate) ; installed by its engine
+    # when it starts (saved first, progress on the DMD, back to the old one if it fails)
+    RASPY2DMD_RELEASES = 'https://api.github.com/repos/rmdelcelier/Raspy2DMD/releases'
+    RASPY2DMD_VERSION = '/Raspy2DMD/web/VERSION'
+    RASPY2DMD_CONFIG = '/Medias/Raspy2DMD.cfg'
+    RASPY2DMD_UPDATE = 'update'
+    # Its update followed this long at most (download of about 40 MB, copy, its scripts)
+    RASPY2DMD_UPDATE_TIME = 600
 
     @classmethod
     def raspy2dmd_installed(cls):
@@ -8292,7 +8301,8 @@ class Screen(pygame.Surface):
     def raspy2dmd_install(self):
         '''
         Raspy2DMD not installed : asked, then installed in the background (internet needed,
-        15 to 45 minutes) ; the game stays usable meanwhile. Its log : logs/raspy2dmd_install.log
+        15 to 45 minutes) ; the game stays usable meanwhile. Its log : logs/raspy2dmd_install.log.
+        Followed at once (see raspy2dmd_install_progress) : True when installed
         '''
         if not self.wait_validation('raspy2dmd-install-question'):
             return
@@ -8310,10 +8320,12 @@ class Screen(pygame.Surface):
                             '/bin/bash', '-c', command], check=True, timeout=30,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.logs.info(f"Raspy2DMD : installation launched ({command})")
-            self.message([self.lang.translate('raspy2dmd-install-started')], 3000, self.colorset['menu-ok'], 'middle', 'big')
         except Exception as error:    # pylint: disable=broad-except
             self.logs.error(f"Raspy2DMD : installation not launched : {error}")
             self.message([self.lang.translate('raspy2dmd-install-failed')], 3000, self.colorset['menu-ko'], 'middle', 'big')
+            return False
+        # Followed at once (the screen of the settings came back : nothing showed it)
+        return self.raspy2dmd_install_progress()
 
     def raspy2dmd_start(self):
         '''
@@ -8336,29 +8348,189 @@ class Screen(pygame.Surface):
             pygame.time.wait(1000)
         self.message([self.lang.translate('raspy2dmd-start-failed')], 3000, self.colorset['menu-ko'], 'middle', 'big')
 
+    @staticmethod
+    def raspy2dmd_version_key(version):
+        '''
+        A version X.Y.Z.W to compare
+        '''
+        return tuple(int(number) for number in re.findall(r'\d+', str(version)))
+
+    def raspy2dmd_versions(self):
+        '''
+        Its version installed, and the last one published (None : none ; False : not read,
+        no internet...)
+        '''
+        installed = self.raspy2dmd_installed_version()
+        import platform    # pylint: disable=import-outside-toplevel
+        prefix = 'Raspy2DMD_PiZeroWH_v' if platform.machine() == 'armv6l' else 'v?'
+        pattern = re.compile(rf'^{prefix}(\d+\.\d+\.\d+\.\d+)$')
+        try:
+            import requests    # pylint: disable=import-outside-toplevel
+            response = requests.get(self.RASPY2DMD_RELEASES, headers={'Accept': 'application/vnd.github.v3+json'}, timeout=10)
+            response.raise_for_status()
+            for release in response.json():
+                match = pattern.match(str(release.get('tag_name', '')))
+                if match and not release.get('draft'):
+                    return installed, match.group(1)
+            return installed, None
+        except Exception as error:    # pylint: disable=broad-except
+            self.logs.warning(f"Raspy2DMD : its releases not read : {error}")
+            return installed, False
+
+    def raspy2dmd_auto_update(self):
+        '''
+        Its updates installed by its engine when it starts ([Running] checkforupdate = 1, the
+        default ; its configuration is readable by root only)
+        '''
+        import configparser    # pylint: disable=import-outside-toplevel
+        try:
+            text = subprocess.run(['sudo', '-n', 'cat', self.RASPY2DMD_CONFIG], capture_output=True, text=True,
+                                  check=True, timeout=10).stdout
+            config = configparser.ConfigParser(interpolation=None, strict=False)
+            config.read_string(text)
+            return config.get('Running', 'checkforupdate', fallback='1').strip() == '1'
+        except Exception as error:    # pylint: disable=broad-except
+            self.logs.warning(f"Raspy2DMD : its configuration not read : {error}")
+            return True
+
+    def raspy2dmd_restart(self):
+        '''
+        Its engine stopped, then started again by its service (installed by its versions from
+        1.5.5.98), else as raspy2dmd_start does
+        '''
+        subprocess.run(['sudo', 'pkill', '-f', 'python.*ServerRaspy2DMD[.]py'], check=False, timeout=10)
+        for _ in range(20):
+            if not self.raspy2dmd_running():
+                break
+            pygame.time.wait(500)
+        if os.path.isfile('/etc/systemd/system/raspy2dmd.service'):
+            subprocess.run(['sudo', 'systemctl', 'restart', 'raspy2dmd'], check=False, timeout=30,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.run(['sudo', 'systemd-run', '--unit=raspy2dmd-start', '--collect', '/bin/bash',
+                            '/Raspy2DMD/ServerRaspy2DMD.sh'], check=False, timeout=30,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def raspy2dmd_update(self):
+        '''
+        « Vérifier les mises à jour » : its last version published compared with the one
+        installed ; a newer one, accepted : installed by its engine, started again for it (the
+        progress on the DMD), followed here until its version changes
+        '''
+        translate = self.lang.translate
+        self.message([translate('raspy2dmd-checking')], 0, None, 'middle', 'big')
+        installed, latest = self.raspy2dmd_versions()
+        if latest is False:
+            self.message([translate('raspy2dmd-check-failed')], 3000, self.colorset['menu-ko'], 'middle', 'big')
+            return
+        if not latest or (installed and self.raspy2dmd_version_key(latest) <= self.raspy2dmd_version_key(installed)):
+            self.message([translate('raspy2dmd-up-to-date').replace('{version}', installed or '?')], 3000,
+                         self.colorset['menu-ok'], 'middle', 'big')
+            return
+        if not self.raspy2dmd_auto_update():
+            self.message([translate('raspy2dmd-update-disabled')], 5000, self.colorset['menu-ko'], 'middle', 'big')
+            return
+        if not self.ask_yes_no(translate('raspy2dmd-update-question').replace('{version}', latest),
+                               translate('raspy2dmd-update-explain').replace('{version}', installed or '?')):
+            return
+        self.logs.info(f"Raspy2DMD : update {installed} -> {latest} by its engine")
+        self.raspy2dmd_restart()
+        started = time.monotonic()
+        while time.monotonic() - started < self.RASPY2DMD_UPDATE_TIME:
+            seconds = int(time.monotonic() - started)
+            # The time in the same text (two texts were drawn one over the other)
+            self.message([f"{translate('raspy2dmd-updating').replace('{version}', latest)} ({seconds // 60}:{seconds % 60:02d})"],
+                         0, None, 'middle', 'big')
+            # Its version written at the end of the copy ; then its engine starts again
+            if self.raspy2dmd_installed_version() == latest and self.raspy2dmd_running():
+                self.logs.info(f"Raspy2DMD : {latest} installed in {seconds} s")
+                self.message([translate('raspy2dmd-updated').replace('{version}', latest)], 3000,
+                             self.colorset['menu-ok'], 'middle', 'big')
+                return
+            pygame.time.wait(1000)
+        self.logs.error(f"Raspy2DMD : {latest} not installed after {self.RASPY2DMD_UPDATE_TIME} s")
+        self.message([translate('raspy2dmd-update-failed')], 5000, self.colorset['menu-ko'], 'middle', 'big')
+
+    def raspy2dmd_installed_version(self):
+        '''
+        Its version installed ('' : none)
+        '''
+        try:
+            with open(self.RASPY2DMD_VERSION, encoding='utf-8') as file:
+                return file.read().strip()
+        except OSError:
+            return ''
+
+    def raspy2dmd_install_log(self):
+        '''
+        Its log of installation : its lines, without the colours of the terminal nor the lines
+        drawn
+        '''
+        try:
+            with open(self.RASPY2DMD_INSTALL_LOG, encoding='utf-8', errors='ignore') as file:
+                lines = [re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', line).strip()
+                         for line in file.read().replace('\r', '\n').split('\n')]
+        except OSError:
+            return []
+        return [line for line in lines if line and not set(line) <= set('─━═-=')]
+
+    def raspy2dmd_install_started(self):
+        '''
+        Seconds since its installation started (None : unknown)
+        '''
+        try:
+            value = subprocess.run(['systemctl', 'show', '--value', '-p', 'ActiveEnterTimestampMonotonic',
+                                    self.RASPY2DMD_INSTALL_UNIT], capture_output=True, text=True, check=False,
+                                   timeout=5).stdout.strip()
+            return time.monotonic() - int(value) / 1e6 if value and int(value) > 0 else None
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            return None
+
     def raspy2dmd_install_progress(self):
         '''
-        Its installation running : the last line of its log, until Back
+        Its installation running : a bar by its steps ([ETAPE 4/14] ...), its step, the last line
+        of its log and the time gone by. Its end : said, and installed, Raspy2DMD started at once
+        (its watchdog would take up to a minute). True : installed ; False : left (it goes on)
+        or failed
         '''
+        translate = self.lang.translate
         while self.raspy2dmd_installing():
             self.display_background()
-            self.menu_header(self.lang.translate('raspy2dmd'), self.lang.translate('raspy2dmd-installing'))
-            last = ''
-            try:
-                with open(self.RASPY2DMD_INSTALL_LOG, encoding='utf-8', errors='ignore') as file:
-                    lines = [line.strip() for line in file.read().replace('\r', '\n').split('\n') if line.strip()]
-                # (without the colours of the terminal)
-                last = re.sub(r'\x1b\[[0-9;]*m', '', lines[-1]) if lines else ''
-            except OSError:
-                pass
+            self.menu_header(translate('raspy2dmd'), translate('raspy2dmd-installing'))
+            lines = self.raspy2dmd_install_log()
+            step = next((line for line in reversed(lines) if line.startswith('[ETAPE')), '')
+            last = lines[-1] if lines and lines[-1] != step else ''
+            # Its progress bars : blocks the font of the game does not have, their percentage kept
+            last = re.sub(r'\[[^\]%]*\]\s*', '', last) if '%' in last else last
+            last = re.sub('[─-▟]', '', last).strip()
+            numbers = re.match(r'\[ETAPE (\d+)/(\d+)\]', step)
+            done = (int(numbers.group(1)) - 1) / int(numbers.group(2)) if numbers else 0
             line = int(self.res['y'] / 18)
-            self.blit_text(last[:90], 0, int(self.res['y'] * 0.45), self.res['x'], line, self.colorset['menu-text-white'])
+            pos_x, width, pos_y = self.res_x_16 * 3, self.res_x_16 * 10, int(self.res['y'] * 0.35)
+            self.blit_rect(pos_x, pos_y, width, line, self.colorset['menu-buttons'], Alpha=255)
+            self.blit_rect(pos_x, pos_y, max(1, int(width * done)), line, self.colorset['menu-ok'], Alpha=255)
+            self.blit_text(step[:90], 0, pos_y + line * 1.5, self.res['x'], line, self.colorset['menu-text-white'])
+            self.blit_text(last[:90], 0, pos_y + line * 3, self.res['x'], int(line * 0.8), self.colorset['menu-text-white'])
+            started = self.raspy2dmd_install_started()
+            if started is not None:
+                self.blit_text(translate('raspy2dmd-install-elapsed').replace('{time}', f"{int(started) // 60}:{int(started) % 60:02d}"),
+                               0, pos_y + line * 4.5, self.res['x'], int(line * 0.8), self.colorset['menu-text-white'])
             self.display_button(True, 'back', special='escape')
             self.update_screen()
             key = self.rpi.listen_inputs(['arrows', 'fx'], ['escape', 'enter', 'space', 'PLAYERBUTTON', 'BACKUPBUTTON',
                                                             'GAMEBUTTON', 'single-click'], timeout=2000)
             if key in ESCAPE_KEYS or key in ENTER_KEYS or key in ('escape', 'single-click'):
-                return
+                self.message([translate('raspy2dmd-install-continues')], 3000, None, 'middle', 'big')
+                return False
+        if any('Installation terminee avec succes' in line for line in self.raspy2dmd_install_log()[-30:])                 and self.raspy2dmd_installed():
+            self.logs.info("Raspy2DMD : installed from the game")
+            self.message([translate('raspy2dmd-install-done')], 3000, self.colorset['menu-ok'], 'middle', 'big')
+            if not self.raspy2dmd_running():
+                self.raspy2dmd_start()
+            return True
+        self.logs.error(f"Raspy2DMD : installation failed (see {self.RASPY2DMD_INSTALL_LOG})")
+        self.message([translate('raspy2dmd-install-error')], 5000, self.colorset['menu-ko'], 'middle', 'big')
+        return False
 
     def raspy2dmd_menu(self, dispatcher):
         '''
@@ -8366,11 +8538,10 @@ class Screen(pygame.Surface):
         phone), and a few commands sent to it (a message to check the link, the test pattern
         of the Pico, the clock, the demo)
         '''
-        if self.raspy2dmd_installing():
-            self.raspy2dmd_install_progress()
+        # Its installation followed until its end : then its screen
+        if self.raspy2dmd_installing() and not self.raspy2dmd_install_progress():
             return
-        if not self.raspy2dmd_installed():
-            self.raspy2dmd_install()
+        if not self.raspy2dmd_installed() and not self.raspy2dmd_install():
             return
         from include import cgallery
         import qrcode
@@ -8391,6 +8562,7 @@ class Screen(pygame.Surface):
                         ('raspy2dmd-test-pattern', 'pico|test_rgb'),
                         ('raspy2dmd-clock', 'time|start'),
                         ('raspy2dmd-demo', 'demo|gif')] if running else [('raspy2dmd-start', None)]
+            commands.append(('raspy2dmd-check-update', self.RASPY2DMD_UPDATE))
             nb_elements = len(commands)
             selected = min(selected, nb_elements + 1)
             self.display_background()
@@ -8427,6 +8599,9 @@ class Screen(pygame.Surface):
                 if commands[selected - 1][1] is None:
                     self.raspy2dmd_start()
                     selected = 1
+                    continue
+                if commands[selected - 1][1] == self.RASPY2DMD_UPDATE:
+                    self.raspy2dmd_update()
                     continue
                 dispatcher.mqtt_publish(self.RASPY2DMD_TOPIC, commands[selected - 1][1])
                 self.message([self.lang.translate('raspy2dmd-sent')], 1000, self.colorset['menu-ok'], 'middle', 'big')

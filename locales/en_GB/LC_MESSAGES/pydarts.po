@@ -3261,3 +3261,45 @@ msgstr "System volume -"
 
 msgid "usb-pads-knob-long"
 msgstr "Knob long press"
+
+msgid "raspy2dmd-check-update"
+msgstr "Check for updates"
+
+msgid "raspy2dmd-checking"
+msgstr "Looking for a Raspy2DMD update…"
+
+msgid "raspy2dmd-check-failed"
+msgstr "Check failed: GitHub does not answer (Internet?)"
+
+msgid "raspy2dmd-up-to-date"
+msgstr "Raspy2DMD {version} is up to date"
+
+msgid "raspy2dmd-update-disabled"
+msgstr "Updates are disabled in Raspy2DMD: enable them on its web page"
+
+msgid "raspy2dmd-update-question"
+msgstr "Install Raspy2DMD {version}?"
+
+msgid "raspy2dmd-update-explain"
+msgstr "Installed version: {version}. The DMD shows the progress, then Raspy2DMD restarts (the cabinet stays on)"
+
+msgid "raspy2dmd-updating"
+msgstr "Installing Raspy2DMD {version}: progress on the DMD"
+
+msgid "raspy2dmd-updated"
+msgstr "Raspy2DMD {version} installed"
+
+msgid "raspy2dmd-update-failed"
+msgstr "Update not finished: see the Raspy2DMD web page"
+
+msgid "raspy2dmd-install-elapsed"
+msgstr "Time elapsed: {time}"
+
+msgid "raspy2dmd-install-continues"
+msgstr "The installation goes on: follow it in Settings > DMD display"
+
+msgid "raspy2dmd-install-done"
+msgstr "Raspy2DMD is installed"
+
+msgid "raspy2dmd-install-error"
+msgstr "Installation failed: see logs/raspy2dmd_install.log"

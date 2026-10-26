@@ -1025,3 +1025,45 @@ msgstr "Systemlautstärke -"
 
 msgid "usb-pads-knob-long"
 msgstr "Knopf lang drücken"
+
+msgid "raspy2dmd-check-update"
+msgstr "Nach Updates suchen"
+
+msgid "raspy2dmd-checking"
+msgstr "Suche nach einem Raspy2DMD-Update…"
+
+msgid "raspy2dmd-check-failed"
+msgstr "Prüfung nicht möglich: GitHub antwortet nicht (Internet?)"
+
+msgid "raspy2dmd-up-to-date"
+msgstr "Raspy2DMD {version} ist aktuell"
+
+msgid "raspy2dmd-update-disabled"
+msgstr "Updates sind in Raspy2DMD deaktiviert: auf seiner Webseite aktivieren"
+
+msgid "raspy2dmd-update-question"
+msgstr "Raspy2DMD {version} installieren?"
+
+msgid "raspy2dmd-update-explain"
+msgstr "Installierte Version: {version}. Das DMD zeigt den Fortschritt, dann startet Raspy2DMD neu (der Automat bleibt an)"
+
+msgid "raspy2dmd-updating"
+msgstr "Raspy2DMD {version} wird installiert: Fortschritt auf dem DMD"
+
+msgid "raspy2dmd-updated"
+msgstr "Raspy2DMD {version} installiert"
+
+msgid "raspy2dmd-update-failed"
+msgstr "Update nicht abgeschlossen: siehe Raspy2DMD-Webseite"
+
+msgid "raspy2dmd-install-elapsed"
+msgstr "Verstrichene Zeit: {time}"
+
+msgid "raspy2dmd-install-continues"
+msgstr "Die Installation läuft weiter: unter Einstellungen > DMD-Anzeige verfolgen"
+
+msgid "raspy2dmd-install-done"
+msgstr "Raspy2DMD ist installiert"
+
+msgid "raspy2dmd-install-error"
+msgstr "Installation fehlgeschlagen: siehe logs/raspy2dmd_install.log"
