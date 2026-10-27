@@ -185,7 +185,7 @@ class Game(cgame.Game):
                 players[actual_player].columns[6] = (0.0, 'int')
             else:
                 #players[actual_player].columns[5] = (players[actual_player].show_ppd(),'int')
-                players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+                players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
 
             # Clean next boxes
             for index in range(player_launch - 1, self.nb_darts):
@@ -423,7 +423,7 @@ class Game(cgame.Game):
                 players[actual_player].points += 1
 
                 # Refresh stats
-                players[actual_player].columns[6] = (players[actual_player].avg(actual_round),'int')
+                players[actual_player].columns[6] = (players[actual_player].show_ppr(),'int')
                 self.refresh_stats(players,actual_round)
 
                 # check if a player pass an opponent
@@ -507,7 +507,7 @@ class Game(cgame.Game):
         players[actual_player].darts_thrown += (self.nb_darts - self.nb_dartsHitInTurn)
 
         # Refresh stats
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players,actual_round)
 
         if actual_round >= self.max_round and actual_player == self.nb_players - 1:
@@ -528,7 +528,7 @@ class Game(cgame.Game):
     ###############
     def refresh_stats(self, players, actual_round):
         for player in players:
-            player.stats['Segment Per Round'] = player.avg(actual_round)
+            player.stats['Segment Per Round'] = player.show_ppr()
             player.stats['Nb turns to win'] = actual_round
 
     ###############

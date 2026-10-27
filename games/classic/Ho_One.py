@@ -484,7 +484,7 @@ class Game(cgame.Game):
                 # ==========================================
                 # TROPHEES : Fin de partie en X fléchettes (Atteinte de 0)
                 # ==========================================
-                total_darts = getattr(winning_player, 'darts_thrown', (actual_round - 1) * 3 + player_launch)
+                total_darts = winning_player.stat_darts
                 ctrophies.check_ho_one_finish_trophies(winning_player, self.starting_at, total_darts, winning_dart=hit)
                 
                 if self.equal and actual_player < len(players)-1:
@@ -563,11 +563,11 @@ class Game(cgame.Game):
                 # TROPHEES : Fin de partie sur dernier round
                 # ==========================================
                 winning_player = players[self.winner]
-                total_darts = getattr(winning_player, 'darts_thrown', self.max_round * 3)
+                total_darts = winning_player.stat_darts
                 winning_dart = hit if winning_player == players[actual_player] else None
                 ctrophies.check_ho_one_finish_trophies(winning_player, self.starting_at, total_darts)
 
-                ctrophies.check_game_end_stats(players, winning_player, "HOONE")
+                ctrophies.check_game_end_stats(players, winning_player, "HO-ONE")
                 
         # Store what he played in the table
         players[actual_player].columns[player_launch - 1] = (self.score_map[hit], 'int')
@@ -635,7 +635,7 @@ class Game(cgame.Game):
                 self.debug.record(f"{actual_player}MB\n") #miss button
         # Refresh stats
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players, actual_round)
         return return_code
         
@@ -746,13 +746,8 @@ class Game(cgame.Game):
         Check for handicap and record appropriate marks for player
         '''
         self.logs.debug("Checking for handicaps!")
-        list_ppd = []
-        for player in players:
-            name = player.name
-            if name.lower() not in self.stats.player_stats:
-                list_ppd.append(0)
-            else:
-                list_ppd.append(int(float(self.stats.player_stats[name.lower()][6])))
+        # Average PPD of each player in Ho-One (trophies statistics)
+        list_ppd = [ctrophies.player_average_ppd(player.name, 'ho-one') for player in players]
         return self.handicap.hoonehandicap(list_ppd, self.starting_at, players)
 
     def check_players_allowed(self, nb_players):

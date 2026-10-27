@@ -7,6 +7,10 @@ class Player:
     """
     Standard player class
     """
+    # Also for the extended players of the games which do not call reset()
+    stat_darts = 0
+    points = 0
+
     def __init__(self, ident, nb_columns, interior=False):
         self.ident = ident
         self.nb_columns = nb_columns
@@ -59,6 +63,8 @@ class Player:
         self.round_points = 0
         # Count total of dart thrown. In some games it could differents from max_round*3.
         self.darts_thrown = 0
+        # Darts of the averages (PPD, PPR) : counted once per dart by the main loop, never by the games
+        self.stat_darts = 0
         # Stats table
         self.stats = {}
         # Still in game
@@ -99,6 +105,7 @@ class Player:
         self.score = 0
         self.points = 0
         self.darts_thrown = 0
+        self.stat_darts = 0
         self.alive = True
         self.lives = 0
         self.columns = []
@@ -327,37 +334,31 @@ class Player:
         Simple = 1 / Double = 2 / Triple = 3
         3 * Sum of 3 darts / number of darts
         """
-        try:
-            mpr = round((float(self.hits) / float(self.darts_thrown)) * 3, 2)
-        except: # pylint: disable=bare-except
-            mpr = 0.00
-        return mpr
+        if self.stat_darts == 0:
+            return 0.00
+        return round(float(self.hits) * 3 / self.stat_darts, 2)
+
+    def count_dart(self):
+        """
+        Count a dart thrown (or declared missed) for the averages
+        """
+        self.stat_darts += 1
 
     def show_ppd(self):
         """
-        Return points per dart
+        Return points per dart : points / darts thrown
         """
-        try:
-            ppd = round(float(self.points) / float(self.darts_thrown), 2)
-        except: # pylint: disable=bare-except
-            ppd = 0.00
-        return ppd
+        if self.stat_darts == 0:
+            return 0.00
+        return round(float(self.points) / self.stat_darts, 2)
 
     def show_ppr(self):
         """
-        Return points per round
+        Return points per round of three darts : 3 * points / darts thrown
         """
-        try:
-            ppr = round((float(self.points) / self.darts_thrown) * 3, 2)
-        except: # pylint: disable=bare-except
-            ppr = 0.00
-        return ppr
-
-    def avg(self, actual_round):
-        """
-        Return Average points per round
-        """
-        return round((float(self.points) / actual_round), 2)
+        if self.stat_darts == 0:
+            return 0.00
+        return round(float(self.points) * 3 / self.stat_darts, 2)
 
     def score_per_round(self, actual_round):
         """

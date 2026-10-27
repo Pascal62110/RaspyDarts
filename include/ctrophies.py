@@ -9,6 +9,35 @@ from include import cpaths
 # Dans le dossier du joueur (~/.raspydarts), avec ses scores et sa configuration
 DATA_FILE = cpaths.trophies_file()
 
+
+def average_ppd(stats, game):
+    """
+    PPD moyen du joueur à ce jeu (0.0 s'il n'y a jamais joué).
+    Les parties jouées depuis que chaque fléchette est comptée une seule fois (10/2026) sont dans
+    moyenne_ppd_<jeu> ; avant, moyenne_ppr_<jeu> : un vrai PPR en Ho-One, à peu près le PPD
+    ailleurs (fléchettes comptées 1 à 3 fois selon le jeu). Il reste affiché tant que le joueur
+    n'a pas rejoué à ce jeu.
+    """
+    if f"moyenne_ppd_{game}" in stats:
+        return stats[f"moyenne_ppd_{game}"]
+    legacy = stats.get(f"moyenne_ppr_{game}", stats.get(f"ppr_moyen_{game}", 0.0))
+    return legacy / 3.0 if game == "ho-one" else legacy
+
+
+def player_average_ppd(name, game):
+    """
+    PPD moyen d'un joueur (nom sans tenir compte de la casse) à ce jeu, 0.0 si inconnu
+    """
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return 0.0
+    for p_name, content in data.items():
+        if p_name.strip().lower() == name.strip().lower() and isinstance(content, dict):
+            return average_ppd(content.get("stats", {}), game)
+    return 0.0
+
 # Variable globale pour stocker l'instance d'affichage Pygame
 _DISPLAY_INSTANCE = None
 
@@ -393,13 +422,7 @@ def check_game_end_stats(players, winner, game_name):
         p_stats[parties_ce_jeu_key] = p_stats.get(parties_ce_jeu_key, 0) + 1
         parties_ce_jeu = p_stats[parties_ce_jeu_key]
 
-        ppr_actuel = 0.0
-        if hasattr(player, "show_ppr"):
-            try: ppr_actuel = float(player.show_ppr())
-            except: pass
-        elif hasattr(player, "stats") and "Points Per Round" in player.stats:
-            try: ppr_actuel = float(player.stats["Points Per Round"])
-            except: pass
+        ppd_actuel = float(player.show_ppd()) if hasattr(player, "show_ppd") else 0.0
 
         mpr_actuel = 0.0
         if is_cricket_like and hasattr(player, "show_mpr"):
@@ -411,9 +434,13 @@ def check_game_end_stats(players, winner, game_name):
             p_stats[f"cumul_mpr_{game_key}"] = cumul_mpr
             p_stats[f"moyenne_mpr_{game_key}"] = round(cumul_mpr / parties_ce_jeu, 2)
         else:
-            cumul_ppr = p_stats.get(f"cumul_ppr_{game_key}", 0.0) + ppr_actuel
-            p_stats[f"cumul_ppr_{game_key}"] = cumul_ppr
-            p_stats[f"moyenne_ppr_{game_key}"] = round(cumul_ppr / parties_ce_jeu, 2)
+            # PPD of the darts counted once (10/2026) : own count of games, the PPR before were
+            # computed on darts counted 1 to 3 times depending on the game
+            parties_ppd = p_stats.get(f"parties_ppd_{game_key}", 0) + 1
+            cumul_ppd = p_stats.get(f"cumul_ppd_{game_key}", 0.0) + ppd_actuel
+            p_stats[f"parties_ppd_{game_key}"] = parties_ppd
+            p_stats[f"cumul_ppd_{game_key}"] = cumul_ppd
+            p_stats[f"moyenne_ppd_{game_key}"] = round(cumul_ppd / parties_ppd, 2)
 
         is_winner = (winner_name and p_name == winner_name)
         if is_winner:
@@ -484,13 +511,7 @@ def check_team_game_end_stats(players, winning_players, game_name):
         p_stats[parties_ce_jeu_key] = p_stats.get(parties_ce_jeu_key, 0) + 1
         parties_ce_jeu = p_stats[parties_ce_jeu_key]
 
-        ppr_actuel = 0.0
-        if hasattr(player, "show_ppr"):
-            try: ppr_actuel = float(player.show_ppr())
-            except: pass
-        elif hasattr(player, "stats") and "Points Per Round" in player.stats:
-            try: ppr_actuel = float(player.stats["Points Per Round"])
-            except: pass
+        ppd_actuel = float(player.show_ppd()) if hasattr(player, "show_ppd") else 0.0
 
         mpr_actuel = 0.0
         if is_cricket_like and hasattr(player, "show_mpr"):
@@ -502,9 +523,13 @@ def check_team_game_end_stats(players, winning_players, game_name):
             p_stats[f"cumul_mpr_{game_key}"] = cumul_mpr
             p_stats[f"moyenne_mpr_{game_key}"] = round(cumul_mpr / parties_ce_jeu, 2)
         else:
-            cumul_ppr = p_stats.get(f"cumul_ppr_{game_key}", 0.0) + ppr_actuel
-            p_stats[f"cumul_ppr_{game_key}"] = cumul_ppr
-            p_stats[f"moyenne_ppr_{game_key}"] = round(cumul_ppr / parties_ce_jeu, 2)
+            # PPD of the darts counted once (10/2026) : own count of games, the PPR before were
+            # computed on darts counted 1 to 3 times depending on the game
+            parties_ppd = p_stats.get(f"parties_ppd_{game_key}", 0) + 1
+            cumul_ppd = p_stats.get(f"cumul_ppd_{game_key}", 0.0) + ppd_actuel
+            p_stats[f"parties_ppd_{game_key}"] = parties_ppd
+            p_stats[f"cumul_ppd_{game_key}"] = cumul_ppd
+            p_stats[f"moyenne_ppd_{game_key}"] = round(cumul_ppd / parties_ppd, 2)
 
         is_winner = (p_name in winning_names_set)
         if is_winner:

@@ -2046,6 +2046,8 @@ try:
                         logs.debug(f"You pushed {dart_stroke}")
 
                         players[actual_player].add_histo(dart_stroke)
+                        # The only count of the darts for the averages (PPD, PPR) : before the game uses them
+                        players[actual_player].count_dart()
                         # POST DART CHECKS
                         #
                         # Return codes are:
@@ -2186,12 +2188,14 @@ try:
                             dispatcher.publish('miss', dart_stroke.upper(), limit=['TARGET', 'STRIP', 'OTHER'])
 
                         try:
+                            players[actual_player].count_dart()
                             missed_dart = game.miss_button(players, actual_player, actual_round, player_launch)
                             if hasattr(game, "display_hit") and callable(game.display_hit):
                                 game.display_hit(ClickZones, players, actual_player, player_launch, 'MISS')
 
                             if early_player_button > 0 and post_dart != 3:
                                 for i in range(1, game.nb_darts - player_launch + 1):
+                                    players[actual_player].count_dart()
                                     game.miss_button(players, actual_player, actual_round, player_launch + i)
                                     if hasattr(game, "display_hit") and callable(game.display_hit):
                                         game.display_hit(ClickZones, players, actual_player, player_launch, 'MISS')

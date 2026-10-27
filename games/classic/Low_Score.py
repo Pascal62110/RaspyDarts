@@ -166,7 +166,7 @@ class Game(cgame.Game):
             players[actual_player].columns[6] = (0.0,'int')
         else:
             players[actual_player].columns[5] = (players[actual_player].show_ppd(),'int')
-            players[actual_player].columns[6] = (players[actual_player].avg(actual_round),'int')
+            players[actual_player].columns[6] = (players[actual_player].show_ppr(),'int')
 
         # Print debug output
         self.logs.debug(self.infos)
@@ -211,7 +211,7 @@ class Game(cgame.Game):
 
         # Refresh stats
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players,actual_round)
 
         # Check for end of game (no more rounds to play)
@@ -264,7 +264,7 @@ class Game(cgame.Game):
         self.display.play_sound('penality')
         # Refresh stats
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players, actual_round)
 
     def early_player_button(self, players, actual_player, actual_round):
@@ -288,7 +288,7 @@ class Game(cgame.Game):
 
             # Refresh stats
             players[actual_player].columns[5] = (players[actual_player].show_ppd(),'int')
-            players[actual_player].columns[6] = (players[actual_player].avg(actual_round),'int')
+            players[actual_player].columns[6] = (players[actual_player].show_ppr(),'int')
             self.refresh_stats(players,actual_round)
 
             # play penality sound
@@ -315,5 +315,5 @@ class Game(cgame.Game):
         They represent mathematical formulas used to calculate stats. Refreshed after every launch
         '''
         for player in players:
-            player.stats['Points Per Round'] = player.avg(actual_round)
+            player.stats['Points Per Round'] = player.show_ppr()
             player.stats['Points Per Dart'] = player.show_ppd()

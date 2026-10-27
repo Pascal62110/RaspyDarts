@@ -348,6 +348,7 @@ class Game(cgame.Game):
 
         # 1. On enregistre la fléchette dans le tour du joueur
         curr_player.round_points += score
+        curr_player.points += score
         curr_player.turn_darts.append(
             {"hit": hit, "points": score, "sector": sector, "mult": mult}
         )
@@ -498,22 +499,8 @@ class Game(cgame.Game):
             
             # --- CALCUL ET MISE À JOUR DES STATS (PPR, PPD, ETC.) ---
             for p in players:
-                    total_pts = 0
-                    if hasattr(p, "darts") and p.darts:
-                        for d in p.darts:
-                            if isinstance(d, dict):
-                                total_pts += d.get("points", 0)
-                            elif isinstance(d, str):
-                                total_pts += self.score_map.get(d, 0)
-                                
-                    total_darts_thrown = len(p.darts) if hasattr(p, "darts") and p.darts else 0
-                    rounds_played = actual_round if actual_round > 0 else 1
-                    
-                    ppr = round(total_pts / rounds_played, 2) if rounds_played > 0 else 0
-                    ppd = round(total_pts / total_darts_thrown, 2) if total_darts_thrown > 0 else 0
-                    
-                    p.stats["Points Per Round"] = str(ppr)
-                    p.stats["Points Per Dart"] = str(ppd)
+                    p.stats["Points Per Round"] = str(p.show_ppr())
+                    p.stats["Points Per Dart"] = str(p.show_ppd())
                     p.stats["Max Damage Turn"] = str(getattr(p, "max_damage_turn", 0))
                     p.stats["Total Parried"] = str(getattr(p, "total_damage_blocked", 0))
                 # ---------------------------------------------------------
@@ -671,22 +658,8 @@ class Game(cgame.Game):
                 
                 # --- CALCUL ET MISE À JOUR DES STATS (PPR, PPD, ETC.) ---
                 for p in players:
-                    total_pts = 0
-                    if hasattr(p, "darts") and p.darts:
-                        for d in p.darts:
-                            if isinstance(d, dict):
-                                total_pts += d.get("points", 0)
-                            elif isinstance(d, str):
-                                total_pts += self.score_map.get(d, 0)
-                                
-                    total_darts_thrown = len(p.darts) if hasattr(p, "darts") and p.darts else 0
-                    rounds_played = actual_round if actual_round > 0 else 1
-                    
-                    ppr = round(total_pts / rounds_played, 2) if rounds_played > 0 else 0
-                    ppd = round(total_pts / total_darts_thrown, 2) if total_darts_thrown > 0 else 0
-                    
-                    p.stats["Points Per Round"] = str(ppr)
-                    p.stats["Points Per Dart"] = str(ppd)
+                    p.stats["Points Per Round"] = str(p.show_ppr())
+                    p.stats["Points Per Dart"] = str(p.show_ppd())
                     p.stats["Max Damage Turn"] = str(getattr(p, "max_damage_turn", 0))
                     p.stats["Total Parried"] = str(getattr(p, "total_damage_blocked", 0))
                 # ---------------------------------------------------------

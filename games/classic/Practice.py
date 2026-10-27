@@ -492,7 +492,7 @@ class Game(cgame.Game):
         #self.display.play_sound('penality')
         # Refresh stats
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players, actual_round)
 
     def update_stats(self, players, actual_player, hit):

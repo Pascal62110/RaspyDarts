@@ -394,7 +394,7 @@ class Game(cgame.Game):
         '''
         for player in players:
             player.stats['Score'] = player.score
-            player.stats['Points Per Round'] = player.avg(actual_round)
+            player.stats['Points Per Round'] = player.show_ppr()
             player.stats['Points de HIT'] = player.hit
 
     def get_random(self, players, actual_round, actual_player, player_launch):

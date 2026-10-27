@@ -16,6 +16,7 @@ RIGHT_KEYS = ['right', 'BTN_RIGHT', 'S6']
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Dans le dossier du joueur (~/.raspydarts), avec ses scores et sa configuration
 from include import cpaths
+from include.ctrophies import average_ppd
 DATA_FILE = cpaths.trophies_file()
 
 ALL_TROPHIES = [
@@ -208,17 +209,25 @@ NAMES_LEVELS = {
 }
 
 
-def get_level_from_ppd(ppr_value):
+def average_ppd_or_others(stats, game):
     """
-    p_value représente ici le PPR (Points Per Round / par 3 fléchettes).
-    On le convertit en PPD (Points Per Dart) en le divisant par 3.
+    PPD moyen à ce jeu, sinon la moyenne de ceux des autres jeux
     """
-    if ppr_value is None:
+    ppd = average_ppd(stats, game)
+    if ppd:
+        return ppd
+    games = {key.split('_', 2)[2] for key in stats if key.startswith(('moyenne_ppd_', 'moyenne_ppr_', 'ppr_moyen_'))}
+    values = [value for value in (average_ppd(stats, other) for other in games) if isinstance(value, (int, float)) and value > 0]
+    return sum(values) / len(values) if values else 0.0
+
+
+def get_level_from_ppd(ppd_value):
+    """
+    Niveau du joueur d'après son PPD (Points Per Dart)
+    """
+    if ppd_value is None:
         return 1
-        
-    # Conversion PPR -> PPD
-    ppd_value = ppr_value ###/ 3.0
-    
+
     if ppd_value <= 10.64: return 1
     elif ppd_value <= 11.89: return 2
     elif ppd_value <= 13.14: return 3
@@ -999,9 +1008,8 @@ class StatisticsScreen:
                         curr_x_l3 += lbl_mpr_val.get_width()
                         has_stat = True
                         
-                    elif game_lower in ["321_zlip", "batard", "highscore", "shoot-out", "up_and_down", "sabotage", "chaos", "low_score"]:
-                        ppr_val = self.stats.get(f"moyenne_ppr_{game}", self.stats.get(f"ppr_moyen_{game}", 0.0))
-                        ppd_val = ppr_val #missmach entre ppdet ppr entre ho-one et autres, - ne pas divise par / 3.0  # Conversion PPR -> PPD (divisé par 3)
+                    elif game_lower in ["321_zlip", "batard", "highscore", "shoot-out", "up_and_down", "sabotage", "chaos", "low_score", "ho-one"]:
+                        ppd_val = average_ppd(self.stats, game_lower)
                         
                         lbl_ppd_label = text_font.render("PPD : ", True, (210, 210, 210))
                         formatted_ppd = f"{ppd_val:.2f}".replace('.', ',')
@@ -1014,19 +1022,6 @@ class StatisticsScreen:
                         has_stat = True
 
 
-                    elif game_lower in ["ho-one"]:
-                        ppr_val = self.stats.get(f"moyenne_ppr_{game}", self.stats.get(f"ppr_moyen_{game}", 0.0))
-                        ppd_val = ppr_val / 3.0  # Conversion PPR -> PPD (divisé par 3)
-                        
-                        lbl_ppd_label = text_font.render("PPD : ", True, (210, 210, 210))
-                        formatted_ppd = f"{ppd_val:.2f}".replace('.', ',')
-                        lbl_ppd_val = text_font.render(f"{formatted_ppd}", True, (0, 220, 255))
-                        
-                        self.screen.blit(lbl_ppd_label, (curr_x_l3, line3_y))
-                        curr_x_l3 += lbl_ppd_label.get_width()
-                        self.screen.blit(lbl_ppd_val, (curr_x_l3, line3_y))
-                        curr_x_l3 += lbl_ppd_val.get_width()
-                        has_stat = True
 
 
                     if has_stat:
@@ -1126,23 +1121,12 @@ def get_player_logo(player_name, scale, game_type="ho-one", all_players_data=Non
             level = get_level_from_mpr(mpr_value)
             
         elif "highscore" in game_lower:
-            ppr_hs_val = player_stats.get('moyenne_ppr_highscore', player_stats.get('ppr_moyen_highscore', 0.0))
-            if ppr_hs_val == 0.0:
-                ppr_vals = [v for k, v in player_stats.items() if 'ppr' in k.lower() and isinstance(v, (int, float)) and v > 0]
-                ppr_hs_val = sum(ppr_vals) / len(ppr_vals) if ppr_vals else 0.0
-            level = get_level_from_ppd(ppr_hs_val)
+            level = get_level_from_ppd(average_ppd_or_others(player_stats, "highscore"))
             
            
         else:
             # Ho-One / X01
-            ppr_value = player_stats.get('moyenne_ppr_ho-one', player_stats.get('ppr_moyen_ho-one', 0.0))
-            if ppr_value == 0.0:
-                ppr_vals = [v for k, v in player_stats.items() if 'ppr' in k.lower() and isinstance(v, (int, float)) and v > 0]
-                ppr_value = sum(ppr_vals) / len(ppr_vals) if ppr_vals else 0.0
-            
-            # Conversion du PPR total en PPD (/ 3.0) pour correspondre au calcul du niveau
-            ppd_value = ppr_value / 3.0
-            level = get_level_from_ppd(ppd_value)
+            level = get_level_from_ppd(average_ppd_or_others(player_stats, "ho-one"))
         
         # Chargement de l'image correspondante
         logo_filename = f"{level}.png"
@@ -1282,15 +1266,14 @@ class PlayerSelectionScreen:
                     p_st = p_content.get("stats", {}) if isinstance(p_content, dict) else {}
 
                     # --- 2. PPD (Ho-One) ---
-                    ppr_val = p_st.get('moyenne_ppr_ho-one', p_st.get('ppr_moyen_ho-one', 0.0))
-                    ppd_val = ppr_val / 3.0
-                    lvl_num = get_level_from_ppd(ppr_val)
+                    ppd_val = average_ppd(p_st, "ho-one")
+                    lvl_num = get_level_from_ppd(ppd_val)
                     rank_name = NAMES_LEVELS.get(lvl_num, "Débutant")
                     
                     score_hoone_surf = small_font.render(f"{ppd_val:.2f}".replace('.', ','), True, (0, 220, 255))
                     level_text_surf = tiny_font.render(rank_name, True, (180, 190, 210))
                     logo_hoone = get_player_logo(player_name, scale, game_type="ho-one", all_players_data=all_data)
-                    if ppr_val == 0.0:
+                    if ppd_val == 0.0:
                         logo_hoone = None
 
                     if logo_hoone:
@@ -1316,19 +1299,18 @@ class PlayerSelectionScreen:
                         self.screen.blit(no_logo_text, (col_hoone_center - no_logo_text.get_width() // 2, fallback_y))
                         self.screen.blit(score_hoone_surf, (col_hoone_center - score_hoone_surf.get_width() // 2, fallback_y + no_logo_text.get_height() + fallback_spacing))
 
-                    # --- 3. HIGHSCORE (moyenne_ppr_highscore) ---
-                    ppr_hs_val = p_st.get('moyenne_ppr_highscore', p_st.get('ppr_moyen_highscore', 0.0))
-                    ppd_hs_val = ppr_hs_val / 3.0
-                    lvl_num_hs = get_level_from_ppd(ppr_hs_val)
+                    # --- 3. HIGHSCORE ---
+                    ppd_hs_val = average_ppd(p_st, "highscore")
+                    lvl_num_hs = get_level_from_ppd(ppd_hs_val)
                     rank_name_hs = NAMES_LEVELS.get(lvl_num_hs, "Débutant")
                     
-                    score_hs_surf = small_font.render(f"{ppr_hs_val:.2f}".replace('.', ','), True, (0, 220, 255))
+                    score_hs_surf = small_font.render(f"{ppd_hs_val:.2f}".replace('.', ','), True, (0, 220, 255))
                     
                     level_text_hs_surf = tiny_font.render(rank_name_hs, True, (180, 190, 210))
                     
                     
                     logo_hs = get_player_logo(player_name, scale, game_type="highscore", all_players_data=all_data)
-                    if ppr_hs_val == 0.0:
+                    if ppd_hs_val == 0.0:
                         logo_hs = None
 
                     if logo_hs:

@@ -419,4 +419,4 @@ class Game(cgame.Game):
         for player in players:
             player.stats['Zlips'] = player.havezapped
             player.stats['Zlipped'] = player.nbzapped
-            player.stats['Points Per Round'] = player.avg(actual_round)
+            player.stats['Points Per Round'] = player.show_ppr()

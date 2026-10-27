@@ -459,7 +459,7 @@ class Game(cgame.Game):
         They represent mathematical formulas used to calculate stats. Refreshed after every launch
         '''
         for player in players:
-            player.stats['Points Per Round'] = player.avg(actual_round)
+            player.stats['Points Per Round'] = player.show_ppr()
 
     def get_random(self, players, actual_round, actual_player, player_launch):
         '''

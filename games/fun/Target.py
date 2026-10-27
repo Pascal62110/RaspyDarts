@@ -365,7 +365,7 @@ class Game(cgame.Game):
 
     def refresh_stats(self, players, actual_round):
         for player in players:
-            player.stats['Points Per Round'] = player.avg(actual_round)
+            player.stats['Points Per Round'] = player.show_ppr()
             player.stats['Points Per Dart'] = player.show_ppd()
             
     def search_possibilities(self, score, player_launch):

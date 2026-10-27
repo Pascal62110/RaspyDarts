@@ -112,7 +112,7 @@ class Game(cgame.Game):
             players[actual_player].columns[6] = (0.0, 'int')
         else:
             players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-            players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+            players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
 
         # Print debug output
         self.logs.debug(self.infos)
@@ -238,7 +238,7 @@ class Game(cgame.Game):
 
         # Refresh stats
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
 
         # Store what he played in the table
         players[actual_player].columns[player_launch - 1] = (score,'int')
@@ -281,7 +281,7 @@ class Game(cgame.Game):
 
         # Refresh stats
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players, actual_round)
 
         self.display.play_sound('penality')
@@ -327,7 +327,7 @@ class Game(cgame.Game):
             self.display.play_sound('penality')
 
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players, actual_round)
 
     def refresh_stats(self, players, actual_round):
@@ -335,7 +335,7 @@ class Game(cgame.Game):
         Method to refresh player.stat
         """
         for player in players:
-            player.stats['Points Per Round'] = player.avg(actual_round)
+            player.stats['Points Per Round'] = player.show_ppr()
             player.stats['Points Per Dart'] = player.show_ppd()
 
     def is_positive_round(self, actual_round):

@@ -281,7 +281,7 @@ class Game(cgame.Game):
         players[actual_player].columns[4] = (players[actual_player].round_points, 'int')
         # Refresh stats
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players, actual_round)
 
         # Record total dart thrown, total hits (S=1, D=2, T=3) and refresh players stats
@@ -328,7 +328,7 @@ class Game(cgame.Game):
         
         # Refresh stats
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-        players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+        players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players, actual_round)
 
     def early_player_button(self, players, actual_player, actual_round):
@@ -351,7 +351,7 @@ class Game(cgame.Game):
 
             # Refresh stats
             players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
-            players[actual_player].columns[6] = (players[actual_player].avg(actual_round), 'int')
+            players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
             self.refresh_stats(players, actual_round)
 
             self.display.play_sound('penality')
@@ -437,5 +437,5 @@ class Game(cgame.Game):
         refresh players' stats
         '''
         for player in players:
-            player.stats['Points Per Round'] = player.avg(actual_round)
+            player.stats['Points Per Round'] = player.show_ppr()
             player.stats['Points Per Dart'] = player.show_ppd()

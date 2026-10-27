@@ -125,6 +125,8 @@ class Debug(cgame.Game):
                 print("break for debug")
             if quoi == 'D20':
                 print("bloque moi ici pour tracer")
+            if quoi != 'EPB':
+                players[qui].count_dart()
             if quoi != 'MB' and quoi != 'EPB':# and match < self.max_round: # pas Miss Button et pas Early Button
                 print (f"ligne {ligne} [{quoi}]")
                 valueX = post_dart_check(quoi,players,match,qui,launch)

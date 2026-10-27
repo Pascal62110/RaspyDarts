@@ -844,7 +844,7 @@ class Game(cgame.Game):
         refresh players' stats
         '''
         for player in players:
-            player.stats['Points Per Round'] = player.avg(actual_round)
+            player.stats['Points Per Round'] = player.show_ppr()
             player.stats['Points Per Dart'] = player.show_ppd()
 
     def miss_button(self, players, actual_player, actual_round, player_launch):
