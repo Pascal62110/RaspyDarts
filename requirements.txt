@@ -16,6 +16,7 @@ qrcode
 # --- Raspberry Pi : GPIO et extension de ports ---
 RPi.GPIO
 adafruit-blinka
+Adafruit-Blinka-Raspberry-Pi-PWM>=1.0.2
 adafruit-circuitpython-mcp230xx
 
 # --- Eclairage : rubans LED, afficheur DMD, Philips Hue ---

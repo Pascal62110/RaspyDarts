@@ -66,14 +66,17 @@ apt-daily.timer apt-daily-upgrade.timer man-db.timer"
 SESSION_OFF="pprompt xcompmgr"
 
 # Modules Python absents des paquets systeme (paho-mqtt 2, comme Raspy2DMD)
-PIP_REQUIRED="paho-mqtt>=2 Adafruit-Blinka adafruit-circuitpython-mcp230xx
-adafruit-circuitpython-neopixel rpi_ws281x"
+# Adafruit-Blinka-Raspberry-Pi-PWM : Blinka 10 le demande au demarrage sur un Raspberry
+# (« Blinka detected missing or outdated platform dependencies… Install them? [Y/n] »)
+PIP_REQUIRED="paho-mqtt>=2 Adafruit-Blinka Adafruit-Blinka-Raspberry-Pi-PWM>=1.0.2
+adafruit-circuitpython-mcp230xx adafruit-circuitpython-neopixel rpi_ws281x"
 
 # Modules Python facultatifs (Philips Hue)
 PIP_OPTIONAL="rgbxy"
 
 # Modules verifies en fin d'installation
 PY_CHECK="pygame paho.mqtt.client netifaces qrcode board busio digitalio adafruit_mcp230xx
+adafruit_blinka_raspberry_pi_pwm
 neopixel rpi_ws281x googleapiclient google_auth_oauthlib RPi.GPIO PIL numpy psutil
 requests smbus tkinter"
 

@@ -7,6 +7,9 @@
 # fonts-noto-color-emoji : les emojis des textes du jeu (include/cemoji.py, coupes des trophees)
 # paho-mqtt 2 (module Python) : le jeu et ses serveurs utilisent son API 2 (avant : 1.x). Lance par
 # raspydarts.py AVANT la creation du client MQTT et des serveurs de LED
+# Adafruit-Blinka-Raspberry-Pi-PWM (module Python) : Blinka 10 le demande au demarrage
+# (« Blinka detected missing or outdated platform dependencies… [Y/n] ») ; pose avant que la
+# borne n'installe Blinka 10
 # python3-usb et la regle udev des paves USB (Parametres > Paves USB) : le jeu les programme
 # sans etre root ; la regle vaut des le prochain branchement du pave (ou le redemarrage)
 set -e
@@ -25,6 +28,10 @@ done
 # paho-mqtt 2 : seulement s'il manque ou s'il est en 1.x
 if ! python3 -c "import paho.mqtt.client as m; m.CallbackAPIVersion" >/dev/null 2>&1; then
     sudo timeout 600 pip3 install --break-system-packages --root-user-action=ignore -q "paho-mqtt>=2"
+fi
+
+if ! python3 -c "import adafruit_blinka_raspberry_pi_pwm" >/dev/null 2>&1; then
+    sudo timeout 600 pip3 install --break-system-packages --root-user-action=ignore -q "Adafruit-Blinka-Raspberry-Pi-PWM>=1.0.2"
 fi
 
 RULE=/etc/udev/rules.d/72-raspydarts-usb-pads.rules
