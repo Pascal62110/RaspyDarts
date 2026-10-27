@@ -900,7 +900,7 @@ msgid "editor-shortcut-remove"
 msgstr "Tastenkürzel entfernen"
 
 msgid "editor-shortcut-press"
-msgstr "Taste des Kürzels drücken: F1 bis F12, Buchstabe oder Ziffer (Esc: abbrechen)"
+msgstr "Taste des Kürzels drücken: F1 bis F12, Buchstabe (außer c) oder Ziffer (Esc: abbrechen)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} ist bereits das Kürzel von „{button}“: dort entfernen?"
@@ -913,6 +913,63 @@ msgstr "Eingabe"
 
 msgid "editor-key-space"
 msgstr "Leertaste"
+
+msgid "editor-arrange"
+msgstr "Automatisch anordnen"
+
+msgid "editor-arrange-columns"
+msgstr "Spalten"
+
+msgid "editor-arrange-rows"
+msgstr "Zeilen"
+
+msgid "editor-arrange-gap"
+msgstr "Abstand"
+
+msgid "editor-arrange-buttons"
+msgstr "Schaltflächen"
+
+msgid "editor-arrange-all"
+msgstr "alle"
+
+msgid "editor-arrange-inside"
+msgstr "die im Bereich"
+
+msgid "editor-arrange-apply"
+msgstr "Im Bereich anordnen"
+
+msgid "editor-arrange-zone"
+msgstr "Bereich ändern"
+
+msgid "editor-arrange-too-few"
+msgstr "{buttons} Schaltflächen für {cells} Felder: Spalten oder Zeilen hinzufügen"
+
+msgid "editor-arrange-too-small"
+msgstr "Bereich zu klein für so viele Felder"
+
+msgid "editor-arrange-none"
+msgstr "Keine Schaltfläche im Bereich"
+
+msgid "editor-snap"
+msgstr "Magnetisches Ausrichten"
+
+msgid "editor-help-zone"
+msgstr "Bereich der Schaltflächen · Pfeile: Griff verschieben (Schritt {step}) · Bestätigen: nächster Griff · + / -: Schritt · Maus: Bereich oder Griffe ziehen · Zurück oder Menü: anordnen"
+
+msgid "editor-shape"
+msgstr "Form"
+
+msgid "editor-shape-style"
+msgstr "wie die anderen Schaltflächen"
+
+msgid "editor-shape-rectangle"
+msgstr "Rechteck"
+
+msgid "editor-shape-rounded"
+msgstr "abgerundete Ecken"
+
+msgid "editor-shape-pill"
+msgstr "rund (quadratische Schaltfläche: Kreis)"
 
 
 msgid "usb-pads"
@@ -1082,3 +1139,147 @@ msgstr "Klinkenbuchse des Raspberry"
 
 msgid "sound-output-usb"
 msgstr "USB-Soundkarte"
+
+msgid "coins"
+msgstr "Münzprüfer"
+
+msgid "coins-sub"
+msgstr "Eine eingeworfene Münze erscheint hier (Test)"
+
+msgid "coins-last"
+msgstr "Letzte Münze vor {seconds} s"
+
+msgid "coins-mode"
+msgstr "Modus"
+
+msgid "coins-mode-off"
+msgstr "Aus (kostenlos)"
+
+msgid "coins-mode-games"
+msgstr "Credits pro Spiel"
+
+msgid "coins-mode-time"
+msgstr "Partiezeit"
+
+msgid "coins-input"
+msgstr "Eingang des Münzprüfers"
+
+msgid "coins-credits-per-coin"
+msgstr "Credits pro Münze"
+
+msgid "coins-players-per-credit"
+msgstr "Spieler pro Spiel"
+
+msgid "coins-players-any"
+msgstr "Beliebig"
+
+msgid "coins-minutes-per-coin"
+msgstr "Minuten pro Münze"
+
+msgid "coins-price-local"
+msgstr "Preis lokales Spiel"
+
+msgid "coins-price-network"
+msgstr "Preis Netzwerkspiel"
+
+msgid "coins-price-games"
+msgstr "Preis pro Spiel"
+
+msgid "coins-price-games-sub"
+msgstr "Ein eigener Preis ersetzt den seines Typs"
+
+msgid "coins-price-type"
+msgstr "Preis des Typs"
+
+msgid "coins-free"
+msgstr "Kostenlos"
+
+msgid "coins-add"
+msgstr "Credits hinzufügen"
+
+msgid "coins-count"
+msgstr "Erhaltene Münzen"
+
+msgid "coins-count-reset"
+msgstr "Münzzähler zurücksetzen?"
+
+msgid "coins-password"
+msgstr "Passwort des Münzprüfers"
+
+msgid "coins-password-new"
+msgstr "Neues Passwort des Münzprüfers"
+
+msgid "coins-password-again"
+msgstr "Passwort bestätigen"
+
+msgid "coins-password-different"
+msgstr "Die Passwörter sind verschieden"
+
+msgid "coins-password-wrong"
+msgstr "Falsches Passwort"
+
+msgid "coins-password-change"
+msgstr "Passwort ändern"
+
+msgid "coins-password-changed"
+msgstr "Passwort geändert: speichern"
+
+msgid "coins-saved"
+msgstr "Einstellungen des Münzprüfers gespeichert"
+
+msgid "coins-credits"
+msgstr "Credits: {credits}"
+
+msgid "coins-time"
+msgstr "Zeit: {time}"
+
+msgid "coins-need-credits"
+msgstr "Dieses Spiel kostet {credits} Credit(s)"
+
+msgid "coins-need-time"
+msgstr "Keine Spielzeit mehr"
+
+msgid "coins-insert-coin"
+msgstr "Münze einwerfen"
+
+msgid "coins-time-up"
+msgstr "Zeit abgelaufen"
+
+msgid "coins-time-up-sub"
+msgstr "Münze einwerfen zum Weiterspielen, Zurück zum Beenden"
+
+msgid "coins-badge-position"
+msgstr "Position des Banners"
+
+msgid "coins-badge-size"
+msgstr "Größe des Banners"
+
+msgid "coins-badge-top-right"
+msgstr "Oben rechts"
+
+msgid "coins-badge-top-center"
+msgstr "Oben Mitte"
+
+msgid "coins-badge-top-left"
+msgstr "Oben links"
+
+msgid "coins-badge-bottom-right"
+msgstr "Unten rechts"
+
+msgid "coins-badge-bottom-left"
+msgstr "Unten links"
+
+msgid "coins-badge-small"
+msgstr "Klein"
+
+msgid "coins-badge-medium"
+msgstr "Mittel"
+
+msgid "coins-badge-large"
+msgstr "Groß"
+
+msgid "coins-input-none"
+msgstr "Keiner (auswählen)"
+
+msgid "coins-no-mcp"
+msgstr "Keine MCP-Karte gefunden: der Münzprüfer wird an einen MCP-Eingang angeschlossen"

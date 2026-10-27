@@ -17,6 +17,7 @@ import busio
 from digitalio import Direction, Pull
 from adafruit_mcp230xx.mcp23017 import MCP23017
 from threading import Thread
+from .ccoins import I2C_LOCK
 
 LAST_BUTTON = None
 COUNT_BUTTON = 0
@@ -245,7 +246,9 @@ class Gpio_extender:
         # TODO REMOVE RD
         #t0 = time.perf_counter()
         # One read per card holding buttons
-        values = {index: self.chips[index].gpio for index in {index for index, _pin in self.pin_switcher}}
+        # (the bus shared with the thread of the coin acceptor : include/ccoins.py)
+        with I2C_LOCK:
+            values = {index: self.chips[index].gpio for index in {index for index, _pin in self.pin_switcher}}
         #t1 = time.perf_counter()
         
         ## Update cumulative stats (keep total in seconds)
@@ -293,7 +296,9 @@ class Gpio_extender:
 
         for button in self.buttons_list:
             # False/0 si appuie sur le bouton
-            if not self.buttons_list[button][1].value:
+            with I2C_LOCK:
+                pressed = not self.buttons_list[button][1].value
+            if pressed:
                 # Compute A0..B7
                 pressed_buttons.append(self.buttons_list[button][0])
 
@@ -305,10 +310,12 @@ class Gpio_extender:
         """
         for iteration in range(iterations):
 
-            pin.value = not(pin.value)
+            with I2C_LOCK:
+                pin.value = not(pin.value)
             time.sleep(delay_on / 1000)
 
-            pin.value = not(pin.value)
+            with I2C_LOCK:
+                pin.value = not(pin.value)
             if iteration + 1 < iterations:
                 time.sleep(delay_off / 1000)
 
@@ -347,7 +354,5 @@ class Gpio_extender:
                 pass
 
         for pin in pins :
-            if light:
-                pin.value = 1
-            else:
-                pin.value = 0
+            with I2C_LOCK:
+                pin.value = 1 if light else 0

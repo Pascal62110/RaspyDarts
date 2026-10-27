@@ -41,6 +41,7 @@ from include.ColorSets import *
 
 from include import cpaths
 from include import ccamera
+from include import ccoins
 from include import cmenus
 from include import cmenustyle
 from include import cfavorites
@@ -214,6 +215,9 @@ class Screen(pygame.Surface):
         # Margin
         self.margin = int(self.res['y'] / 200)
         self.rpi = rpi
+        if rpi is not None:
+            # Coin acceptor : a coin shows the credits at once
+            rpi.on_coins = self.coins_redraw
         if self.intro:
             # The target is read once the intro video is finished and the menu shown
             rpi.target_enabled = False
@@ -7177,7 +7181,7 @@ class Screen(pygame.Surface):
         (shortcuts: show: false : they still work)
         '''
         settings = (menu or {}).get('shortcuts') or {}
-        if settings.get('show') is False:
+        if settings.get('show') is False and not Screen.revealed:
             return None
         keys = cmenus.as_list(button.get('shortcut'))
         if not keys or str(keys[0]).lower() == 'none':
@@ -7307,6 +7311,12 @@ class Screen(pygame.Surface):
 
     # Places of the buttons at the bottom of the menus (footer : see display_button)
     FOOTERS = {'left': 'escape', 'center': 'refresh', 'right': 'return'}
+    # Secret key of the menus : the shortcut of each button shown, or hidden again (until the
+    # game is left ; in a game, c is the cheat dart)
+    REVEAL_KEY = 'c'
+    revealed = False
+    # The entries of the colours which hid them, given a value while they are shown
+    hidden_shortcuts = []
 
     # Keys of a button which change its look (section 7.2 : style properties on the button)
     STYLE_KEYS = ('shape', 'radius', 'background', 'border', 'shadow', 'selected', 'disabled', 'pressed')
@@ -7366,6 +7376,23 @@ class Screen(pygame.Surface):
                     (isinstance(button.get('text'), dict) and not set(button['text']) <= self.LANGUAGES) or button.get('icon'):
                 return True
         return False
+
+    def reveal_shortcuts(self):
+        '''
+        The secret key of the menus : the shortcuts shown on all the buttons (those the theme
+        hides too), or hidden again as the theme wants
+        '''
+        Screen.revealed = not Screen.revealed
+        if Screen.revealed:
+            # The menus drawn the classic way hide them when their entry of the colours is None
+            Screen.hidden_shortcuts = [key for key, value in self.colorset.items() if key.endswith('-shortcuts') and value is None]
+            for key in Screen.hidden_shortcuts:
+                self.colorset[key] = ''
+        else:
+            for key in Screen.hidden_shortcuts:
+                self.colorset[key] = None
+            Screen.hidden_shortcuts = []
+        self.logs.info(f"Menus : shortcuts {'shown' if Screen.revealed else 'as the theme wants'} (secret key)")
 
     def run_menu(self, name, items, everything, hook=None, initial=None, title=None, subtitle=None):
         '''
@@ -7495,6 +7522,10 @@ class Screen(pygame.Surface):
                  events=[(self.wait_event_time, 'EVENT', 'wait')])
 
             if key == 'resize':
+                full = True
+                continue
+            if key == self.REVEAL_KEY:
+                self.reveal_shortcuts()
                 full = True
                 continue
             clicked = self.is_clicked({index: pygame.Rect(rect) for index, rect in rects.items()}, key)
@@ -7703,6 +7734,11 @@ class Screen(pygame.Surface):
         shortcuts = cmenustyle.merge({'show': self.colorset.get('main-sub-menu-shortcuts') is not None, 'format': '{key}',
                                       'position': 'top_left' if menu.get('layout') == 'tiles' else 'left'},
                                      menu.get('shortcuts') or {})
+        # As the theme wants : its entry of the colours is changed while they are shown
+        if Screen.revealed and 'main-sub-menu-shortcuts' in Screen.hidden_shortcuts and                 'show' not in (menu.get('shortcuts') or {}):
+            shortcuts['show'] = False
+        theme_show = shortcuts.get('show')
+        shortcuts['show'] = theme_show or Screen.revealed
         show_version = menu.get('show_version') or False
         info = [str(value) for value in cmenus.as_list(menu.get('info'))]
         remember = bool(menu.get('remember'))
@@ -7750,7 +7786,7 @@ class Screen(pygame.Surface):
             # 130 ms on a Pi 3
             rect = pygame.Rect(rects[index])
             target = painter.placed(rect, styles[index - 1], look)[1].clip(self.screen.get_rect())
-            composite_key = (id(pristine), index, look, tuple(target))
+            composite_key = (id(pristine), index, look, tuple(target), Screen.revealed)
             composite = self.menu_composites.get(composite_key)
             if composite is None:
                 composite = paint(index, look, rect, target)
@@ -7860,6 +7896,11 @@ class Screen(pygame.Surface):
                  events=[(self.wait_event_time, 'EVENT', 'wait')])
 
             if key == 'resize':
+                full = True
+                continue
+            if key == self.REVEAL_KEY:
+                self.reveal_shortcuts()
+                shortcuts['show'] = theme_show or Screen.revealed
                 full = True
                 continue
             clicked = self.is_clicked({index: pygame.Rect(rect) for index, rect in drawn.items()}, key)
@@ -8197,6 +8238,274 @@ class Screen(pygame.Surface):
         knob, action = name[1:].split('-')
         text = self.lang.translate(f'usb-pads-knob-{action}')
         return text if knob == '1' else f"{text} {knob}"
+
+    # Values offered by the screen of the coin acceptor
+    COINS_PRICES = (0, 1, 2, 3, 4, 5)
+    COINS_MINUTES = (1, 2, 3, 5, 10, 15, 20, 30, 45, 60)
+
+    def coins_password(self, coins):
+        '''
+        Its password asked (set the first time). True : the screen of the coin acceptor opened
+        '''
+        translate = self.lang.translate
+        if not coins.settings.get('password'):
+            first = self.input_value_item('string', '', 4, 32, text='coins-password-new')
+            if first in ('', 'escape'):
+                return False
+            if self.input_value_item('string', '', 4, 32, text='coins-password-again') != first:
+                self.message([translate('coins-password-different')], 2500, self.colorset['menu-ko'], 'middle', 'big')
+                return False
+            settings = dict(coins.settings)
+            settings['password'] = coins.hash_password(first)
+            coins.save_settings(settings)
+            return True
+        typed = self.input_value_item('string', '', 1, 32, text='coins-password')
+        if typed in ('', 'escape'):
+            return False
+        if not coins.check_password(typed):
+            self.logs.warning("Coin acceptor : wrong password")
+            self.message([translate('coins-password-wrong')], 2500, self.colorset['menu-ko'], 'middle', 'big')
+            return False
+        return True
+
+    def coins_inputs(self, coins, current):
+        '''
+        Inputs offered to the coin acceptor : the pins of the MCP not used by the buttons and
+        the toys (the GPIO of the Raspberry : all taken by the biggest wirings of a target)
+        '''
+        taken = {str(value).upper() for value in (self.config.config.get('Raspberry') or {}).values()}
+        return [(name, f'MCP {name}') for name in (getattr(coins.extender, 'all_io', None) or [])
+                if name not in taken or name == current]
+
+    def coins_menu(self):
+        '''
+        Paramétrage > Monnayeur : behind its password ; its mode (free, credits by game, time),
+        its input, the credits or the minutes of a coin, the players of a game, the prices by
+        type and by game, credits given by hand, the coins counted (live : the test)
+        '''
+        coins = self.rpi.coins
+        if not self.coins_password(coins):
+            return
+        translate = self.lang.translate
+        settings = json.loads(json.dumps(coins.settings))
+        selected = 1
+        while True:
+            source = str(settings.get('mcp') or '')
+            types = settings.setdefault('types', {})
+            price_text = lambda price: translate('coins-free') if int(price) == 0 else str(price)
+            rows = [('mode', 'coins-mode', translate(f"coins-mode-{settings.get('mode')}")),
+                    ('input', 'coins-input', f'MCP {source}' if source else translate('coins-input-none')),
+                    ('credits', 'coins-credits-per-coin', str(settings.get('credits_per_coin'))),
+                    ('players', 'coins-players-per-credit',
+                     translate('coins-players-any') if int(settings.get('players_per_credit', 0)) == 0
+                     else str(settings.get('players_per_credit'))),
+                    ('minutes', 'coins-minutes-per-coin', str(settings.get('minutes_per_coin'))),
+                    ('local', 'coins-price-local', price_text(types.get('local', 1))),
+                    ('network', 'coins-price-network', price_text(types.get('network', 1))),
+                    ('games', 'coins-price-games', str(len(settings.get('games') or {}))),
+                    ('add', 'coins-add', ''),
+                    ('count', 'coins-count', str(coins.state.get('coins', 0))),
+                    ('position', 'coins-badge-position', translate(f"coins-badge-{settings.get('badge_position', 'top-right')}")),
+                    ('size', 'coins-badge-size', translate(f"coins-badge-{settings.get('badge_size', 'medium')}")),
+                    ('password', 'coins-password-change', '')]
+            nb_elements = len(rows)
+            self.display_background()
+            last = coins.last_coin
+            subtitle = translate('coins-sub') if last is None else \
+                translate('coins-last').replace('{seconds}', str(int(time.monotonic() - last)))
+            self.menu_header(translate('coins'), subtitle)
+            click_zones = {}
+            half = (nb_elements + 1) // 2
+            for index, (_name, label, value) in enumerate(rows, 1):
+                column = (0, half, index) if index <= half else (1, half, index - half)
+                click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), (f'F{index}', label, BTN_DROPDOWN, value),
+                                                          align='Full', tabs=True, column=column)
+            click_zones['escape'] = self.display_button(selected == nb_elements + 1, 'back', special='escape')
+            click_zones['save'] = self.display_button(selected == nb_elements + 2, 'save', special='return')
+            self.update_screen()
+            key = self.rpi.listen_inputs(['arrows', 'fx'], ['escape', 'enter', 'space', 'single-click', 'PLAYERBUTTON',
+                                                            'BACKUPBUTTON', 'GAMEBUTTON'], timeout=1000)
+            if key is False:
+                continue
+            clicked = self.is_clicked(click_zones, key)
+            if clicked:
+                key = clicked
+            if key in [f'F{index}' for index in range(1, nb_elements + 1)]:
+                selected = int(key[1:])
+                key = 'enter'
+            selected = self.navigate(selected, key, nb_elements, 2, 2, left_right=True)
+            if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
+                # The strip of the credits shown as it was (not saved)
+                coins.settings = coins.read(ccoins.SETTINGS, ccoins.DEFAULTS)
+                return
+            if key == 'save' or key in SAVE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 2):
+                coins.save_settings(settings)
+                self.message([translate('coins-saved')], 1500, self.colorset['menu-ok'], 'middle', 'big')
+                return
+            if key not in ENTER_KEYS or not 1 <= selected <= nb_elements:
+                continue
+            self.coins_change(coins, settings, rows[selected - 1][0], source)
+
+    def coins_change(self, coins, settings, name, source):
+        '''
+        A row of the screen of the coin acceptor changed (its list, a question...)
+        '''
+        translate = self.lang.translate
+        choose = lambda values, current: self.dropdown(self.res['x'] * 6 / 16, 3 * self.res_y_16, values, navigate=current)
+        prices = [(str(price), 'coins-free' if price == 0 else str(price)) for price in self.COINS_PRICES]
+        if name == 'mode':
+            chosen = choose([(mode, f'coins-mode-{mode}') for mode in ('off', 'games', 'time')], settings.get('mode'))
+            if chosen != 'escape':
+                settings['mode'] = chosen
+        elif name == 'input':
+            inputs = self.coins_inputs(coins, source)
+            if not inputs:
+                self.message([translate('coins-no-mcp')], 3000, self.colorset['menu-ko'], 'middle', 'big')
+                return
+            chosen = choose(inputs, source)
+            if chosen != 'escape':
+                settings['mcp'] = chosen
+        elif name == 'credits':
+            chosen = choose([(str(number), str(number)) for number in range(1, 11)], str(settings.get('credits_per_coin')))
+            if chosen != 'escape':
+                settings['credits_per_coin'] = int(chosen)
+        elif name == 'players':
+            chosen = choose([('0', 'coins-players-any')] + [(str(number), str(number)) for number in range(1, 9)],
+                            str(settings.get('players_per_credit', 0)))
+            if chosen != 'escape':
+                settings['players_per_credit'] = int(chosen)
+        elif name == 'minutes':
+            chosen = choose([(str(number), str(number)) for number in self.COINS_MINUTES], str(settings.get('minutes_per_coin')))
+            if chosen != 'escape':
+                settings['minutes_per_coin'] = int(chosen)
+        elif name in ('local', 'network'):
+            chosen = choose(prices, str(settings['types'].get(name, 1)))
+            if chosen != 'escape':
+                settings['types'][name] = int(chosen)
+        elif name == 'games':
+            self.coins_games(settings, prices)
+        elif name == 'add':
+            timed = settings.get('mode') == 'time'
+            values = [(str(number), f"{number} min" if timed else str(number))
+                      for number in (self.COINS_MINUTES if timed else range(1, 11))]
+            chosen = choose(values, values[0][0])
+            if chosen != 'escape':
+                coins.add(seconds=60 * int(chosen)) if timed else coins.add(credits=int(chosen))
+                self.logs.info(f"Coin acceptor : {chosen} {'minutes' if timed else 'credits'} given by hand")
+        elif name == 'count':
+            if self.ask_yes_no(translate('coins-count-reset')):
+                coins.reset_count()
+        elif name in ('position', 'size'):
+            # The strip of the credits : shown at once (saved with the others)
+            key = 'badge_position' if name == 'position' else 'badge_size'
+            choices = ccoins.BADGE_POSITIONS if name == 'position' else tuple(ccoins.BADGE_SIZES)
+            chosen = choose([(choice, f'coins-badge-{choice}') for choice in choices], settings.get(key))
+            if chosen != 'escape':
+                settings[key] = chosen
+                coins.settings[key] = chosen
+        elif name == 'password':
+            new = self.input_value_item('string', '', 4, 32, text='coins-password-new')
+            if new not in ('', 'escape'):
+                if self.input_value_item('string', '', 4, 32, text='coins-password-again') == new:
+                    settings['password'] = coins.hash_password(new)
+                    self.message([translate('coins-password-changed')], 1500, self.colorset['menu-ok'], 'middle', 'big')
+                else:
+                    self.message([translate('coins-password-different')], 2500, self.colorset['menu-ko'], 'middle', 'big')
+
+    def coins_wait(self, title, text, enough):
+        '''
+        Coins asked : the screen until enough() (a coin, credits given) or Back. True : enough
+        '''
+        while not enough():
+            # The background of the theme : in a game, the default one is the board of the game
+            self.display_background(image=True)
+            self.menu_header(self.lang.translate(title), text)
+            self.blit_text(self.lang.translate('coins-insert-coin'), 0, int(self.res['y'] * 0.4), self.res['x'],
+                           int(self.res['y'] / 8), (230, 30, 30))
+            self.display_button(True, 'back', special='escape')
+            self.update_screen()
+            key = self.rpi.listen_inputs(['arrows'], ['escape', 'enter', 'space', 'single-click', 'PLAYERBUTTON',
+                                                      'BACKUPBUTTON', 'GAMEBUTTON'], timeout=1000)
+            if key in ESCAPE_KEYS or key in ('escape', 'single-click') or key in ENTER_KEYS:
+                return enough()
+        return True
+
+    def coins_pay(self, game, game_type, players):
+        '''
+        A game about to start (include/ccoins.py) : free, paid (its credits taken), or coins
+        asked until enough. False : given up (back to the menus)
+        '''
+        coins = getattr(self.rpi, 'coins', None)
+        if coins is None or not coins.active():
+            return True
+        cost = coins.cost(game, game_type, len(players))
+        if not coins.can_pay(cost):
+            if coins.settings.get('mode') == 'time':
+                text = self.lang.translate('coins-need-time')
+            else:
+                text = self.lang.translate('coins-need-credits').replace('{credits}', str(cost))
+            if not self.coins_wait('coins', text, lambda: coins.can_pay(cost)):
+                return False
+        coins.pay(cost)
+        self.logs.info(f"Coin acceptor : {game} ({game_type}, {len(players)} players) paid {cost}")
+        return True
+
+    def coins_time_up(self):
+        '''
+        Mode time, at the end of a turn : no time left, a coin asked to go on. False : the
+        game stops
+        '''
+        coins = getattr(self.rpi, 'coins', None)
+        if coins is None or not coins.time_up():
+            return True
+        self.logs.info("Coin acceptor : time up")
+        return self.coins_wait('coins-time-up', self.lang.translate('coins-time-up-sub'), lambda: not coins.time_up())
+
+    def coins_games(self, settings, prices):
+        '''
+        Prices by game : the price of its type, or one of its own (free, 1, 2...)
+        '''
+        translate = self.lang.translate
+        games_dir = os.path.join(cpaths.ROOT_DIR, 'games')
+        names = sorted(name[:-3] for category in ('classic', 'fun', 'sport')
+                       for name in (os.listdir(os.path.join(games_dir, category)) if os.path.isdir(os.path.join(games_dir, category)) else [])
+                       if name.endswith('.py') and not name.startswith('_'))
+        own = settings.setdefault('games', {})
+        selected = 1
+        values = [('type', 'coins-price-type')] + prices
+        while True:
+            nb_elements = len(names)
+            self.display_background()
+            self.menu_header(translate('coins-price-games'), translate('coins-price-games-sub'))
+            click_zones = {}
+            half = (nb_elements + 1) // 2
+            for index, name in enumerate(names, 1):
+                column = (0, half, index) if index <= half else (1, half, index - half)
+                value = translate('coins-price-type') if name not in own else \
+                    (translate('coins-free') if int(own[name]) == 0 else str(own[name]))
+                click_zones[f'F{index}'] = self.menu_item((index, nb_elements, selected), ('', name.replace('_', ' '), BTN_DROPDOWN, value),
+                                                          align='Full', tabs=True, column=column)
+            click_zones['escape'] = self.display_button(selected == nb_elements + 1, 'back', special='escape')
+            self.update_screen()
+            key = self.rpi.listen_inputs(['arrows'], ['escape', 'enter', 'space', 'single-click', 'PLAYERBUTTON',
+                                                      'BACKUPBUTTON', 'GAMEBUTTON'])
+            clicked = self.is_clicked(click_zones, key)
+            if clicked:
+                key = clicked
+            if key in [f'F{index}' for index in range(1, nb_elements + 1)]:
+                selected = int(key[1:])
+                key = 'enter'
+            selected = self.navigate(selected, key, nb_elements, 1, 1, left_right=True)
+            if key in ESCAPE_KEYS or (key in ENTER_KEYS and selected == nb_elements + 1):
+                return
+            if key in ENTER_KEYS and 1 <= selected <= nb_elements:
+                name = names[selected - 1]
+                chosen = self.dropdown(self.res['x'] * 6 / 16, 3 * self.res_y_16, values,
+                                       navigate=str(own[name]) if name in own else 'type')
+                if chosen == 'type':
+                    own.pop(name, None)
+                elif chosen != 'escape':
+                    own[name] = int(chosen)
 
     def exhibition_menu(self):
         '''
@@ -11121,14 +11430,54 @@ class Screen(pygame.Surface):
         if started is not None:
             self.rpi.input_time = None
             self.logs.debug(f"Input to screen : {(time.perf_counter() - started) * 1000:.0f} ms")
+        # The credits of the coin acceptor over every screen
+        badge = self.coins_badge()
         if rect_array is not None:
             #self.display.update(rect_array)
             for rect in rect_array:
                 self.display.update(rect)
+            if badge is not None:
+                self.display.update(badge)
         elif rect is not None:
             self.display.update(rect)
+            if badge is not None:
+                self.display.update(badge)
         else:
             self.display.flip()
+
+    def coins_badge(self):
+        '''
+        Credits or time left of the coin acceptor (include/ccoins.py), in red at the top right
+        of every screen. Its place, None when the games are free
+        '''
+        coins = getattr(getattr(self, 'rpi', None), 'coins', None)
+        left = coins.left() if coins is not None else None
+        if left is None:
+            return None
+        kind, value = left
+        if kind == 'games':
+            text = self.lang.translate('coins-credits').replace('{credits}', str(value))
+        else:
+            text = self.lang.translate('coins-time').replace('{time}', f"{value // 60}:{value % 60:02d}")
+        # Its size and its place, set in the screen of the coin acceptor
+        part_x, part_y = ccoins.BADGE_SIZES.get(coins.settings.get('badge_size'), ccoins.BADGE_SIZES['medium'])
+        width, height = int(self.res['x'] * part_x), int(self.res['y'] * part_y)
+        position = str(coins.settings.get('badge_position') or 'top-right')
+        pos_x = {'left': self.margin, 'center': (self.res['x'] - width) // 2}.get(position.split('-')[-1],
+                                                                                  self.res['x'] - width - self.margin)
+        pos_y = self.res['y'] - height - self.margin if position.startswith('bottom') else self.margin
+        badge = pygame.Rect(pos_x, pos_y, width, height)
+        self.screen.fill((0, 0, 0), badge)
+        self.blit_text(text, badge.x, badge.y, badge.w, badge.h, (230, 30, 30), margin=False)
+        return badge
+
+    def coins_redraw(self):
+        '''
+        A coin arrived : the credits drawn again, alone (the screen waits for an input)
+        '''
+        badge = self.coins_badge()
+        if badge is not None:
+            self.display.update(badge)
 
     def speech(self, text, speed=None):
         '''

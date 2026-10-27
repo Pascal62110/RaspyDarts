@@ -3590,7 +3590,7 @@ msgid "editor-shortcut-remove"
 msgstr "Rimuovi la scorciatoia"
 
 msgid "editor-shortcut-press"
-msgstr "Premi il tasto della scorciatoia: da F1 a F12, una lettera o una cifra (Esc: annulla)"
+msgstr "Premi il tasto della scorciatoia: da F1 a F12, una lettera (tranne c) o una cifra (Esc: annulla)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} è già la scorciatoia di «{button}»: toglierla?"
@@ -3603,6 +3603,63 @@ msgstr "Invio"
 
 msgid "editor-key-space"
 msgstr "Spazio"
+
+msgid "editor-arrange"
+msgstr "Disponi automaticamente"
+
+msgid "editor-arrange-columns"
+msgstr "Colonne"
+
+msgid "editor-arrange-rows"
+msgstr "Righe"
+
+msgid "editor-arrange-gap"
+msgstr "Spaziatura"
+
+msgid "editor-arrange-buttons"
+msgstr "Pulsanti"
+
+msgid "editor-arrange-all"
+msgstr "tutti"
+
+msgid "editor-arrange-inside"
+msgstr "quelli nella zona"
+
+msgid "editor-arrange-apply"
+msgstr "Disponi nella zona"
+
+msgid "editor-arrange-zone"
+msgstr "Cambia la zona"
+
+msgid "editor-arrange-too-few"
+msgstr "{buttons} pulsanti per {cells} caselle: aggiungi colonne o righe"
+
+msgid "editor-arrange-too-small"
+msgstr "Zona troppo piccola per tante caselle"
+
+msgid "editor-arrange-none"
+msgstr "Nessun pulsante nella zona"
+
+msgid "editor-snap"
+msgstr "Aggancio magnetico"
+
+msgid "editor-help-zone"
+msgstr "Zona dei pulsanti · Frecce: sposta la maniglia (passo {step}) · Conferma: maniglia successiva · + / -: passo · Mouse: trascina la zona o le sue maniglie · Indietro o Menu: disponi"
+
+msgid "editor-shape"
+msgstr "Forma"
+
+msgid "editor-shape-style"
+msgstr "come gli altri pulsanti"
+
+msgid "editor-shape-rectangle"
+msgstr "rettangolo"
+
+msgid "editor-shape-rounded"
+msgstr "angoli arrotondati"
+
+msgid "editor-shape-pill"
+msgstr "rotondo (pulsante quadrato: cerchio)"
 
 
 msgid "usb-pads"
@@ -3772,3 +3829,147 @@ msgstr "Presa jack del Raspberry"
 
 msgid "sound-output-usb"
 msgstr "Scheda audio USB"
+
+msgid "coins"
+msgstr "Gettoniera"
+
+msgid "coins-sub"
+msgstr "Una moneta inserita appare qui (prova)"
+
+msgid "coins-last"
+msgstr "Ultima moneta {seconds} s fa"
+
+msgid "coins-mode"
+msgstr "Modalità"
+
+msgid "coins-mode-off"
+msgstr "Disattivato (gratuito)"
+
+msgid "coins-mode-games"
+msgstr "Crediti per partita"
+
+msgid "coins-mode-time"
+msgstr "Tempo di partita"
+
+msgid "coins-input"
+msgstr "Ingresso della gettoniera"
+
+msgid "coins-credits-per-coin"
+msgstr "Crediti per moneta"
+
+msgid "coins-players-per-credit"
+msgstr "Giocatori per partita"
+
+msgid "coins-players-any"
+msgstr "Libero"
+
+msgid "coins-minutes-per-coin"
+msgstr "Minuti per moneta"
+
+msgid "coins-price-local"
+msgstr "Prezzo partita locale"
+
+msgid "coins-price-network"
+msgstr "Prezzo partita in rete"
+
+msgid "coins-price-games"
+msgstr "Prezzo per gioco"
+
+msgid "coins-price-games-sub"
+msgstr "Un prezzo proprio sostituisce quello del suo tipo"
+
+msgid "coins-price-type"
+msgstr "Prezzo del tipo"
+
+msgid "coins-free"
+msgstr "Gratuito"
+
+msgid "coins-add"
+msgstr "Aggiungi crediti"
+
+msgid "coins-count"
+msgstr "Monete ricevute"
+
+msgid "coins-count-reset"
+msgstr "Azzerare il contatore delle monete?"
+
+msgid "coins-password"
+msgstr "Password della gettoniera"
+
+msgid "coins-password-new"
+msgstr "Nuova password della gettoniera"
+
+msgid "coins-password-again"
+msgstr "Confermare la password"
+
+msgid "coins-password-different"
+msgstr "Le due password sono diverse"
+
+msgid "coins-password-wrong"
+msgstr "Password errata"
+
+msgid "coins-password-change"
+msgstr "Cambiare la password"
+
+msgid "coins-password-changed"
+msgstr "Password cambiata: salvare"
+
+msgid "coins-saved"
+msgstr "Impostazioni della gettoniera salvate"
+
+msgid "coins-credits"
+msgstr "Crediti: {credits}"
+
+msgid "coins-time"
+msgstr "Tempo: {time}"
+
+msgid "coins-need-credits"
+msgstr "Questa partita costa {credits} credito/i"
+
+msgid "coins-need-time"
+msgstr "Tempo di gioco esaurito"
+
+msgid "coins-insert-coin"
+msgstr "Inserire una moneta"
+
+msgid "coins-time-up"
+msgstr "Tempo scaduto"
+
+msgid "coins-time-up-sub"
+msgstr "Inserire una moneta per continuare, Indietro per fermare la partita"
+
+msgid "coins-badge-position"
+msgstr "Posizione della fascia"
+
+msgid "coins-badge-size"
+msgstr "Dimensione della fascia"
+
+msgid "coins-badge-top-right"
+msgstr "In alto a destra"
+
+msgid "coins-badge-top-center"
+msgstr "In alto al centro"
+
+msgid "coins-badge-top-left"
+msgstr "In alto a sinistra"
+
+msgid "coins-badge-bottom-right"
+msgstr "In basso a destra"
+
+msgid "coins-badge-bottom-left"
+msgstr "In basso a sinistra"
+
+msgid "coins-badge-small"
+msgstr "Piccola"
+
+msgid "coins-badge-medium"
+msgstr "Media"
+
+msgid "coins-badge-large"
+msgstr "Grande"
+
+msgid "coins-input-none"
+msgstr "Nessuno (da scegliere)"
+
+msgid "coins-no-mcp"
+msgstr "Nessuna scheda MCP rilevata: la gettoniera va su un ingresso MCP"

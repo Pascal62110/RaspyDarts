@@ -4224,7 +4224,7 @@ msgid "editor-shortcut-remove"
 msgstr "Supprimer le raccourci"
 
 msgid "editor-shortcut-press"
-msgstr "Appuyez sur la touche du raccourci : F1 à F12, une lettre ou un chiffre (Échap : annuler)"
+msgstr "Appuyez sur la touche du raccourci : F1 à F12, une lettre (sauf c) ou un chiffre (Échap : annuler)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} est déjà le raccourci de « {button} » : le lui retirer ?"
@@ -4237,6 +4237,63 @@ msgstr "Entrée"
 
 msgid "editor-key-space"
 msgstr "Espace"
+
+msgid "editor-arrange"
+msgstr "Disposer automatiquement"
+
+msgid "editor-arrange-columns"
+msgstr "Colonnes"
+
+msgid "editor-arrange-rows"
+msgstr "Lignes"
+
+msgid "editor-arrange-gap"
+msgstr "Espacement"
+
+msgid "editor-arrange-buttons"
+msgstr "Boutons"
+
+msgid "editor-arrange-all"
+msgstr "tous"
+
+msgid "editor-arrange-inside"
+msgstr "ceux dans la zone"
+
+msgid "editor-arrange-apply"
+msgstr "Disposer dans la zone"
+
+msgid "editor-arrange-zone"
+msgstr "Redéfinir la zone"
+
+msgid "editor-arrange-too-few"
+msgstr "{buttons} boutons pour {cells} cases : ajoutez des colonnes ou des lignes"
+
+msgid "editor-arrange-too-small"
+msgstr "Zone trop petite pour autant de cases"
+
+msgid "editor-arrange-none"
+msgstr "Aucun bouton dans la zone"
+
+msgid "editor-snap"
+msgstr "Aimantation"
+
+msgid "editor-help-zone"
+msgstr "Zone des boutons · Flèches : déplacer la poignée (pas {step}) · Valider : poignée suivante · + / - : pas · Souris : glisser la zone ou ses poignées · Retour ou Menu : disposer"
+
+msgid "editor-shape"
+msgstr "Forme"
+
+msgid "editor-shape-style"
+msgstr "comme les autres boutons"
+
+msgid "editor-shape-rectangle"
+msgstr "rectangle"
+
+msgid "editor-shape-rounded"
+msgstr "bords arrondis"
+
+msgid "editor-shape-pill"
+msgstr "rond (bouton carré : cercle)"
 
 
 msgid "usb-pads"
@@ -4406,3 +4463,147 @@ msgstr "Prise jack du Raspberry"
 
 msgid "sound-output-usb"
 msgstr "Carte son USB"
+
+msgid "coins"
+msgstr "Monnayeur"
+
+msgid "coins-sub"
+msgstr "Une pièce insérée s'affiche ici (test)"
+
+msgid "coins-last"
+msgstr "Dernière pièce il y a {seconds} s"
+
+msgid "coins-mode"
+msgstr "Mode"
+
+msgid "coins-mode-off"
+msgstr "Désactivé (gratuit)"
+
+msgid "coins-mode-games"
+msgstr "Crédits par partie"
+
+msgid "coins-mode-time"
+msgstr "Temps de partie"
+
+msgid "coins-input"
+msgstr "Entrée du monnayeur"
+
+msgid "coins-credits-per-coin"
+msgstr "Crédits par pièce"
+
+msgid "coins-players-per-credit"
+msgstr "Joueurs par partie"
+
+msgid "coins-players-any"
+msgstr "Libre"
+
+msgid "coins-minutes-per-coin"
+msgstr "Minutes par pièce"
+
+msgid "coins-price-local"
+msgstr "Prix partie simple"
+
+msgid "coins-price-network"
+msgstr "Prix partie en réseau"
+
+msgid "coins-price-games"
+msgstr "Prix par jeu"
+
+msgid "coins-price-games-sub"
+msgstr "Un prix propre à un jeu remplace celui de son type"
+
+msgid "coins-price-type"
+msgstr "Prix du type"
+
+msgid "coins-free"
+msgstr "Gratuit"
+
+msgid "coins-add"
+msgstr "Ajouter des crédits"
+
+msgid "coins-count"
+msgstr "Pièces reçues"
+
+msgid "coins-count-reset"
+msgstr "Remettre le compteur de pièces à zéro ?"
+
+msgid "coins-password"
+msgstr "Mot de passe du monnayeur"
+
+msgid "coins-password-new"
+msgstr "Nouveau mot de passe du monnayeur"
+
+msgid "coins-password-again"
+msgstr "Confirmez le mot de passe"
+
+msgid "coins-password-different"
+msgstr "Les deux mots de passe sont différents"
+
+msgid "coins-password-wrong"
+msgstr "Mot de passe incorrect"
+
+msgid "coins-password-change"
+msgstr "Changer le mot de passe"
+
+msgid "coins-password-changed"
+msgstr "Mot de passe changé : enregistrez"
+
+msgid "coins-saved"
+msgstr "Réglages du monnayeur enregistrés"
+
+msgid "coins-credits"
+msgstr "Crédits : {credits}"
+
+msgid "coins-time"
+msgstr "Temps : {time}"
+
+msgid "coins-need-credits"
+msgstr "Cette partie coûte {credits} crédit(s)"
+
+msgid "coins-need-time"
+msgstr "Plus de temps de jeu"
+
+msgid "coins-insert-coin"
+msgstr "Insérez une pièce"
+
+msgid "coins-time-up"
+msgstr "Temps écoulé"
+
+msgid "coins-time-up-sub"
+msgstr "Insérez une pièce pour continuer, Retour pour arrêter la partie"
+
+msgid "coins-badge-position"
+msgstr "Position du bandeau"
+
+msgid "coins-badge-size"
+msgstr "Taille du bandeau"
+
+msgid "coins-badge-top-right"
+msgstr "En haut à droite"
+
+msgid "coins-badge-top-center"
+msgstr "En haut au centre"
+
+msgid "coins-badge-top-left"
+msgstr "En haut à gauche"
+
+msgid "coins-badge-bottom-right"
+msgstr "En bas à droite"
+
+msgid "coins-badge-bottom-left"
+msgstr "En bas à gauche"
+
+msgid "coins-badge-small"
+msgstr "Petite"
+
+msgid "coins-badge-medium"
+msgstr "Moyenne"
+
+msgid "coins-badge-large"
+msgstr "Grande"
+
+msgid "coins-input-none"
+msgstr "Aucune (à choisir)"
+
+msgid "coins-no-mcp"
+msgstr "Aucune carte MCP détectée : le monnayeur se branche sur une entrée MCP"

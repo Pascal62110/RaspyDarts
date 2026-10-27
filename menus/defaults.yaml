@@ -179,22 +179,27 @@ menus:
         action: usb_pads
         text: usb-pads
         shortcut: F6
+      # Coin acceptor, behind its password (include/ccoins.py)
+      - id: coins
+        action: coins
+        text: coins
+        shortcut: F7
       - id: test-buttons
         action: test_buttons
         text: test-buttons
-        shortcut: F7
+        shortcut: F8
       - id: test-target
         action: test_target
         text: test-target
-        shortcut: F8
+        shortcut: F9
       - id: test-toys
         action: test_toys
         text: test-toys
-        shortcut: F9
+        shortcut: F10
       - id: reset
         action: reset
         text: reset
-        shortcut: F10
+        shortcut: F11
       - id: back
         action: back
         text: back

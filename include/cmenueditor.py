@@ -44,10 +44,21 @@ RUNTIME_KEYS = ('logo_image', 'game_logo', 'unavailable')
 LAYOUT_KEYS = ('span', 'cell', 'zone', 'space_before', 'space_left')
 # A key held down : repeated after this delay, at this interval (ms)
 REPEAT = (350, 60)
-# Keys which can be a shortcut of a button
-SHORTCUT_KEYS = re.compile(r'^(F([1-9]|1[0-2])|[a-z0-9])$')
+# Keys which can be a shortcut of a button (not c : the secret key showing them)
+SHORTCUT_KEYS = re.compile(r'^(F([1-9]|1[0-2])|[abd-z0-9])$')
 # A drag drawn again at most every (s) : a drawing takes 50 to 90 ms on a Pi 3
 DRAG_FRAME = 0.04
+# Snapping : an edge or a centre caught by those of the other buttons, the edges and the middle
+# of the screen, this near (part of the screen) ; the lines it is caught by drawn in this colour
+SNAP = 0.01
+GUIDE = (0, 200, 255)
+# Shapes a button can be given (over the one of its style)
+SHAPES = ('rectangle', 'rounded', 'pill')
+# Buttons arranged in a zone : the spaces between them (parts of the screen), the zone drawn
+GAPS = (0, 0.005, 0.01, 0.02, 0.03, 0.05)
+FIRST_GAP = 2
+MOST_CELLS = 12
+ZONE = (255, 200, 0, 50)
 
 
 class Editor:
@@ -70,6 +81,11 @@ class Editor:
         self.mode = 'select'
         self.handle = 4
         self.menu_rect = pygame.Rect(0, 0, 0, 0)
+        self.snap = True
+        self.dragging = False
+        # The zone where buttons are arranged (mode zone), and the last choices of the arrangement
+        self.zone = None
+        self.arrangement = {'columns': None, 'rows': None, 'gap': GAPS[FIRST_GAP], 'inside': False}
         # The buttons shown in the menu (not those at the bottom), with their place on the screen
         shown = [button for button in self.menus.buttons(name)
                  if button.get('visible', True) is not False and not button.get('footer')]
@@ -125,7 +141,8 @@ class Editor:
         return 1 if step == 0 else max(1, int(round(step * self.size[0 if axis == 'x' else 1])))
 
     def help_text(self):
-        key = {'move': 'editor-help-move', 'resize': 'editor-help-resize'}.get(self.mode, 'editor-help-select')
+        key = {'move': 'editor-help-move', 'resize': 'editor-help-resize', 'zone': 'editor-help-zone'}.get(
+            self.mode, 'editor-help-select')
         return f"{self.translate(dict(SCREENS)[self.name])} · {self.translate(key).replace('{step}', self.step_text())}"
 
     def help_bar(self):
@@ -157,7 +174,7 @@ class Editor:
         side = max(12, int(self.size[1] / 50))
         squares = []
         for number, (part_x, part_y) in enumerate(HANDLES):
-            bigger = self.mode == 'resize' and number == self.handle
+            bigger = self.mode in ('resize', 'zone') and number == self.handle
             square = pygame.Rect(0, 0, side * 2 if bigger else side, side * 2 if bigger else side)
             square.center = (rect.x + int(rect.width * part_x), rect.y + int(rect.height * part_y))
             squares.append(square)
@@ -186,21 +203,110 @@ class Editor:
             painter.draw_button(screen.screen, item['rect'], style, text, screen.button_icon(shown), state, self.units,
                                 shortcut=screen.button_label(shown, self.menu) if shortcuts.get('show') else None,
                                 shortcuts=shortcuts)
-        if 1 <= self.selected <= len(self.items):
+        if self.mode == 'zone':
+            # The zone where the buttons will be arranged, over them, with its handles
+            veil = pygame.Surface(self.zone.size, pygame.SRCALPHA)
+            veil.fill(ZONE)
+            screen.screen.blit(veil, self.zone.topleft)
+            pygame.draw.rect(screen.screen, MOVING, self.zone, 4)
+            self.draw_handles(self.zone)
+        elif 1 <= self.selected <= len(self.items):
             rect = self.items[self.selected - 1]['rect']
             # The button chosen framed : green, gold while it is moved or resized
             color = screen.colorset['menu-ok'] if self.mode == 'select' else MOVING
             pygame.draw.rect(screen.screen, color, rect.inflate(8, 8), 3 if self.mode == 'select' else 5)
             if self.mode != 'move':
-                # Its handles (dragged with the mouse or a finger) ; the one moved by the
-                # arrows : bigger, gold
-                for number, square in enumerate(self.handle_rects(rect)):
-                    current = self.mode == 'resize' and number == self.handle
-                    pygame.draw.rect(screen.screen, MOVING if current else (255, 255, 255), square)
-                    pygame.draw.rect(screen.screen, (0, 0, 0), square, 2)
+                self.draw_handles(rect)
+        self.draw_guides()
         self.help_bar()
         screen.update_screen()
         screen.logs.debug(f"Menu editor : drawn in {(time.perf_counter() - started) * 1000:.0f} ms")
+
+    def draw_handles(self, rect):
+        '''
+        The handles of a rect (dragged with the mouse or a finger) ; the one moved by the
+        arrows : bigger, gold
+        '''
+        for number, square in enumerate(self.handle_rects(rect)):
+            current = self.mode in ('resize', 'zone') and number == self.handle
+            pygame.draw.rect(self.screen.screen, MOVING if current else (255, 255, 255), square)
+            pygame.draw.rect(self.screen.screen, (0, 0, 0), square, 2)
+
+    def draw_guides(self):
+        '''
+        While a button or the zone is moved or resized : the lines its edges and its centre
+        are on (those of the other buttons, of the screen), across the screen
+        '''
+        rect = self.active_rect()
+        if not self.snap or rect is None:
+            return
+        for axis in ('x', 'y'):
+            lines = self.lines(axis)
+            for value in self.edges(rect, axis):
+                if value in lines:
+                    start, end = ((value, 0), (value, self.size[1])) if axis == 'x' else ((0, value), (self.size[0], value))
+                    pygame.draw.line(self.screen.screen, GUIDE, start, end, 2)
+
+    # ------------------------------------------------------------------ snapping
+    def active_rect(self):
+        '''
+        The rect moved or resized : the zone, or the button chosen ; None if none is
+        '''
+        if self.mode == 'zone':
+            return self.zone
+        if (self.mode in ('move', 'resize') or self.dragging) and 1 <= self.selected <= len(self.items):
+            return self.items[self.selected - 1]['rect']
+        return None
+
+    @staticmethod
+    def edges(rect, axis):
+        return (rect.left, rect.centerx, rect.right) if axis == 'x' else (rect.top, rect.centery, rect.bottom)
+
+    def lines(self, axis):
+        '''
+        Lines a button or the zone is caught by along an axis : the edges and the centres of
+        the other buttons (all of them for the zone), the edges and the middle of the screen
+        '''
+        size = self.size[0 if axis == 'x' else 1]
+        lines = {0, size // 2, size}
+        for index, item in enumerate(self.items, 1):
+            if self.mode == 'zone' or index != self.selected:
+                lines.update(self.edges(item['rect'], axis))
+        return lines
+
+    def caught(self, values, axis):
+        '''
+        The shift which brings the nearest of these positions on a line, if one is near enough
+        (0 : none)
+        '''
+        if not self.snap:
+            return 0
+        reach = SNAP * self.size[0 if axis == 'x' else 1]
+        shifts = [line - value for line in self.lines(axis) for value in values if abs(line - value) <= reach]
+        return min(shifts, key=abs) if shifts else 0
+
+    def on_the_way(self, values, delta, axis):
+        '''
+        A move by the arrows : stopped on the first line one of these positions meets (the
+        next press goes past it : the step of one pixel stays possible)
+        '''
+        if not self.snap or delta == 0:
+            return delta
+        shifts = [line - value for line in self.lines(axis) for value in values
+                  if 0 < (line - value) * (1 if delta > 0 else -1) < abs(delta)]
+        return min(shifts, key=abs) if shifts else delta
+
+    def snapped(self, rect, handle=None):
+        '''
+        A rect dragged with the mouse or a finger, caught by the lines near it : moved
+        (handle None) or the edges of its handle moved
+        '''
+        if handle is None:
+            return self.clamp(rect.move(self.caught(self.edges(rect, 'x'), 'x'), self.caught(self.edges(rect, 'y'), 'y')))
+        part_x, part_y = HANDLES[handle]
+        delta_x = self.caught([rect.left if part_x == 0 else rect.right], 'x') if part_x in (0, 1) else 0
+        delta_y = self.caught([rect.top if part_y == 0 else rect.bottom], 'y') if part_y in (0, 1) else 0
+        return self.stretched(rect, handle, delta_x, delta_y)
 
     def rects(self):
         '''
@@ -235,6 +341,9 @@ class Editor:
             return self.loop()
         finally:
             pygame.key.set_repeat()
+            # Keys repeated while the screen was saved (the keyboard not read : the key seemed
+            # held) : 8 Enter in 0.7 s opened again Modifier les écrans and an editor
+            pygame.event.clear((pygame.KEYDOWN, pygame.KEYUP))
 
     def loop(self):
         while True:
@@ -252,6 +361,10 @@ class Editor:
             if self.mode == 'resize':
                 self.resizing(key)
                 continue
+            if self.mode == 'zone':
+                if self.zoning(key):
+                    self.arrange_menu()
+                continue
             direction = self.direction_of(key)
             if direction is not None:
                 self.selected = self.screen.move_selection(self.rects(), self.selected, direction)
@@ -265,6 +378,10 @@ class Editor:
                     return False
                 if choice == 'add':
                     self.add()
+                if choice == 'arrange' and self.items:
+                    # The zone : first the one of all the buttons, then changed by the user
+                    self.zone = self.items[0]['rect'].unionall([item['rect'] for item in self.items[1:]])
+                    self.mode, self.handle = 'zone', 0
                 continue
             if self.key_in(key, 'validate') and 1 <= self.selected <= len(self.items):
                 self.button_actions()
@@ -277,8 +394,19 @@ class Editor:
         its actions ('enter'). None : done here
         '''
         if self.menu_rect.collidepoint(position):
-            self.mode = 'select'
+            if self.mode != 'zone':
+                self.mode = 'select'
             return 'menu'
+        if self.mode == 'zone':
+            # The zone : by a handle, or dragged whole
+            for number, square in enumerate(self.handle_rects(self.zone)):
+                if square.inflate(10, 10).collidepoint(position):
+                    self.handle = number
+                    self.drag(position, number)
+                    return None
+            if self.zone.collidepoint(position):
+                self.drag(position, None)
+            return None
         if 1 <= self.selected <= len(self.items) and self.mode != 'move':
             for number, square in enumerate(self.handle_rects(self.items[self.selected - 1]['rect'])):
                 if square.inflate(10, 10).collidepoint(position):
@@ -315,47 +443,65 @@ class Editor:
 
     def drag(self, start, handle):
         '''
-        The button chosen dragged (handle None) or resized by a handle, until the mouse button
-        or the finger is released : True if it moved
+        The button chosen (or the zone) dragged (handle None) or resized by a handle, until the
+        mouse button or the finger is released, caught by the lines near it : True if it moved
         '''
-        item = self.items[self.selected - 1]
-        before = pygame.Rect(item['rect'])
+        zone = self.mode == 'zone'
+        item = None if zone else self.items[self.selected - 1]
+        before = pygame.Rect(self.zone if zone else item['rect'])
         touch = getattr(self.screen.rpi, 'last_input_touch', False)
         moved, drawn = False, 0
-        while True:
-            positions, released = self.pointer_events()
-            if positions:
-                delta_x, delta_y = positions[-1][0] - start[0], positions[-1][1] - start[1]
-                if moved or abs(delta_x) > 3 or abs(delta_y) > 3:
-                    moved = True
-                    if handle is None:
-                        item['rect'] = self.clamp(before.move(delta_x, delta_y))
-                    else:
-                        item['rect'] = self.stretched(before, handle, delta_x, delta_y)
-                    self.changed = True
-            if released or (not touch and not pygame.mouse.get_pressed()[0]):
-                break
-            if moved and time.perf_counter() - drawn > DRAG_FRAME:
-                self.draw()
-                drawn = time.perf_counter()
-            pygame.time.wait(10)
+        self.dragging = True
+        try:
+            while True:
+                positions, released = self.pointer_events()
+                if positions:
+                    delta_x, delta_y = positions[-1][0] - start[0], positions[-1][1] - start[1]
+                    if moved or abs(delta_x) > 3 or abs(delta_y) > 3:
+                        moved = True
+                        if handle is None:
+                            rect = self.snapped(self.clamp(before.move(delta_x, delta_y)))
+                        else:
+                            rect = self.snapped(self.stretched(before, handle, delta_x, delta_y), handle)
+                        if zone:
+                            self.zone = rect
+                        else:
+                            item['rect'] = rect
+                            self.changed = True
+                if released or (not touch and not pygame.mouse.get_pressed()[0]):
+                    break
+                if moved and time.perf_counter() - drawn > DRAG_FRAME:
+                    self.draw()
+                    drawn = time.perf_counter()
+                pygame.time.wait(10)
+        finally:
+            self.dragging = False
         return moved
 
     # ------------------------------------------------------------------ actions
     def editor_menu(self):
         '''
-        Back in the editor : a button added, the screen saved, or left without saving
-        (back : the editor again)
+        Back in the editor : a button added, the screen saved, or left without saving, the
+        buttons arranged in a zone, the snapping on or off (back : the editor again)
         '''
-        items = [{'id': 'add', 'action': 'add', 'text': 'editor-add-title', 'shortcut': 'F1'},
-                 {'id': 'save', 'action': 'save', 'text': 'editor-save-quit', 'shortcut': 'F2'},
-                 {'id': 'quit', 'action': 'quit', 'text': 'editor-quit', 'shortcut': 'F3'}]
-        back = {'id': 'back', 'action': 'back', 'text': 'editor-continue', 'footer': 'left', 'shortcut': 'escape'}
-        title = f"{self.translate('editor-title')} : {self.translate(dict(SCREENS)[self.name])}"
         # The likely choice selected : save after changes, else leave (Add first : two times down
         # left without saving)
-        return self.screen.run_menu('editor_menu', items + [back], items + [back], title=title,
-                                    initial='save' if self.changed else 'quit').get('id')
+        initial = 'save' if self.changed else 'quit'
+        while True:
+            snap = f"{self.translate('editor-snap')} : {self.translate('yes' if self.snap else 'no')}"
+            items = [{'id': 'add', 'action': 'add', 'text': 'editor-add-title', 'shortcut': 'F1'},
+                     {'id': 'save', 'action': 'save', 'text': 'editor-save-quit', 'shortcut': 'F2'},
+                     {'id': 'quit', 'action': 'quit', 'text': 'editor-quit', 'shortcut': 'F3'},
+                     {'id': 'arrange', 'action': 'arrange', 'text': 'editor-arrange', 'shortcut': 'F4'},
+                     {'id': 'snap', 'action': 'snap', 'text': snap, 'shortcut': 'F5'}]
+            back = {'id': 'back', 'action': 'back', 'text': 'editor-continue', 'footer': 'left', 'shortcut': 'escape'}
+            title = f"{self.translate('editor-title')} : {self.translate(dict(SCREENS)[self.name])}"
+            choice = self.screen.run_menu('editor_menu', items + [back], items + [back], title=title,
+                                          initial=initial).get('id')
+            if choice != 'snap':
+                return choice
+            self.snap = not self.snap
+            initial = 'snap'
 
     def give_up(self):
         '''
@@ -373,20 +519,27 @@ class Editor:
 
     def button_actions(self):
         '''
-        The button chosen : moved, resized, its shortcut changed, or deleted
+        The button chosen : moved, resized, its shortcut or its shape changed, or deleted
         '''
         item = self.items[self.selected - 1]
         name = self.button_name(item['button'])
+        choice = None
         while True:
             items = [{'id': 'move', 'action': 'move', 'text': 'editor-move', 'shortcut': 'F1'},
                      {'id': 'resize', 'action': 'resize', 'text': 'editor-resize', 'shortcut': 'F2'},
                      {'id': 'shortcut', 'action': 'shortcut', 'shortcut': 'F3',
                       'text': f"{self.translate('editor-shortcut')} : {self.shortcut_text(item['button'])}"},
-                     {'id': 'delete', 'action': 'delete', 'text': 'editor-delete', 'shortcut': 'F4'}]
+                     {'id': 'shape', 'action': 'shape', 'shortcut': 'F4',
+                      'text': f"{self.translate('editor-shape')} : {self.translate(self.shape_text(item['button']))}"},
+                     {'id': 'delete', 'action': 'delete', 'text': 'editor-delete', 'shortcut': 'F5'}]
             back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
-            choice = self.screen.run_menu('editor_button', items + [back], items + [back], title=name).get('id')
+            choice = self.screen.run_menu('editor_button', items + [back], items + [back], title=name,
+                                          initial=choice if choice in ('shortcut', 'shape') else None).get('id')
             if choice == 'shortcut':
                 self.shortcut(item)
+                continue
+            if choice == 'shape':
+                self.shape(item)
                 continue
             if choice in ('move', 'resize'):
                 self.mode = choice
@@ -399,6 +552,30 @@ class Editor:
                 self.selected = max(1, min(self.selected, len(self.items)))
                 self.changed = True
             return
+
+    @staticmethod
+    def shape_text(button):
+        '''
+        The shape of a button : its own, or the one of its style
+        '''
+        return f"editor-shape-{button['shape']}" if button.get('shape') in SHAPES else 'editor-shape-style'
+
+    def shape(self, item):
+        '''
+        The shape of a button : rectangle, rounded corners, round ends (a square button : a
+        circle), or the one of its style (the others of the screen)
+        '''
+        button = item['button']
+        values = [('style', 'editor-shape-style')] + [(shape, f'editor-shape-{shape}') for shape in SHAPES]
+        current = button.get('shape') if button.get('shape') in SHAPES else 'style'
+        chosen = self.screen.dropdown(self.screen.res['x'] * 6 / 16, 3 * self.screen.res_y_16, values, navigate=current)
+        if chosen in ('escape', current):
+            return
+        if chosen == 'style':
+            button.pop('shape', None)
+        else:
+            button['shape'] = chosen
+        self.changed = True
 
     def shortcut(self, item):
         '''
@@ -489,8 +666,10 @@ class Editor:
         direction = self.direction_of(key)
         if direction is not None:
             step_x, step_y = self.step_pixels('x'), self.step_pixels('y')
-            move = {'up': (0, -step_y), 'down': (0, step_y), 'left': (-step_x, 0), 'right': (step_x, 0)}[direction]
-            item['rect'] = self.clamp(item['rect'].move(*move))
+            move_x, move_y = {'up': (0, -step_y), 'down': (0, step_y), 'left': (-step_x, 0), 'right': (step_x, 0)}[direction]
+            rect = item['rect']
+            item['rect'] = self.clamp(rect.move(self.on_the_way(self.edges(rect, 'x'), move_x, 'x'),
+                                                self.on_the_way(self.edges(rect, 'y'), move_y, 'y')))
             self.changed = True
         elif self.stepped(key):
             pass
@@ -505,9 +684,7 @@ class Editor:
         item = self.items[self.selected - 1]
         direction = self.direction_of(key)
         if direction is not None:
-            delta_x = {'left': -1, 'right': 1}.get(direction, 0) * self.step_pixels('x')
-            delta_y = {'up': -1, 'down': 1}.get(direction, 0) * self.step_pixels('y')
-            item['rect'] = self.stretched(item['rect'], self.handle, delta_x, delta_y)
+            item['rect'] = self.handle_moved(item['rect'], direction)
             self.changed = True
         elif self.stepped(key):
             pass
@@ -515,6 +692,141 @@ class Editor:
             self.handle = (self.handle + 1) % len(HANDLES)
         elif self.key_in(key, 'back'):
             self.mode = 'select'
+
+    def handle_moved(self, rect, direction):
+        '''
+        A rect whose handle is moved by an arrow (by the step, stopped on the lines met)
+        '''
+        part_x, part_y = HANDLES[self.handle]
+        delta_x = {'left': -1, 'right': 1}.get(direction, 0) * self.step_pixels('x')
+        delta_y = {'up': -1, 'down': 1}.get(direction, 0) * self.step_pixels('y')
+        if part_x in (0, 1):
+            delta_x = self.on_the_way([rect.left if part_x == 0 else rect.right], delta_x, 'x')
+        if part_y in (0, 1):
+            delta_y = self.on_the_way([rect.top if part_y == 0 else rect.bottom], delta_y, 'y')
+        return self.stretched(rect, self.handle, delta_x, delta_y)
+
+    # ------------------------------------------------------------------ arranging
+    def zoning(self, key):
+        '''
+        The zone of the buttons to arrange : arrows (its handle, by the step), + and - (the
+        step), validate (the next handle). True : done (back, or the button Menu)
+        '''
+        direction = self.direction_of(key)
+        if direction is not None:
+            self.zone = self.handle_moved(self.zone, direction)
+        elif self.stepped(key):
+            pass
+        elif self.key_in(key, 'validate'):
+            self.handle = (self.handle + 1) % len(HANDLES)
+        elif self.key_in(key, 'back') or key == 'menu':
+            return True
+        return False
+
+    @staticmethod
+    def reading_order(items):
+        '''
+        Buttons in the order they are read (rows from the top, each from the left), and the
+        most buttons in a row
+        '''
+        rows = []
+        for item in sorted(items, key=lambda item: item['rect'].centery):
+            first = rows[-1][0]['rect'] if rows else None
+            if first is not None and item['rect'].centery - first.centery < first.height / 2:
+                rows[-1].append(item)
+            else:
+                rows.append([item])
+        ordered = [item for row in rows for item in sorted(row, key=lambda item: item['rect'].centerx)]
+        return ordered, max((len(row) for row in rows), default=1)
+
+    def arranged_items(self):
+        '''
+        The buttons to arrange : all of them, or those whose centre is in the zone
+        '''
+        if not self.arrangement['inside']:
+            return list(self.items)
+        return [item for item in self.items if self.zone.collidepoint(item['rect'].center)]
+
+    def arrange_menu(self):
+        '''
+        The buttons arranged in the zone : columns, rows, the space between them, which
+        buttons ; the zone changed again ; back : the editor, nothing arranged
+        '''
+        translate = self.translate
+        settings = self.arrangement
+        initial = 'apply'
+        choose = lambda values, current: self.screen.dropdown(self.screen.res['x'] * 6 / 16, 3 * self.screen.res_y_16,
+                                                              values, navigate=current)
+        while True:
+            chosen, widest = self.reading_order(self.arranged_items())
+            count = max(1, len(chosen))
+            if not settings['columns']:
+                settings['columns'] = min(MOST_CELLS, widest)
+            if not settings['rows']:
+                settings['rows'] = min(MOST_CELLS, -(-count // settings['columns']))
+            values = [('columns', 'editor-arrange-columns', str(settings['columns'])),
+                      ('rows', 'editor-arrange-rows', str(settings['rows'])),
+                      ('gap', 'editor-arrange-gap', f"{settings['gap'] * 100:g} %"),
+                      ('inside', 'editor-arrange-buttons',
+                       f"{translate('editor-arrange-inside' if settings['inside'] else 'editor-arrange-all')} ({len(chosen)})")]
+            items = [{'id': ident, 'action': ident, 'text': f"{translate(text)} : {value}", 'shortcut': f'F{number}'}
+                     for number, (ident, text, value) in enumerate(values, 1)]
+            items += [{'id': 'apply', 'action': 'apply', 'text': 'editor-arrange-apply', 'shortcut': 'F5'},
+                      {'id': 'zone', 'action': 'zone', 'text': 'editor-arrange-zone', 'shortcut': 'F6'}]
+            back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
+            choice = self.screen.run_menu('editor_arrange', items + [back], items + [back],
+                                          title=translate('editor-arrange'), initial=initial).get('id')
+            initial = choice
+            numbers = [(str(number), str(number)) for number in range(1, MOST_CELLS + 1)]
+            if choice in ('columns', 'rows'):
+                value = choose(numbers, str(settings[choice]))
+                if value != 'escape':
+                    settings[choice] = int(value)
+                    if choice == 'columns':
+                        settings['rows'] = None
+            elif choice == 'gap':
+                value = choose([(str(gap), f'{gap * 100:g} %') for gap in GAPS], str(settings['gap']))
+                if value != 'escape':
+                    settings['gap'] = float(value)
+            elif choice == 'inside':
+                settings['inside'] = not settings['inside']
+                settings['columns'] = settings['rows'] = None
+            elif choice == 'zone':
+                return
+            elif choice == 'apply':
+                if self.arrange(chosen):
+                    self.mode, self.zone = 'select', None
+                    return
+            else:
+                self.mode, self.zone = 'select', None
+                return
+
+    def arrange(self, chosen):
+        '''
+        The buttons put in the cells of the zone, in the order they are read, all of the
+        same size : False (said) if they do not fit
+        '''
+        columns, rows = self.arrangement['columns'], self.arrangement['rows']
+        if not chosen:
+            self.screen.message([self.translate('editor-arrange-none')], 2500, 'menu-ko', 'middle', 'big')
+            return False
+        if columns * rows < len(chosen):
+            text = self.translate('editor-arrange-too-few').replace('{buttons}', str(len(chosen))).replace(
+                '{cells}', str(columns * rows))
+            self.screen.message([text], 3000, 'menu-ko', 'middle', 'big')
+            return False
+        gap_x, gap_y = int(self.arrangement['gap'] * self.size[0]), int(self.arrangement['gap'] * self.size[1])
+        width = (self.zone.width - gap_x * (columns - 1)) // columns
+        height = (self.zone.height - gap_y * (rows - 1)) // rows
+        if width < SMALLEST * self.size[0] or height < SMALLEST * self.size[1]:
+            self.screen.message([self.translate('editor-arrange-too-small')], 3000, 'menu-ko', 'middle', 'big')
+            return False
+        for number, item in enumerate(chosen):
+            row, column = divmod(number, columns)
+            item['rect'] = pygame.Rect(self.zone.x + column * (width + gap_x), self.zone.y + row * (height + gap_y),
+                                       width, height)
+        self.changed = True
+        return True
 
     # ------------------------------------------------------------------ adding
     def addable(self):
@@ -591,6 +903,11 @@ class Editor:
         while self.menus.button_id(button) in used:
             button['id'] = f"{ident}-{number}"
             number += 1
+        # Its shortcut already taken by a button of the screen (the theme moved them : the coin
+        # acceptor came with F7, the one of Test de la cible) : none, one can be given after
+        if button.get('shortcut') in {item['button'].get('shortcut') for item in self.items}:
+            button = dict(button)
+            button.pop('shortcut')
         widths = sorted(item['rect'].width for item in self.items) or [int(self.size[0] / 4)]
         heights = sorted(item['rect'].height for item in self.items) or [int(self.size[1] / 10)]
         rect = pygame.Rect(0, 0, widths[len(widths) // 2], heights[len(heights) // 2])
@@ -687,14 +1004,17 @@ class Editor:
 
 def screens_menu(screen, keys):
     '''
-    Paramètres > Modifier les écrans : the screen chosen, then its editor. Saved or left : back
-    to Paramètres (the list again, its screen selected, opened the editor once more at the next
-    validation : it seemed to go round)
+    Paramètres > Modifier les écrans : the screen chosen, then its editor ; saved or left :
+    the list again, this screen selected (the keys repeated while saving are cleared by the
+    editor : they no longer open it again), until Back
     '''
     back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
     items = [{'id': name, 'action': name, 'text': text, 'shortcut': f'F{number}'}
              for number, (name, text) in enumerate(SCREENS, 1)]
-    choice = screen.run_menu('edit_screens', items + [back], items + [back],
-                             title=screen.lang.translate('edit-screens')).get('id')
-    if choice != 'back':
+    choice = None
+    while True:
+        choice = screen.run_menu('edit_screens', items + [back], items + [back],
+                                 title=screen.lang.translate('edit-screens'), initial=choice).get('id')
+        if choice not in dict(SCREENS):
+            return
         Editor(screen, choice, keys).run()

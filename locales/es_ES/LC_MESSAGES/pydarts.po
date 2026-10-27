@@ -906,7 +906,7 @@ msgid "editor-shortcut-remove"
 msgstr "Quitar el atajo"
 
 msgid "editor-shortcut-press"
-msgstr "Pulse la tecla del atajo: F1 a F12, una letra o una cifra (Esc: cancelar)"
+msgstr "Pulse la tecla del atajo: F1 a F12, una letra (salvo c) o una cifra (Esc: cancelar)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} ya es el atajo de «{button}»: ¿quitárselo?"
@@ -919,6 +919,63 @@ msgstr "Intro"
 
 msgid "editor-key-space"
 msgstr "Espacio"
+
+msgid "editor-arrange"
+msgstr "Disponer automáticamente"
+
+msgid "editor-arrange-columns"
+msgstr "Columnas"
+
+msgid "editor-arrange-rows"
+msgstr "Filas"
+
+msgid "editor-arrange-gap"
+msgstr "Espaciado"
+
+msgid "editor-arrange-buttons"
+msgstr "Botones"
+
+msgid "editor-arrange-all"
+msgstr "todos"
+
+msgid "editor-arrange-inside"
+msgstr "los de la zona"
+
+msgid "editor-arrange-apply"
+msgstr "Disponer en la zona"
+
+msgid "editor-arrange-zone"
+msgstr "Cambiar la zona"
+
+msgid "editor-arrange-too-few"
+msgstr "{buttons} botones para {cells} casillas: añada columnas o filas"
+
+msgid "editor-arrange-too-small"
+msgstr "Zona demasiado pequeña para tantas casillas"
+
+msgid "editor-arrange-none"
+msgstr "Ningún botón en la zona"
+
+msgid "editor-snap"
+msgstr "Imantado"
+
+msgid "editor-help-zone"
+msgstr "Zona de los botones · Flechas: mover el tirador (paso {step}) · Validar: tirador siguiente · + / -: paso · Ratón: arrastrar la zona o sus tiradores · Volver o Menú: disponer"
+
+msgid "editor-shape"
+msgstr "Forma"
+
+msgid "editor-shape-style"
+msgstr "como los demás botones"
+
+msgid "editor-shape-rectangle"
+msgstr "rectángulo"
+
+msgid "editor-shape-rounded"
+msgstr "esquinas redondeadas"
+
+msgid "editor-shape-pill"
+msgstr "redondo (botón cuadrado: círculo)"
 
 
 msgid "usb-pads"
@@ -1088,3 +1145,147 @@ msgstr "Toma jack de la Raspberry"
 
 msgid "sound-output-usb"
 msgstr "Tarjeta de sonido USB"
+
+msgid "coins"
+msgstr "Monedero"
+
+msgid "coins-sub"
+msgstr "Una moneda insertada aparece aquí (prueba)"
+
+msgid "coins-last"
+msgstr "Última moneda hace {seconds} s"
+
+msgid "coins-mode"
+msgstr "Modo"
+
+msgid "coins-mode-off"
+msgstr "Desactivado (gratis)"
+
+msgid "coins-mode-games"
+msgstr "Créditos por partida"
+
+msgid "coins-mode-time"
+msgstr "Tiempo de partida"
+
+msgid "coins-input"
+msgstr "Entrada del monedero"
+
+msgid "coins-credits-per-coin"
+msgstr "Créditos por moneda"
+
+msgid "coins-players-per-credit"
+msgstr "Jugadores por partida"
+
+msgid "coins-players-any"
+msgstr "Libre"
+
+msgid "coins-minutes-per-coin"
+msgstr "Minutos por moneda"
+
+msgid "coins-price-local"
+msgstr "Precio partida local"
+
+msgid "coins-price-network"
+msgstr "Precio partida en red"
+
+msgid "coins-price-games"
+msgstr "Precio por juego"
+
+msgid "coins-price-games-sub"
+msgstr "Un precio propio reemplaza el de su tipo"
+
+msgid "coins-price-type"
+msgstr "Precio del tipo"
+
+msgid "coins-free"
+msgstr "Gratis"
+
+msgid "coins-add"
+msgstr "Añadir créditos"
+
+msgid "coins-count"
+msgstr "Monedas recibidas"
+
+msgid "coins-count-reset"
+msgstr "¿Poner a cero el contador de monedas?"
+
+msgid "coins-password"
+msgstr "Contraseña del monedero"
+
+msgid "coins-password-new"
+msgstr "Nueva contraseña del monedero"
+
+msgid "coins-password-again"
+msgstr "Confirme la contraseña"
+
+msgid "coins-password-different"
+msgstr "Las dos contraseñas son diferentes"
+
+msgid "coins-password-wrong"
+msgstr "Contraseña incorrecta"
+
+msgid "coins-password-change"
+msgstr "Cambiar la contraseña"
+
+msgid "coins-password-changed"
+msgstr "Contraseña cambiada: guarde"
+
+msgid "coins-saved"
+msgstr "Ajustes del monedero guardados"
+
+msgid "coins-credits"
+msgstr "Créditos: {credits}"
+
+msgid "coins-time"
+msgstr "Tiempo: {time}"
+
+msgid "coins-need-credits"
+msgstr "Esta partida cuesta {credits} crédito(s)"
+
+msgid "coins-need-time"
+msgstr "No queda tiempo de juego"
+
+msgid "coins-insert-coin"
+msgstr "Inserte una moneda"
+
+msgid "coins-time-up"
+msgstr "Tiempo agotado"
+
+msgid "coins-time-up-sub"
+msgstr "Inserte una moneda para seguir, Atrás para parar la partida"
+
+msgid "coins-badge-position"
+msgstr "Posición de la banda"
+
+msgid "coins-badge-size"
+msgstr "Tamaño de la banda"
+
+msgid "coins-badge-top-right"
+msgstr "Arriba a la derecha"
+
+msgid "coins-badge-top-center"
+msgstr "Arriba en el centro"
+
+msgid "coins-badge-top-left"
+msgstr "Arriba a la izquierda"
+
+msgid "coins-badge-bottom-right"
+msgstr "Abajo a la derecha"
+
+msgid "coins-badge-bottom-left"
+msgstr "Abajo a la izquierda"
+
+msgid "coins-badge-small"
+msgstr "Pequeño"
+
+msgid "coins-badge-medium"
+msgstr "Mediano"
+
+msgid "coins-badge-large"
+msgstr "Grande"
+
+msgid "coins-input-none"
+msgstr "Ninguna (a elegir)"
+
+msgid "coins-no-mcp"
+msgstr "Ninguna tarjeta MCP detectada: el monedero se conecta a una entrada MCP"

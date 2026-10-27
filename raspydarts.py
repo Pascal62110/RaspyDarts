@@ -984,6 +984,10 @@ try:
                         if setup == 'test-buttons':
                             display.test_buttons_menu()
 
+                        elif setup == 'coins':
+                            # COIN ACCEPTOR : its settings, behind its password
+                            display.coins_menu()
+
                         elif setup == 'usb-pads':
                             # USB BUTTONS AND KNOBS : programmed, tested, given a button
                             display.usb_pads_menu()
@@ -1433,6 +1437,11 @@ try:
 
         """ END OF MENU LOOP """
         if game_type not in ('restart' ,'quit' ,'shutdown'):
+            # Coin acceptor : the game paid for (the local players), or coins asked ; given up :
+            # back to the menus
+            if not display.coins_pay(Game, game_type, local_players if game_type in ('netjoin', 'netcreate') else all_players):
+                stats_screen = False
+                continue
             if stats_screen == 'startagain':
                 old_player = players[:]
             # Now create players objects
@@ -2403,6 +2412,14 @@ try:
 
                         actual_player += 1
                         player_launch = 1
+
+                        # Coin acceptor, mode time : no time left at the end of the turn, a coin
+                        # asked ; none : the game stops
+                        if not display.coins_time_up():
+                            match_done = True
+                            set_done = True
+                            interrupted = True
+                            last_game_screen = None
 
                     # Next Round ? - Only jump to next round if there is no victory, no match end (give more accurate stats)
                     if actual_player >= players_count:

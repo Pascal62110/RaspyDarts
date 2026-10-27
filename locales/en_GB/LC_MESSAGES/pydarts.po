@@ -3136,7 +3136,7 @@ msgid "editor-shortcut-remove"
 msgstr "Remove the shortcut"
 
 msgid "editor-shortcut-press"
-msgstr "Press the key of the shortcut: F1 to F12, a letter or a digit (Esc: cancel)"
+msgstr "Press the key of the shortcut: F1 to F12, a letter (not c) or a digit (Esc: cancel)"
 
 msgid "editor-shortcut-taken"
 msgstr "{key} is already the shortcut of \"{button}\": take it from it?"
@@ -3149,6 +3149,63 @@ msgstr "Enter"
 
 msgid "editor-key-space"
 msgstr "Space"
+
+msgid "editor-arrange"
+msgstr "Arrange automatically"
+
+msgid "editor-arrange-columns"
+msgstr "Columns"
+
+msgid "editor-arrange-rows"
+msgstr "Rows"
+
+msgid "editor-arrange-gap"
+msgstr "Spacing"
+
+msgid "editor-arrange-buttons"
+msgstr "Buttons"
+
+msgid "editor-arrange-all"
+msgstr "all"
+
+msgid "editor-arrange-inside"
+msgstr "those in the area"
+
+msgid "editor-arrange-apply"
+msgstr "Arrange in the area"
+
+msgid "editor-arrange-zone"
+msgstr "Change the area"
+
+msgid "editor-arrange-too-few"
+msgstr "{buttons} buttons for {cells} cells: add columns or rows"
+
+msgid "editor-arrange-too-small"
+msgstr "Area too small for so many cells"
+
+msgid "editor-arrange-none"
+msgstr "No button in the area"
+
+msgid "editor-snap"
+msgstr "Snapping"
+
+msgid "editor-help-zone"
+msgstr "Area of the buttons · Arrows: move the handle (step {step}) · Validate: next handle · + / -: step · Mouse: drag the area or its handles · Back or Menu: arrange"
+
+msgid "editor-shape"
+msgstr "Shape"
+
+msgid "editor-shape-style"
+msgstr "as the other buttons"
+
+msgid "editor-shape-rectangle"
+msgstr "rectangle"
+
+msgid "editor-shape-rounded"
+msgstr "rounded corners"
+
+msgid "editor-shape-pill"
+msgstr "round (square button: circle)"
 
 
 msgid "usb-pads"
@@ -3318,3 +3375,147 @@ msgstr "Raspberry jack socket"
 
 msgid "sound-output-usb"
 msgstr "USB sound card"
+
+msgid "coins"
+msgstr "Coin acceptor"
+
+msgid "coins-sub"
+msgstr "A coin inserted shows here (test)"
+
+msgid "coins-last"
+msgstr "Last coin {seconds} s ago"
+
+msgid "coins-mode"
+msgstr "Mode"
+
+msgid "coins-mode-off"
+msgstr "Off (free)"
+
+msgid "coins-mode-games"
+msgstr "Credits per game"
+
+msgid "coins-mode-time"
+msgstr "Game time"
+
+msgid "coins-input"
+msgstr "Coin acceptor input"
+
+msgid "coins-credits-per-coin"
+msgstr "Credits per coin"
+
+msgid "coins-players-per-credit"
+msgstr "Players per game"
+
+msgid "coins-players-any"
+msgstr "Any"
+
+msgid "coins-minutes-per-coin"
+msgstr "Minutes per coin"
+
+msgid "coins-price-local"
+msgstr "Price of a local game"
+
+msgid "coins-price-network"
+msgstr "Price of a network game"
+
+msgid "coins-price-games"
+msgstr "Price by game"
+
+msgid "coins-price-games-sub"
+msgstr "A price of its own replaces the one of its type"
+
+msgid "coins-price-type"
+msgstr "Price of its type"
+
+msgid "coins-free"
+msgstr "Free"
+
+msgid "coins-add"
+msgstr "Add credits"
+
+msgid "coins-count"
+msgstr "Coins received"
+
+msgid "coins-count-reset"
+msgstr "Reset the coin counter?"
+
+msgid "coins-password"
+msgstr "Coin acceptor password"
+
+msgid "coins-password-new"
+msgstr "New coin acceptor password"
+
+msgid "coins-password-again"
+msgstr "Confirm the password"
+
+msgid "coins-password-different"
+msgstr "The two passwords differ"
+
+msgid "coins-password-wrong"
+msgstr "Wrong password"
+
+msgid "coins-password-change"
+msgstr "Change the password"
+
+msgid "coins-password-changed"
+msgstr "Password changed: save"
+
+msgid "coins-saved"
+msgstr "Coin acceptor settings saved"
+
+msgid "coins-credits"
+msgstr "Credits: {credits}"
+
+msgid "coins-time"
+msgstr "Time: {time}"
+
+msgid "coins-need-credits"
+msgstr "This game costs {credits} credit(s)"
+
+msgid "coins-need-time"
+msgstr "No playing time left"
+
+msgid "coins-insert-coin"
+msgstr "Insert a coin"
+
+msgid "coins-time-up"
+msgstr "Time is up"
+
+msgid "coins-time-up-sub"
+msgstr "Insert a coin to go on, Back to stop the game"
+
+msgid "coins-badge-position"
+msgstr "Position of the strip"
+
+msgid "coins-badge-size"
+msgstr "Size of the strip"
+
+msgid "coins-badge-top-right"
+msgstr "Top right"
+
+msgid "coins-badge-top-center"
+msgstr "Top centre"
+
+msgid "coins-badge-top-left"
+msgstr "Top left"
+
+msgid "coins-badge-bottom-right"
+msgstr "Bottom right"
+
+msgid "coins-badge-bottom-left"
+msgstr "Bottom left"
+
+msgid "coins-badge-small"
+msgstr "Small"
+
+msgid "coins-badge-medium"
+msgstr "Medium"
+
+msgid "coins-badge-large"
+msgstr "Large"
+
+msgid "coins-input-none"
+msgstr "None (to choose)"
+
+msgid "coins-no-mcp"
+msgstr "No MCP card found: the coin acceptor goes on a MCP input"

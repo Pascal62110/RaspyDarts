@@ -45,6 +45,7 @@ ACTIONS = {
     'raspy2dmd': 'raspy2dmd',
     'edit_screens': 'edit-screens',
     'usb_pads': 'usb-pads',
+    'coins': 'coins',
     'update': 'update',
     'back': 'escape',
     'setup_buttons': 'setup-buttons',
@@ -181,6 +182,15 @@ class Menus:
             before = (data.get('menus', {}).get(name) or {}).get('buttons') or []
             extra = [dict(button) for button in before if isinstance(button, dict) and
                      self.button_id(button) not in named and self.button_id(button) not in removed]
+            # Every button placed by hand (place : the editor of the screens) : no room made for a
+            # new one (it was drawn over another one, in the first cell of the grid). Offered by
+            # « Ajouter un bouton » of the editor instead
+            shown = [button for button in menu['buttons'] if isinstance(button, dict)
+                     and not button.get('footer') and button.get('visible', True) is not False]
+            if extra and shown and all(isinstance(button.get('place'), dict) for button in shown):
+                self.logs.info(f"Menus : {name} placed by hand, new buttons left to the editor : "
+                               f"{', '.join(self.button_id(button) for button in extra)}")
+                extra = []
             for button in extra:
                 ids = [self.button_id(other) if isinstance(other, dict) else None for other in menu['buttons']]
                 # Its shortcut already taken by a button of the file (the files moved them) : none

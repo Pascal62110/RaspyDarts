@@ -281,28 +281,34 @@ const MENUS_DATA = {
       "shortcut": "F6"
      },
      {
+      "id": "coins",
+      "action": "coins",
+      "text": "coins",
+      "shortcut": "F7"
+     },
+     {
       "id": "test-buttons",
       "action": "test_buttons",
       "text": "test-buttons",
-      "shortcut": "F7"
+      "shortcut": "F8"
      },
      {
       "id": "test-target",
       "action": "test_target",
       "text": "test-target",
-      "shortcut": "F8"
+      "shortcut": "F9"
      },
      {
       "id": "test-toys",
       "action": "test_toys",
       "text": "test-toys",
-      "shortcut": "F9"
+      "shortcut": "F10"
      },
      {
       "id": "reset",
       "action": "reset",
       "text": "reset",
-      "shortcut": "F10"
+      "shortcut": "F11"
      },
      {
       "id": "back",
@@ -375,6 +381,7 @@ const MENUS_DATA = {
   "animations",
   "back",
   "backups",
+  "coins",
   "customization",
   "desktop",
   "edit_screens",
@@ -2089,6 +2096,7 @@ const MENUS_DATA = {
    "back-to-desktop": "Revenir sur le bureau",
    "backups": "Gestion des sauvegardes",
    "btn_update": "Vérifier les mises à jour",
+   "coins": "Monnayeur",
    "continue": "Continuer",
    "customization": "Personnalisation du jeu",
    "dmd-backup-menu": "Sauvegardes",
@@ -2188,6 +2196,7 @@ const MENUS_DATA = {
    "back": "Back",
    "back-to-desktop": "Back to desktop",
    "backups": "Gestion des sauvegardes",
+   "coins": "Coin acceptor",
    "continue": "Continue",
    "customization": "Personnalisation du jeu",
    "dmd-backup-menu": "Backup",
@@ -2279,6 +2288,7 @@ const MENUS_DATA = {
    "yes": "Yes"
   },
   "de": {
+   "coins": "Münzprüfer",
    "edit-screens": "Bildschirme bearbeiten",
    "exhibition": "Ausstellungsmodus",
    "exit": "Ausgang",
@@ -2334,6 +2344,7 @@ const MENUS_DATA = {
    "usb-pads": "Einrichtung USB-Tasten und Drehknöpfe"
   },
   "es": {
+   "coins": "Monedero",
    "edit-screens": "Modificar las pantallas",
    "exhibition": "Modo exposición",
    "exit": "Salir",
@@ -2393,6 +2404,7 @@ const MENUS_DATA = {
    "back": "Indietro",
    "back-to-desktop": "Torna al desktop",
    "backups": "Gestion des sauvegardes",
+   "coins": "Gettoniera",
    "continue": "Continua",
    "customization": "Personnalisation du jeu",
    "dmd-backup-menu": "Sauvegardes",

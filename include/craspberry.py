@@ -14,6 +14,7 @@ from include import cpaths
 from RPi import GPIO as gpio
 from . import cgpio_extender
 from . import cusbpads
+from . import ccoins
 
 MAX_GPIO = 27
 LAST_GPIO = None
@@ -240,6 +241,9 @@ class Craspberry():
         self.gpio = cgpio_extender.Gpio_extender(self.logs, self.buttons)
         # Pads of keys and knobs plugged in USB (Paramètres > Pavés USB)
         self.usb_pads = cusbpads.shared(self.logs)
+        # Coin acceptor (Paramétrage > Monnayeur) ; on_coins : its strip of credits drawn again
+        self.coins = ccoins.shared(self.logs, self.gpio)
+        self.on_coins = None
 
         # Init MCP according to configuration
 
@@ -756,6 +760,12 @@ class Craspberry():
                         miss = 1
                     else:
                         return (inputs.replace('PIN_', 'BTN_') if not isinstance(inputs, list) else inputs[0].replace('PIN_', 'BTN_'))
+
+            # A coin arrived, a second of a game counted (mode time) : the credits shown again
+            self.coins.tick(context in ('game', 'waitcomputer'))
+            if self.coins.changed and self.on_coins is not None:
+                self.coins.changed = False
+                self.on_coins()
 
             # Read the pads plugged in USB : the button chosen for their key, in the menus or
             # in a game
