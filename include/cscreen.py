@@ -7266,9 +7266,26 @@ class Screen(pygame.Surface):
             _, (low, high) = spans(rect)
             return max(low - across_end, across_start - high, 0)
 
+        # Rows of reading by the tops of the buttons : a button whose top is above the middle of
+        # the first one of the row is in it (the same when a button is drawn larger, a few pixels
+        # higher). By their middles, a tall element (the panel of the players online, beside all
+        # the rows) came after the first rows : right went round them, the others never reached
+        rows = []
+        for index in sorted(rects, key=lambda index: (rects[index][1], index)):
+            if rows and rects[index][1] < rows[-1][0]:
+                rows[-1][1].append(index)
+            else:
+                rows.append((rects[index][1] + rects[index][3] / 2, [index]))
+        order = [index for _middle, row in rows for index in sorted(row, key=lambda index: (rects[index][0], index))]
+        row_of = {index: number for number, (_middle, row) in enumerate(rows) for index in row}
+
         best, wrap = None, None
         for index, rect in rects.items():
             if index == selected:
+                continue
+            if horizontal and row_of[index] != row_of[selected]:
+                # Right and left stay on the row of reading (a tall element facing several rows
+                # was reached from all of them, the others never)
                 continue
             shared = facing(rect)
             ahead, gap = beyond(rect, sign)
@@ -7297,16 +7314,6 @@ class Screen(pygame.Surface):
             return wrap[1]
         # Right at the end of a row (left at its start) : the next button in reading order (the
         # one before), as a text is read ; all the menu is gone through with right alone
-        # Rows by the middles of the buttons (the same when a button is drawn larger ; a few
-        # pixels higher, the top of a button put it before the row)
-        rows = []
-        for index in sorted(rects, key=lambda index: (rects[index][1] + rects[index][3] / 2, index)):
-            middle = rects[index][1] + rects[index][3] / 2
-            if rows and middle < rows[-1][0]:
-                rows[-1][1].append(index)
-            else:
-                rows.append((rects[index][1] + rects[index][3], [index]))
-        order = [index for _bottom, row in rows for index in sorted(row, key=lambda index: (rects[index][0], index))]
         if len(order) < 2:
             return selected
         return order[(order.index(selected) + sign) % len(order)]
