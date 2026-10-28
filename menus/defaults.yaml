@@ -258,3 +258,44 @@ menus:
   editor_games:
     layout: grid
     columns: 4
+
+  # Online games (include/cscreen.py network_lobby, include/cchat.py) : the keys and texts of
+  # their buttons ; the screens draw them themselves (no layout here)
+  online_lobby:
+    buttons:
+      - id: ready
+        text: online-ready
+        shortcut: F8
+      - id: chat
+        text: online-chat
+        shortcut: F6
+      - id: create
+        text: online-create
+        shortcut: F3
+      - id: back
+        text: back
+        shortcut: escape
+
+  online_chat:
+    buttons:
+      - id: write
+        text: online-write
+        shortcut: F1
+      - id: invite
+        text: online-invite
+        shortcut: F2
+      - id: accept
+        text: online-accept
+        shortcut: F3
+      - id: refuse
+        text: online-refuse
+        shortcut: F4
+      - id: quick
+        text: online-quick
+        shortcut: F5
+      - id: logout
+        text: online-logout
+        shortcut: F6
+      - id: back
+        text: back
+        shortcut: escape

@@ -4607,3 +4607,240 @@ msgstr "Aucune (à choisir)"
 
 msgid "coins-no-mcp"
 msgstr "Aucune carte MCP détectée : le monnayeur se branche sur une entrée MCP"
+
+msgid "online-title"
+msgstr "Partie en réseau"
+
+msgid "online-server"
+msgstr "Serveur : {server}"
+
+msgid "online-connecting"
+msgstr "Connexion…"
+
+msgid "online-connected"
+msgstr "Connecté"
+
+msgid "online-connected-no-live"
+msgstr "Connecté (parties en cours indisponibles)"
+
+msgid "online-offline"
+msgstr "Hors ligne"
+
+msgid "online-offline-retry"
+msgstr "Hors ligne, nouvelle tentative…"
+
+msgid "online-account-required"
+msgstr "Compte obligatoire : connectez-vous"
+
+msgid "online-chat-unavailable"
+msgstr "Chat indisponible"
+
+msgid "online-chat-unavailable-check"
+msgstr "Chat indisponible : vérifiez Internet et python3-websocket"
+
+msgid "online-no-room"
+msgstr "Aucune partie disponible"
+
+msgid "online-room-join"
+msgstr "En attente, rejoindre"
+
+msgid "online-room-full"
+msgstr "Complet"
+
+msgid "online-room-playing"
+msgstr "En cours"
+
+msgid "online-legend"
+msgstr "Vert : en attente, à rejoindre. Rouge : en cours ou complet"
+
+msgid "online-ready"
+msgstr "Prêt à jouer en ligne"
+
+msgid "online-not-ready"
+msgstr "Ne plus être disponible"
+
+msgid "online-chat"
+msgstr "Joueurs et chat"
+
+msgid "online-create"
+msgstr "Créer une partie"
+
+msgid "online-chat-title"
+msgstr "Joueurs et chat"
+
+msgid "online-chat-needs-ready"
+msgstr "Activez « Prêt à jouer en ligne » ({key}) pour utiliser le chat"
+
+msgid "online-chat-hint"
+msgstr "Choisissez un joueur, puis Écrire ou Inviter"
+
+msgid "online-chat-keys"
+msgstr "Haut / bas : joueur. Gauche / droite : action. Valider : choisir. Retour : quitter"
+
+msgid "online-players-connected"
+msgstr "Joueurs connectés"
+
+msgid "online-no-other-player"
+msgstr "Aucun autre joueur"
+
+msgid "online-me"
+msgstr "Moi"
+
+msgid "online-write"
+msgstr "Écrire"
+
+msgid "online-invite"
+msgstr "Inviter"
+
+msgid "online-accept"
+msgstr "Accepter"
+
+msgid "online-refuse"
+msgstr "Refuser"
+
+msgid "online-quick"
+msgstr "Réponses rapides"
+
+msgid "online-logout"
+msgstr "Déconnexion"
+
+msgid "online-message-for"
+msgstr "Message pour {name}"
+
+msgid "online-message-sent"
+msgstr "Message envoyé"
+
+msgid "online-invitation-sent"
+msgstr "Invitation envoyée, en attente de réponse"
+
+msgid "online-invitation-text"
+msgstr "Salut, tu veux jouer avec moi ?"
+
+msgid "online-invitation-accepted"
+msgstr "{name} : invitation acceptée"
+
+msgid "online-invitation-refused"
+msgstr "{name} : invitation refusée"
+
+msgid "online-invitation-received"
+msgstr "{name} vous propose une partie : {accept} accepter, {refuse} refuser"
+
+msgid "online-you-accepted"
+msgstr "Invitation acceptée : revenez en arrière puis créez ou rejoignez la partie"
+
+msgid "online-you-refused"
+msgstr "Invitation refusée"
+
+msgid "online-player-joined"
+msgstr "{name} rejoint le salon"
+
+msgid "online-send-error"
+msgstr "Erreur d'envoi"
+
+msgid "online-sending"
+msgstr "Envoi en cours…"
+
+msgid "online-chat-disconnected"
+msgstr "Chat déconnecté : rien n'a été envoyé"
+
+msgid "online-no-player-selected"
+msgstr "Aucun joueur choisi"
+
+msgid "online-no-invitation"
+msgstr "Aucune invitation en attente"
+
+msgid "online-session-expired"
+msgstr "Session expirée : reconnectez-vous à votre compte"
+
+msgid "online-player-gone"
+msgstr "Joueur déconnecté : aucun message envoyé"
+
+msgid "online-reply-1"
+msgstr "Salut !"
+
+msgid "online-reply-2"
+msgstr "Tu veux jouer avec moi ?"
+
+msgid "online-reply-3"
+msgstr "Oui, je suis prêt."
+
+msgid "online-reply-4"
+msgstr "Attends 2 minutes."
+
+msgid "online-reply-5"
+msgstr "Pas maintenant, merci."
+
+msgid "online-reply-6"
+msgstr "Merci, à bientôt !"
+
+msgid "online-username"
+msgstr "Pseudo du compte"
+
+msgid "online-username-rules"
+msgstr "Pseudo : lettres, chiffres, _ ou - (3 à 18)"
+
+msgid "online-password"
+msgstr "Mot de passe (10 caractères minimum)"
+
+msgid "online-remember"
+msgstr "Rester connecté sur cette borne (30 jours) ?"
+
+msgid "online-checking-account"
+msgstr "Vérification du compte…"
+
+msgid "online-escape-back"
+msgstr "Retour : annuler"
+
+msgid "online-check-cancelled"
+msgstr "Vérification annulée"
+
+msgid "online-error-credentials"
+msgstr "Pseudo ou mot de passe incorrect"
+
+msgid "online-error-attempts"
+msgstr "Trop de tentatives : attendez une minute"
+
+msgid "online-error-rules"
+msgstr "Pseudo : 3 à 18 caractères. Mot de passe : 10 minimum"
+
+msgid "online-error-unavailable"
+msgstr "Connexion au compte indisponible : réessayez"
+
+msgid "online-error-unreachable"
+msgstr "Serveur inaccessible : vérifiez la connexion Internet"
+
+msgid "online-account-retry"
+msgstr "Connexion au compte requise : réessayez"
+
+msgid "online-chat-impossible"
+msgstr "Connexion au salon impossible : réessayez"
+
+msgid "online-network-player"
+msgstr "Joueur en ligne :"
+
+msgid "online-new-messages"
+msgstr "Nouveaux messages ({count})"
+
+msgid "online-players-online"
+msgstr "Joueurs en ligne ({count})"
+
+msgid "online-you"
+msgstr "(vous)"
+
+msgid "online-no-player"
+msgstr "Aucun joueur"
+
+msgid "online-up"
+msgstr "Haut"
+
+msgid "online-down"
+msgstr "Bas"
+
+msgid "online-not-available"
+msgstr "Non disponible : {key} pour être prêt"
+
+msgid "online-unread"
+msgstr "{count} message(s) ou invitation(s) : {key}"
+
+msgid "online-open-chat"
+msgstr "{key} : ouvrir le chat"

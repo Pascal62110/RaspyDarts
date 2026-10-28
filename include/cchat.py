@@ -1,14 +1,13 @@
 """Client du salon des joueurs en ligne (Python 3.7+, websocket-client)."""
 import json
-import os
 import queue
 import ssl
 import threading
 import time
 from collections import deque
-from pathlib import Path
 
 from include import caccount
+from include.cscreen import ENTER_KEYS, ESCAPE_KEYS, UP_KEYS, DOWN_KEYS, LEFT_KEYS, RIGHT_KEYS
 
 
 def lobby_url():
@@ -30,7 +29,9 @@ class ChatClient:
         self.ident = None
         self.players = []
         self.events = deque(maxlen=150)
-        self.status = 'CONNEXION...'
+        # Keys of the translations : online-connecting, online-connected, online-account-required,
+        # online-offline-retry
+        self.status = 'online-connecting'
         self.thread = threading.Thread(target=self.run, daemon=True)
 
     def set_activity(self, data):
@@ -49,7 +50,7 @@ class ChatClient:
 
     def command(self, data):
         with self.lock:
-            if self.status != 'CONNECTE':
+            if self.status != 'online-connected':
                 return False
         try:
             self.commands.put_nowait(data)
@@ -131,14 +132,14 @@ class ChatClient:
                             incoming = [p for p in incoming if isinstance(p, dict) and p.get('id')]
                             previous = {p['id'] for p in self.players}
                             # La premiere liste sert de reference ; pas de son pour soi-meme.
-                            if self.status == 'CONNECTE':
+                            if self.status == 'online-connected':
                                 for player in incoming:
                                     if player['id'] != self.ident and player['id'] not in previous:
                                         self.events.append({'type': 'joined', 'from': player['id'],
                                                             'name': player.get('name', '?'),
                                                             '_received': time.monotonic()})
                             self.players = incoming
-                            self.status = 'CONNECTE'
+                            self.status = 'online-connected'
                         else:
                             event['_received'] = time.monotonic()
                             self.events.append(event)
@@ -153,7 +154,7 @@ class ChatClient:
                     except OSError:
                         pass
                 with self.lock:
-                    self.status = ('CONNEXION AU COMPTE REQUISE' if denied else 'HORS LIGNE - nouvelle tentative...')
+                    self.status = 'online-account-required' if denied else 'online-offline-retry'
                     self.players = []
                     self.ident = None
                     self.events.clear()
@@ -172,38 +173,51 @@ class ChatClient:
             self.stopped.wait(3)
 
 
-# Typing and notifications
-class MessageEditor:
-    def __init__(self):
-        self.text = ''
-        self.cursor = 0
+# Notifications, screens of the chat (the look of the theme, the inputs of the game)
 
-    def edit(self, key, left=(), right=()):
-        if key in left:
-            self.cursor = max(0, self.cursor - 1)
-        elif key in right:
-            self.cursor = min(len(self.text), self.cursor + 1)
-        elif key == 'home':
-            self.cursor = 0
-        elif key == 'end':
-            self.cursor = len(self.text)
-        elif key == 'backspace' and self.cursor:
-            self.text = self.text[:self.cursor-1] + self.text[self.cursor:]
-            self.cursor -= 1
-        elif key == 'delete':
-            self.text = self.text[:self.cursor] + self.text[self.cursor+1:]
-        else:
-            value = ' ' if key == 'space' else key
-            if isinstance(value, str) and len(value) == 1 and value.isprintable() and len(self.text) < 160:
-                self.text = self.text[:self.cursor] + value + self.text[self.cursor:]
-                self.cursor += 1
+def draw_line(display, value, rect, color, size=None, align='Left'):
+    """
+    A line of text in the font of the theme, cut to the width of its box (the fonts are kept
+    once loaded : display.get_font)
+    """
+    font = display.get_font(int(size or rect.height * .7))
+    value = ' '.join(str(value).split())
+    if font.size(value)[0] > rect.width:
+        while value and font.size(value + '...')[0] > rect.width:
+            value = value[:-1]
+        value += '...'
+    image = font.render(value, True, color)
+    x = rect.x if align == 'Left' else rect.x + (rect.width - image.get_width()) // 2
+    display.screen.blit(image, (x, rect.y + (rect.height - image.get_height()) // 2))
+
+
+def shortcuts(display, name):
+    """
+    {id: (shortcut, text)} of the buttons of an online screen : menus online_lobby and
+    online_chat of the files of menus (the screen draws them itself)
+    """
+    buttons = {}
+    for button in display.menus().menu(name).get('buttons') or []:
+        if isinstance(button, dict) and button.get('id'):
+            buttons[str(button['id'])] = (button.get('shortcut'), str(button.get('text') or button['id']))
+    return buttons
+
+
+def button_text(display, button):
+    """
+    Text of a button, with its key : Inviter (F2)
+    """
+    shortcut, text = button
+    text = display.lang.translate(text)
+    if not shortcut:
+        return text
+    return '{} ({})'.format(text, 'ESC' if shortcut == 'escape' else shortcut)
 
 
 def _notify(display, invitation=False, connexion=False):
     name = ('chat_connexion' if connexion else
             'chat_invitation' if invitation else 'chat_message')
     try:
-        # Meme lecture et meme volume que les autres sons de RaspyDarts.
         # Sound of the theme (sounds/chat_message...), the default one otherwise
         channel = display.play_sound(name)
         if channel is None:
@@ -233,68 +247,16 @@ def _new_events(display, client, seen):
     return fresh
 
 
-def process_message_events(editor, events):
-    import pygame
-    for event in events:
-        if event.type == pygame.QUIT:
-            return 'cancel'
-        if event.type != pygame.KEYDOWN:
-            continue
-        key = pygame.key.name(event.key).lower()
-        if key == 'escape':
-            return 'cancel'
-        if key in ('return', 'enter', 'keypad enter', '[enter]'):
-            if editor.text.strip():
-                return 'send'
-            continue
-        if key in ('left', 'right', 'home', 'end', 'backspace', 'delete'):
-            editor.edit(key, ('left',), ('right',))
-        else:
-            # Unicode garde les accents et la ponctuation du clavier AZERTY.
-            value = getattr(event, 'unicode', '')
-            for character in value:
-                editor.edit(character)
-    return None
-
-
-def compose_message(display, keys, client, seen, recipient):
-    import pygame
-    _, _, left, right, enter, escape = keys
-    editor = MessageEditor()
-    backdrop = display.screen.copy()
-    clock = pygame.time.Clock()
-    while True:
-        _new_events(display, client, seen)
-        display.screen.blit(backdrop, (0, 0))
-        w, h = display.screen.get_size()
-        box = pygame.Rect(int(w*.035), int(h*.72), int(w*.93), int(h*.25))
-        pygame.draw.rect(display.screen, (18, 31, 48), box, border_radius=8)
-        pygame.draw.rect(display.screen, (245, 189, 55), box, 2, border_radius=8)
-        font = pygame.font.Font(None, max(18, int(h*.034)))
-        def line(value, y, color):
-            display.screen.blit(font.render(value, True, color), (box.x+12, int(y)))
-        line('MESSAGE POUR ' + str(recipient)[:24], box.y+h*.018, (245,189,55))
-        before = editor.text[:editor.cursor]
-        while before and font.size(before)[0] > box.width - 42:
-            before = before[1:]
-        after = editor.text[editor.cursor:]
-        while after and font.size(before+after)[0] > box.width - 36:
-            after = after[:-1]
-        y = box.y+h*.08
-        line(before+after, y, (238,240,245))
-        if int(time.monotonic()*2) % 2 == 0:
-            x = box.x+12+font.size(before)[0]
-            pygame.draw.line(display.screen, (245,189,55), (x,int(y)), (x,int(y+h*.035)), 2)
-        line('Espace : espace | Entree : envoyer | Echap : annuler | {}/160'.format(len(editor.text)),
-             box.y+h*.17, (162,176,194))
-        display.update_screen()
-        # Chaque frappe du lot est traitee : aucune sortie apres la premiere lettre.
-        action = process_message_events(editor, pygame.event.get())
-        if action == 'cancel':
-            return None
-        if action == 'send' and editor.text.strip():
-            return editor.text.strip()
-        clock.tick(60)
+def compose_message(display, recipient):
+    """
+    A message typed by the input of the game (keyboard, keyboard on the screen, knob of a
+    USB pad). None : given up
+    """
+    title = display.lang.translate('online-message-for').format(name=recipient)
+    text = display.input_value_item('string', '', 1, 160, text=title, align='Left')
+    if text in (None, False, 'escape') or not str(text).strip():
+        return None
+    return str(text).strip()
 
 
 def ensure_session(display, prompt=False):
@@ -305,7 +267,7 @@ def ensure_session(display, prompt=False):
     ready = bool(getattr(display, '_lobby_ready_online', False))
     if current is not None and current.auth_failed:
         display._lobby_account_session = None
-        display._lobby_chat_status = 'CONNEXION AU COMPTE REQUISE'
+        display._lobby_chat_status = 'online-account-required'
     if current is not None and not current.stopped.is_set():
         if current.visible == ready:
             return current
@@ -330,7 +292,7 @@ def ensure_session(display, prompt=False):
             finally:
                 display._lobby_auth_open = False
         if not session:
-            display._lobby_chat_status = 'CONNEXION AU COMPTE REQUISE'
+            display._lobby_chat_status = 'online-account-required'
             return None
         display._lobby_account_session = session
         account = session['user']
@@ -345,10 +307,13 @@ def ensure_session(display, prompt=False):
         import atexit
         atexit.register(current.stop)
         return current
-    except Exception:
-        display._lobby_chat_status = 'CHAT INDISPONIBLE'
+    except Exception as error:
+        display._lobby_chat_status = 'online-chat-unavailable'
+        import traceback
+        display.logs.warning('Online games : session unavailable ({}) {}'.format(
+            type(error).__name__, ' | '.join(traceback.format_exc(limit=-3).splitlines())))
         if prompt:
-            display.message(['Chat indisponible : vérifier Internet et python3-websocket.'])
+            display.message([display.lang.translate('online-chat-unavailable-check')])
         # Aucun mot de passe ni jeton dans les logs.
         print('[LOBBY PRESENCE] Connexion au compte indisponible', flush=True)
         return None
@@ -386,100 +351,69 @@ def pump_presence(display):
             display._lobby_chat_unread = min(99, display._lobby_chat_unread + 1)
 
 
-QUICK_REPLIES = (
-    'Salut !',
-    'Tu veux jouer avec moi ?',
-    'Oui, je suis prêt.',
-    'Attends 2 minutes.',
-    'Pas maintenant, merci.',
-    'Merci, à bientôt !',
-)
+# Keys of the translations of the quick replies
+QUICK_REPLIES = ('online-reply-1', 'online-reply-2', 'online-reply-3',
+                 'online-reply-4', 'online-reply-5', 'online-reply-6')
 
 
-def choose_quick_reply(display, keys, client, seen_events, recipient_id, recipient):
-    """Choix avec les memes entrees GPIO que les menus de la borne."""
+def choose_quick_reply(display, client, recipient_id, recipient):
+    """
+    A quick reply chosen in a menu of the game (its look, its inputs). None : given up
+    """
+    items = [{'id': 'reply{}'.format(index), 'action': 'reply', 'text': text, 'shortcut': 'F{}'.format(index + 1)}
+             for index, text in enumerate(QUICK_REPLIES)]
+    back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
+    title = display.lang.translate('online-message-for').format(name=recipient)
+    choice = display.run_menu('online_quick', items + [back], items + [back], title=title).get('id')
+    if choice == 'back':
+        return None
+    status, ident, players, events = client.snapshot()
+    if status != 'online-connected' or not any(p.get('id') == recipient_id for p in players):
+        display.message([display.lang.translate('online-player-gone')])
+        return None
+    # Sent in the language of the borne which writes it
+    return display.lang.translate(QUICK_REPLIES[int(choice[5:])])
+
+
+def show(display):
     import pygame
-    up, down, left, right, enter, escape = keys
-    selected = 0
-    while True:
-        _new_events(display, client, seen_events)
-        status, ident, players, events = client.snapshot()
-        if status != 'CONNECTE' or not any(p.get('id') == recipient_id for p in players):
-            display.message(['Joueur deconnecte : aucun message envoye.'])
-            return None
-        w, h = display.screen.get_size()
-        gold, white, grey = (245, 189, 55), (238, 240, 245), (162, 176, 194)
-        display.screen.fill((11, 19, 32))
-        font = pygame.font.Font(None, max(18, int(h * .042)))
-        title = pygame.font.Font(None, max(22, int(h * .05)))
-
-        def text(value, x, y, width, color=white, police=None):
-            police = police or font
-            while value and police.size(value)[0] > width:
-                value = value[:-1]
-            display.screen.blit(police.render(value, True, color), (int(x), int(y)))
-
-        text('REPONSES RAPIDES', w*.08, h*.055, w*.84, gold, title)
-        text('MESSAGE POUR ' + recipient, w*.08, h*.13, w*.84, grey)
-        zones = {}
-        choices = list(QUICK_REPLIES) + ['RETOUR SANS ENVOYER']
-        for i, label in enumerate(choices):
-            rect = pygame.Rect(int(w*.08), int(h*(.22+i*.091)), int(w*.84), int(h*.075))
-            zones['quick|' + str(i)] = rect
-            pygame.draw.rect(display.screen, (130, 91, 26) if i == selected else (23, 40, 61),
-                             rect, border_radius=6)
-            text(label, rect.x+12, rect.y+int(h*.016), rect.width-24)
-        hint = pygame.font.Font(None, max(15, int(h*.029)))
-        text('Haut/bas : choisir | Valider : envoyer | Retour : annuler',
-             w*.08, h*.91, w*.84, grey, hint)
-        display.update_screen()
-        key = display.rpi.listen_inputs(['arrows', 'fx', 'alpha'],
-                                       ['enter', 'escape', 'single-click'], timeout=150)
-        clicked = display.is_clicked(zones, key)
-        if clicked:
-            index = int(clicked.split('|', 1)[1])
-            return QUICK_REPLIES[index] if index < len(QUICK_REPLIES) else None
-        if key in escape:
-            return None
-        if key in up or key in down:
-            selected = (selected + (-1 if key in up else 1)) % len(choices)
-        elif key in enter:
-            return QUICK_REPLIES[selected] if selected < len(QUICK_REPLIES) else None
-
-
-def show(display, keys):
-    import pygame
-    up, down, left, right, enter, escape = keys
+    translate = display.lang.translate
+    colors = display.colorset
+    buttons = shortcuts(display, 'online_chat')
+    lobby = shortcuts(display, 'online_lobby')
     if not getattr(display, '_lobby_ready_online', False):
-        display.message(['F2 : active PRET A JOUER EN LIGNE pour utiliser le chat'])
+        display.message([translate('online-chat-needs-ready').format(key=lobby.get('ready', ('F8',))[0])])
         return
     client = ensure_session(display, prompt=True)
     if client is None:
         return
-    name = client.name
     display._lobby_chat_open = True
     display._lobby_chat_unread = 0
     selected = None
     action_index = 0
     resolved = display._lobby_chat_resolved
     seen_events = display._lobby_chat_seen
-    note = 'Selectionne un joueur puis ECRIRE ou INVITER.'
+    note = translate('online-chat-hint')
+    # Buttons at the bottom, in this order (left / right go from one to the next)
+    order = [name for name in ('write', 'quick', 'invite', 'accept', 'refuse', 'back') if name in buttons]
+    keys = {buttons[name][0]: name for name in buttons if buttons[name][0]}
     try:
         while True:
             for event in _new_events(display, client, seen_events):
                 kind = event.get('type')
                 if kind == 'error':
-                    note = event.get('message', 'Erreur envoi')
+                    note = event.get('message', translate('online-send-error'))
                 elif kind == 'reply':
-                    note = event.get('name', '?') + (' : invitation acceptee.' if event.get('answer') == 'accept' else ' : invitation refusee.')
+                    note = translate('online-invitation-accepted' if event.get('answer') == 'accept'
+                                     else 'online-invitation-refused').format(name=event.get('name', '?'))
                 elif event.get('outgoing') and kind == 'chat':
-                    note = 'Message envoye.'
+                    note = translate('online-message-sent')
                 elif event.get('outgoing') and kind == 'invite':
-                    note = 'Invitation envoyee - en attente de reponse.'
+                    note = translate('online-invitation-sent')
             status, ident, players, events = client.snapshot()
             if client.auth_failed:
                 display._lobby_account_session = None
-                display.message(['Session expirée : reconnectez-vous à votre compte.'])
+                display.message([translate('online-session-expired')])
                 return
             players = [p for p in players if isinstance(p, dict) and p.get('id') != ident]
             ids = [p['id'] for p in players]
@@ -493,56 +427,56 @@ def show(display, keys):
                     resolved.add(e.get('invitation'))
             pending = [e for e in pending if e.get('invitation') not in resolved]
             invitation = pending[0] if pending else None
-            w, h = display.screen.get_size()
-            display.screen.fill((11, 19, 32))
-            gold, white, grey = (245, 189, 55), (238, 240, 245), (162, 176, 194)
-            font = pygame.font.Font(None, max(16, int(h * .033)))
-            title = pygame.font.Font(None, max(24, int(h * .055)))
 
-            def text(value, x, y, width, color=white, police=None):
-                police = police or font
-                value = ' '.join(str(value).split())
-                while value and police.size(value)[0] > width:
-                    value = value[:-1]
-                display.screen.blit(police.render(value, True, color), (int(x), int(y)))
-
-            text('JOUEURS ET CHAT', w*.03, h*.035, w*.94, gold, title)
-            text(client.name + ' | ' + status, w*.03, h*.11, w*.71, grey)
+            w, h = display.res['x'], display.res['y']
+            display.display_background()
+            radius = int(h * .012)
+            display.blit_text2('online-chat-title', pygame.Rect(int(w*.03), int(h*.02), int(w*.94), int(h*.08)),
+                               colors['menu-text-white'], align='Left')
+            draw_line(display, client.name + ' | ' + translate(status),
+                      pygame.Rect(int(w*.03), int(h*.105), int(w*.70), int(h*.05)), colors['menu-text-white'])
             zones = {}
-            logout_rect = pygame.Rect(int(w*.76), int(h*.105), int(w*.21), int(h*.05))
-            zones['F6'] = logout_rect
-            pygame.draw.rect(display.screen, (30,51,76), logout_rect, border_radius=5)
-            text('F6 : DECONNEXION', logout_rect.x+5, logout_rect.y+3, logout_rect.width-10)
-            pygame.draw.rect(display.screen, (23, 40, 61),
-                             (int(w*.03), int(h*.18), int(w*.30), int(h*.55)), border_radius=8)
-            text('JOUEURS CONNECTES', w*.045, h*.20, w*.27, gold)
+            if 'logout' in buttons:
+                logout_rect = pygame.Rect(int(w*.76), int(h*.105), int(w*.21), int(h*.05))
+                zones['logout'] = logout_rect
+                display.new_blit_rect2(logout_rect, colors['menu-buttons'], corners='All', border_radius=radius, alpha=255)
+                draw_line(display, button_text(display, buttons['logout']), logout_rect.inflate(-10, -6),
+                          colors['menu-text-black'], align='Center')
+            players_rect = pygame.Rect(int(w*.03), int(h*.18), int(w*.30), int(h*.55))
+            display.new_blit_rect2(players_rect, colors['menu-header'], corners='All', border_radius=radius, alpha=255)
+            # Text of a panel : menu-text ; of a button or of the line chosen : menu-text-black
+            draw_line(display, translate('online-players-connected'),
+                      pygame.Rect(int(w*.045), int(h*.195), int(w*.27), int(h*.045)), colors['menu-text'])
             offset = max(0, ids.index(selected)-7) if selected in ids else 0
             for row, player in enumerate(players[offset:offset+8]):
                 rect = pygame.Rect(int(w*.04), int(h*(.26+row*.055)), int(w*.28), int(h*.049))
                 zones['player|'+player['id']] = rect
                 if player['id'] == selected:
-                    pygame.draw.rect(display.screen, (130, 91, 26), rect, border_radius=5)
-                text(player['name'], rect.x+6, rect.y+3, rect.width-12)
+                    display.new_blit_rect2(rect, colors['menu-selected'], corners='All', border_radius=radius, alpha=255)
+                draw_line(display, player['name'], rect.inflate(-12, -8),
+                          colors['menu-text-black'] if player['id'] == selected else colors['menu-text'])
             if not players:
-                text('Aucun autre joueur', w*.045, h*.29, w*.27, grey)
-            pygame.draw.rect(display.screen, (23, 40, 61),
-                             (int(w*.35), int(h*.18), int(w*.62), int(h*.55)), border_radius=8)
+                draw_line(display, translate('online-no-other-player'),
+                          pygame.Rect(int(w*.045), int(h*.27), int(w*.27), int(h*.045)), colors['menu-inactive'])
+            log_rect = pygame.Rect(int(w*.35), int(h*.18), int(w*.62), int(h*.55))
+            display.new_blit_rect2(log_rect, colors['menu-header'], corners='All', border_radius=radius, alpha=255)
             lines = []
             for event in events:
                 kind = event.get('type')
-                who = 'Moi' if event.get('outgoing') else event.get('name', '?')
+                who = translate('online-me') if event.get('outgoing') else event.get('name', '?')
                 if kind in ('chat', 'invite'):
                     dest = next((p['name'] for p in players if p['id'] == event.get('to')), '?')
-                    prefix = ('Moi -> '+dest) if event.get('outgoing') else who
+                    prefix = (who + ' -> ' + dest) if event.get('outgoing') else who
                     lines.append(prefix + ': ' + event.get('text', ''))
                 elif kind == 'reply':
-                    lines.append(who + (' : invitation acceptee' if event.get('answer') == 'accept'
-                                       else ' : invitation refusee'))
+                    lines.append(translate('online-invitation-accepted' if event.get('answer') == 'accept'
+                                           else 'online-invitation-refused').format(name=who))
                 elif kind == 'joined':
-                    lines.append(event.get('name', '?') + ' rejoint le salon.')
+                    lines.append(translate('online-player-joined').format(name=event.get('name', '?')))
                 elif kind == 'error':
-                    lines.append(event.get('message', 'Erreur'))
+                    lines.append(event.get('message', translate('online-send-error')))
             # Le journal contient seulement les messages envoyes/reçus par cette borne.
+            font = display.get_font(int(h * .033))
             wrapped = []
             for line in lines:
                 words, current = line.split(), ''
@@ -556,79 +490,75 @@ def show(display, keys):
                 if current:
                     wrapped.append(current)
             for row, line in enumerate(wrapped[-10:]):
-                text(line, w*.37, h*(.21+row*.047), w*.58)
+                draw_line(display, line, pygame.Rect(int(w*.37), int(h*(.20+row*.051)), int(w*.58), int(h*.047)),
+                          colors['menu-text'], size=h*.033)
             if invitation:
-                note = invitation.get('name', '?') + ' te propose une partie : F3 accepter / F4 refuser'
-            elif note.startswith('Selectionne'):
-                note = 'Selectionne un joueur puis ECRIRE ou INVITER.'
-            text(note, w*.03, h*.755, w*.94, gold)
-            buttons = [('F1', 'ECRIRE'), ('F5', 'REPONSES RAPIDES'), ('F2', 'INVITER'),
-                       ('F3', 'ACCEPTER'), ('F4', 'REFUSER'), ('back', 'RETOUR')]
-            for i, (key, label) in enumerate(buttons):
+                note = translate('online-invitation-received').format(
+                    name=invitation.get('name', '?'), accept=buttons.get('accept', ('',))[0] or '',
+                    refuse=buttons.get('refuse', ('',))[0] or '')
+            draw_line(display, note, pygame.Rect(int(w*.03), int(h*.745), int(w*.94), int(h*.05)), colors['menu-text-white'])
+            for i, name in enumerate(order):
                 rect = pygame.Rect(int(w*(.03+(i%3)*.32)), int(h*(.805+(i//3)*.08)), int(w*.30), int(h*.068))
-                zones[key] = rect
-                pygame.draw.rect(display.screen, (130, 91, 26) if i == action_index else (30, 51, 76),
-                                 rect, border_radius=6)
-                text(label, rect.x+7, rect.y+int(h*.02), rect.width-14)
-            text('Haut/bas : joueur | Gauche/droite : action | Entree : valider | Echap : retour',
-                 w*.03, h*.965, w*.94, grey)
+                zones[name] = rect
+                display.new_blit_rect2(rect, colors['menu-selected'] if i == action_index else colors['menu-buttons'],
+                                       corners='All', border_radius=radius, alpha=255)
+                draw_line(display, button_text(display, buttons[name]), rect.inflate(-14, -14),
+                          colors['menu-text-black'], align='Center')
+            draw_line(display, translate('online-chat-keys'), pygame.Rect(int(w*.03), int(h*.955), int(w*.94), int(h*.04)),
+                      colors['menu-text-white'])
             display.update_screen()
             key = display.rpi.listen_inputs(['arrows', 'fx', 'alpha'],
                                            ['enter', 'escape', 'space', 'single-click'], timeout=150)
             clicked = display.is_clicked(zones, key)
             if clicked:
                 key = clicked
-            if key == 'F6':
+            elif key in keys:
+                key = keys[key]
+            if key == 'logout':
                 from include.caccount import logout
                 logout(display)
                 return
-            if key in escape or key == 'back':
+            if key in ESCAPE_KEYS or key == 'back':
                 return
             if isinstance(key, str) and key.startswith('player|'):
                 selected = key.split('|', 1)[1]
                 continue
-            if key in up or key in down:
+            if key in UP_KEYS or key in DOWN_KEYS:
                 if ids:
                     index = ids.index(selected) if selected in ids else 0
-                    selected = ids[(index + (-1 if key in up else 1)) % len(ids)]
+                    selected = ids[(index + (-1 if key in UP_KEYS else 1)) % len(ids)]
                 continue
-            if key in left or key in right:
-                action_index = (action_index + (-1 if key in left else 1)) % len(buttons)
+            if key in LEFT_KEYS or key in RIGHT_KEYS:
+                action_index = (action_index + (-1 if key in LEFT_KEYS else 1)) % len(order)
                 continue
-            if key in enter:
-                key = buttons[action_index][0]
-            if key == 'back':
-                return
-            if key in ('F1', 'F2', 'F5'):
+            if key in ENTER_KEYS:
+                key = order[action_index]
+            if key in ('write', 'invite', 'quick'):
                 if not selected:
-                    note = 'Aucun joueur selectionne.'
+                    note = translate('online-no-player-selected')
                     continue
-                content = 'Salut, tu veux jouer avec moi ?'
-                if key == 'F1':
-                    recipient = next((p['name'] for p in players if p['id'] == selected), '?')
-                    content = compose_message(display, keys, client, seen_events, recipient)
-                    if content is None:
-                        continue
-                elif key == 'F5':
-                    recipient = next((p['name'] for p in players if p['id'] == selected), '?')
-                    content = choose_quick_reply(display, keys, client, seen_events, selected, recipient)
-                    if content is None:
-                        continue
-                ok = client.command({'type': 'invite' if key == 'F2' else 'chat',
+                recipient = next((p['name'] for p in players if p['id'] == selected), '?')
+                content = translate('online-invitation-text')
+                if key == 'write':
+                    content = compose_message(display, recipient)
+                elif key == 'quick':
+                    content = choose_quick_reply(display, client, selected, recipient)
+                if content is None:
+                    continue
+                ok = client.command({'type': 'invite' if key == 'invite' else 'chat',
                                      'to': selected, 'text': content})
-                note = 'Envoi en cours...' if ok else 'Chat deconnecte : message non envoye.'
-            elif key in ('F3', 'F4'):
+                note = translate('online-sending' if ok else 'online-chat-disconnected')
+            elif key in ('accept', 'refuse'):
                 if not invitation:
-                    note = 'Aucune invitation en attente.'
+                    note = translate('online-no-invitation')
                     continue
                 ok = client.command({'type': 'reply', 'invitation': invitation['invitation'],
-                                     'answer': 'accept' if key == 'F3' else 'refuse'})
+                                     'answer': 'accept' if key == 'accept' else 'refuse'})
                 if ok:
                     resolved.add(invitation['invitation'])
-                    note = ('Invitation acceptee : retour puis creer/rejoindre la partie.'
-                            if key == 'F3' else 'Invitation refusee.')
+                    note = translate('online-you-accepted' if key == 'accept' else 'online-you-refused')
                 else:
-                    note = 'Chat deconnecte : reponse non envoyee.'
+                    note = translate('online-chat-disconnected')
     finally:
         display._lobby_chat_open = False
         display._lobby_chat_unread = 0

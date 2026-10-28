@@ -686,6 +686,11 @@ class Craspberry():
         delay until it shows its result (Screen.update_screen, debug level)
         """
         key = self.read_inputs(*args, **kwargs)
+        if kwargs.get('timeout', 0) > 0:
+            # The delay given ends with this reading : left running (a key read before it), it
+            # ended the next reading, of another screen, as if its own delay had passed (False)
+            pygame.time.set_timer(USEREVENT, 0)
+            pygame.event.clear(USEREVENT)
         if key not in (None, False):
             self.input_time = time.perf_counter()
         return key

@@ -100,7 +100,7 @@ function cleanUser() {
   }
 }
 function screens() {
-  const menus = Object.keys(merged().menus || {}).filter(n => !['favorite_save', 'favorite_players', 'favorite_game', 'question', 'editor_games'].includes(n));
+  const menus = Object.keys(merged().menus || {}).filter(n => !['favorite_save', 'favorite_players', 'favorite_game', 'question', 'editor_games', 'online_lobby', 'online_chat'].includes(n));
   const own = menus.filter(n => !FILE_MENUS.includes(n) && !GAME_SCREENS.includes(n));
   // Les ecrans du jeu (liste des jeux, options, joueurs) : plus tard
   return FILE_MENUS.concat(own);

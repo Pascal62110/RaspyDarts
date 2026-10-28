@@ -4391,9 +4391,10 @@ class Screen(pygame.Surface):
             wheel.append(character)
         return wheel + [self.KNOB_DELETE, self.KNOB_OK]
 
-    def typed_value(self, v_type, value, v_min, v_max, character=None, align='Center', text=None, zero=False, knob_start=None):
+    def typed_value(self, v_type, value, v_min, v_max, character=None, align='Center', text=None, zero=False, knob_start=None, hidden=False):
         '''
         Input value item
+        hidden : a password, shown as stars
         knob_start : a number typed from nothing (a new value by the keyboard) : the knob
         starts from it (the value of the option)
 
@@ -4470,7 +4471,8 @@ class Screen(pygame.Surface):
                 self.new_blit_rect2(v_rect, self.colorset['menu-selected'], corners='All', border_radius=inside_border_radius, alpha=255)
 
             # The choice of the wheel after the text, between brackets : not written yet
-            shown = value if wheel_at is None else f"{value}[{wheel[wheel_at]}]"
+            shown = '*' * len(value) if hidden else value
+            shown = shown if wheel_at is None else f"{shown}[{wheel[wheel_at]}]"
             self.blit_text2(shown, v_rect, self.colorset['menu-text-black'], align=align)
 
             self.update_screen(rect_array=[rect] + ([panel] if keyboard else []))
@@ -7957,456 +7959,231 @@ class Screen(pygame.Surface):
             return button
 
     def chat_menu(self):
+        '''
+        Chat between the players online (include/cchat.py)
+        '''
         from include.cchat import show
-        return show(self, (UP_KEYS, DOWN_KEYS, LEFT_KEYS, RIGHT_KEYS, ENTER_KEYS, ESCAPE_KEYS))
+        return show(self)
 
     def network_lobby(self):
-        """
+        '''
         Online games : rooms waiting for a player and games being played, chat between the
-        players. Returns netjoin (self.lobby_game : the room chosen), netcreate, or None
-        """
-        selected = 0
-        index_partie = 0
-        selection_liste = False
-        self.lobby_game = None
-        actions = ['netjoin', 'netcreate']
-
+        players. Returns netjoin (self.lobby_game : the room chosen), netcreate, or None.
+        The keys and texts of its buttons : menu online_lobby of the files of menus
+        '''
         import socket
         from include import caccount
-        from include.crooms import active_rooms, merge_rooms, joinable, label, colors
+        from include.cchat import draw_line, shortcuts, button_text, toggle_ready
+        from include.crooms import active_rooms, merge_rooms, joinable, label, color
 
         caccount.set_server(self.config.get_value('SectionGlobals', 'online-server', False))
-
         # Rooms of the server of the online games, as the accounts and the chat
         host = caccount.SERVER.split(':')[0]
         port = 25006
+        translate = self.lang.translate
+        buttons = shortcuts(self, 'online_lobby')
+        order = [name for name in ('ready', 'chat', 'create', 'back') if name in buttons]
+        keys = {buttons[name][0]: name for name in buttons if buttons[name][0]}
+        self.lobby_game = None
+        # Line of the list chosen (None : the buttons on the right), button chosen
+        line = None
+        selected = 0
+        # status : key of the translations
+        state = {'status': 'online-connecting', 'rooms': [], 'busy': False, 'last': 0}
 
-        etat = {
-            'statut': 'CONNEXION...',
-            'parties': [],
-            'busy': False,
-            'dernier': 0
-        }
-
-        def actualiser():
+        def refresh():
             try:
                 with socket.create_connection((host, port), timeout=3) as sock:
                     sock.settimeout(3)
                     sock.sendall(b'{"REQUEST":"LIST"}')
-
                     data = b''
                     while b'|' not in data:
-                        morceau = sock.recv(4096)
-                        if not morceau:
+                        part = sock.recv(4096)
+                        if not part:
                             break
-                        data += morceau
+                        data += part
                         if len(data) > 262144:
                             raise ValueError('Reponse trop volumineuse')
-
-                    reponse = json.loads(
-                        data.split(b'|', 1)[0].decode('utf-8')
-                    )
-
-                if isinstance(reponse, list):
-                    attente = [p for p in reponse if isinstance(p, dict)]
-                elif (isinstance(reponse, dict)
-                      and reponse.get('RESPONSE') == 'EMPTY'):
-                    attente = []
+                    answer = json.loads(data.split(b'|', 1)[0].decode('utf-8'))
+                if isinstance(answer, list):
+                    waiting = [room for room in answer if isinstance(room, dict)]
+                elif isinstance(answer, dict) and answer.get('RESPONSE') == 'EMPTY':
+                    waiting = []
                 else:
                     raise ValueError('Reponse inconnue')
-
                 try:
-                    en_cours = active_rooms(host)
-                    etat['statut'] = 'CONNECTE'
+                    playing = active_rooms(host)
+                    state['status'] = 'online-connected'
                 except Exception:
-                    en_cours = []
-                    etat['statut'] = 'CONNECTE - EN COURS INDISPONIBLES'
-                etat['parties'] = merge_rooms(attente, en_cours, host, etat['parties'])
-
-            except Exception as erreur:
-                etat['statut'] = 'HORS LIGNE'
-                etat['parties'] = []
-                print('[LOBBY]', erreur, flush=True)
-
+                    playing = []
+                    state['status'] = 'online-connected-no-live'
+                state['rooms'] = merge_rooms(waiting, playing, host, state['rooms'])
+            except Exception as error:
+                state['status'] = 'online-offline'
+                state['rooms'] = []
+                self.logs.warning(f"Online games : rooms of {host} unavailable ({error})")
             finally:
-                etat['busy'] = False
+                state['busy'] = False
 
+        colors = self.colorset
+        w, h = self.res['x'], self.res['y']
+        radius = int(h * .012)
         while True:
-            maintenant = time.monotonic()
-            if host and not etat['busy'] and (
-                etat['dernier'] == 0
-                or maintenant - etat['dernier'] >= 3
-            ):
-                etat['busy'] = True
-                etat['dernier'] = maintenant
-                threading.Thread(
-                    target=actualiser, daemon=True
-                ).start()
-            w, h = self.screen.get_size()
-            # Background of the theme
-            self.display_background()
-
-            titre = pygame.font.Font(None, max(32, int(h * .072)))
-            texte = pygame.font.Font(None, max(22, int(h * .041)))
-            petit = pygame.font.Font(None, max(18, int(h * .031)))
-
-            or_ = (245, 189, 55)
-            blanc = (238, 240, 245)
-            gris = (162, 176, 194)
-
-            def afficher(msg, x, y, police, couleur):
-                img = police.render(msg, True, couleur)
-                self.screen.blit(img, (int(x), int(y)))
-
-            bandeau = pygame.Surface((w, int(h * .18)), pygame.SRCALPHA)
-            bandeau.fill((8, 12, 18, 130))
-            self.screen.blit(bandeau, (0, 0))
-            pygame.draw.rect(self.screen, or_,
-                             (0, int(h * .18), w, 3))
-
-            afficher("PARTIE EN RESEAU",
-                     w * .045, h * .058, titre, or_)
-
-            gauche = pygame.Rect(int(w*.04), int(h*.24),
-                                 int(w*.72), int(h*.61))
-            pygame.draw.rect(self.screen, (23, 40, 61),
-                             gauche, border_radius=12)
-            pygame.draw.rect(self.screen, (80, 102, 128),
-                             gauche, 2, border_radius=12)
-
-            afficher("SERVEURS ET PARTIES",
-                     w*.065, h*.29, texte, or_)
-
-            afficher("SERVEUR : " + (host or "NON CONFIGURE"),
-                     w*.065, h*.365, petit, blanc)
-
-            couleur_etat = (
-                (90, 230, 135) if etat['statut'].startswith('CONNECTE')
-                else (245, 100, 95)
-                if etat['statut'] == 'HORS LIGNE'
-                else gris
-            )
-
-            afficher(etat['statut'],
-                     w*.065, h*.412, petit, couleur_etat)
-
-            parties = list(etat['parties'])[:12]
-            zones = {}
-            if index_partie >= len(parties):
-                index_partie = 0
-
-            if etat['statut'] == 'CONNECTE' and not parties:
-                afficher("AUCUNE PARTIE DISPONIBLE",
-                         w*.065, h*.53, petit, gris)
-
-
-            # 12 rooms, a click joins
-            police_ligne = pygame.font.Font(
-                None, max(17, int(h*.027))
-            )
-
-            for i in range(12):
-                y = .453 + i * .0327
-
-                zone = pygame.Rect(
-                    int(w*.059), int(h*y),
-                    int(w*.69), int(h*.031)
-                )
-
-                if i >= len(parties):
-                    pygame.draw.rect(
-                        self.screen, (30, 46, 65),
-                        zone, border_radius=4
-                    )
-                    afficher(
-                        "{:02d}   ---".format(i+1),
-                        zone.x+9, zone.y+2,
-                        police_ligne, gris
-                    )
-                    continue
-
-                partie = parties[i]
-                zones['partie|{}'.format(i)] = zone
-
-                try:
-                    joueurs = int(partie.get('PLAYERS', 0))
-                except (TypeError, ValueError):
-                    joueurs = 0
-
-                disponible = joinable(partie)
-                surligne = selection_liste and index_partie == i
-
-                fond_ligne, couleur_ligne = colors(partie, surligne)
-
-                pygame.draw.rect(
-                    self.screen, fond_ligne,
-                    zone, border_radius=4
-                )
-
-                ligne = label(partie, i)
-                taille = max(17, int(h*.027))
-                police_adaptee = pygame.font.Font(None, taille)
-                while taille > 12 and police_adaptee.size(ligne)[0] > zone.width-18:
-                    taille -= 1
-                    police_adaptee = pygame.font.Font(None, taille)
-                if police_adaptee.size(ligne)[0] > zone.width-18:
-                    while ligne and police_adaptee.size(ligne+'...')[0] > zone.width-18:
-                        ligne = ligne[:-1]
-                    ligne += '...'
-                afficher(ligne, zone.x+9, zone.y+2, police_adaptee, couleur_ligne)
-
-            # Disponibilite volontaire : aucun joueur visible sans ce bouton.
+            now = time.monotonic()
+            if host and not state['busy'] and (state['last'] == 0 or now - state['last'] >= 3):
+                state['busy'] = True
+                state['last'] = now
+                threading.Thread(target=refresh, daemon=True).start()
             ready = bool(getattr(self, '_lobby_ready_online', False))
-            ready_rect = pygame.Rect(int(w*.79), int(h*.23), int(w*.18), int(h*.13))
-            zones['ready'] = ready_rect
-            pygame.draw.rect(self.screen,
-                             (50, 110, 65) if ready else (30, 51, 76),
-                             ready_rect, border_radius=10)
-            pygame.draw.rect(self.screen, or_ if not selection_liste and selected == 0 else gris,
-                             ready_rect, 3 if selected == 0 else 1, border_radius=10)
-            afficher('NE PLUS ETRE' if ready else 'PRET A JOUER',
-                     ready_rect.x+10, ready_rect.y+12, petit, blanc)
-            afficher('DISPONIBLE' if ready else 'EN LIGNE (F8)',
-                     ready_rect.x+10, ready_rect.y+int(h*.065), petit, blanc)
+            rooms = list(state['rooms'])[:12]
+            if line is not None and line >= len(rooms):
+                line = len(rooms) - 1 if rooms else None
 
-            # Chat of the players
-            chat_rect = pygame.Rect(int(w*.79), int(h*.39), int(w*.18), int(h*.11))
-            zones['chat'] = chat_rect
-            pygame.draw.rect(self.screen,
-                             (143, 96, 24) if not selection_liste and selected == 1 else (30, 51, 76),
-                             chat_rect, border_radius=10)
-            pygame.draw.rect(self.screen, or_, chat_rect, 2, border_radius=10)
-            afficher('JOUEURS', chat_rect.x+12, chat_rect.y+12, petit, blanc)
-            afficher('CHAT (F6)', chat_rect.x+12, chat_rect.y+int(h*.06), petit, blanc)
+            # Background of the theme, title, list of the rooms on the left, buttons on the right
+            self.display_background()
+            self.blit_text2('online-title', pygame.Rect(int(w*.045), int(h*.04), int(w*.9), int(h*.1)),
+                            colors['menu-text-white'], align='Left')
+            panel = pygame.Rect(int(w*.04), int(h*.21), int(w*.72), int(h*.66))
+            self.new_blit_rect2(panel, colors['menu-header'], corners='All', border_radius=radius, alpha=255)
+            draw_line(self, translate('online-server').format(server=host or '-'),
+                      pygame.Rect(int(w*.06), int(h*.23), int(w*.68), int(h*.05)), colors['menu-text'])
+            status_color = colors['menu-ok'] if state['status'].startswith('online-connected') \
+                else colors['menu-ko'] if state['status'] == 'online-offline' else colors['menu-inactive']
+            self.new_blit_rect2(pygame.Rect(int(w*.06), int(h*.29), int(w*.02), int(h*.035)), status_color,
+                                corners='All', border_radius=radius, alpha=255)
+            draw_line(self, translate(state['status']), pygame.Rect(int(w*.09), int(h*.285), int(w*.65), int(h*.045)),
+                      colors['menu-text'])
+            zones = {}
+            for index in range(12):
+                zone = pygame.Rect(int(w*.059), int(h*(.345 + index * .043)), int(w*.69), int(h*.038))
+                if index >= len(rooms):
+                    self.new_blit_rect2(zone, colors['menu-inactive'], corners='All', border_radius=radius, alpha=255)
+                    draw_line(self, '{:02d}   ---'.format(index + 1), zone.inflate(-18, -8), colors['menu-text-black'])
+                    continue
+                zones['room|{}'.format(index)] = zone
+                self.new_blit_rect2(zone, colors[color(rooms[index], line == index)], corners='All',
+                                    border_radius=radius, alpha=255)
+                draw_line(self, label(rooms[index], index, translate), zone.inflate(-18, -8), colors['menu-text-black'])
+            if state['status'] == 'online-connected' and not rooms:
+                draw_line(self, translate('online-no-room'), pygame.Rect(int(w*.07), int(h*.35), int(w*.66), int(h*.04)),
+                          colors['menu-text'])
 
-            # Boutons de droite : plus de bouton REJOINDRE
-            creation = pygame.Rect(
-                int(w*.79), int(h*.53),
-                int(w*.18), int(h*.13)
-            )
-            zones['create'] = creation
-
-            couleur = (
-                (143, 96, 24) if not selection_liste
-                and selected == 2 else (30, 51, 76)
-            )
-            pygame.draw.rect(
-                self.screen, couleur,
-                creation, border_radius=10
-            )
-            pygame.draw.rect(
-                self.screen, or_,
-                creation, 2, border_radius=10
-            )
-            afficher(
-                "CREER", creation.x+15,
-                creation.y+15, texte, blanc
-            )
-            afficher(
-                "UNE PARTIE", creation.x+15,
-                creation.y+48, petit, blanc
-            )
-
-            retour = pygame.Rect(
-                int(w*.79), int(h*.70),
-                int(w*.18), int(h*.10)
-            )
-            zones['back'] = retour
-
-            pygame.draw.rect(
-                self.screen, (56, 66, 83),
-                retour, border_radius=9
-            )
-            afficher(
-                "RETOUR", retour.x+15,
-                retour.y+15, petit, blanc
-            )
-
-            afficher(
-                "VERT : EN ATTENTE / REJOINDRE - ROUGE : EN COURS",
-                w*.045, h*.92, petit, gris
-            )
-
+            for index, name in enumerate(order):
+                rect = pygame.Rect(int(w*.79), int(h*(.21 + index * .17)), int(w*.18), int(h*.14))
+                zones[name] = rect
+                chosen = line is None and selected == index
+                background = colors['menu-selected'] if chosen else \
+                    colors['menu-ok'] if name == 'ready' and ready else colors['menu-buttons']
+                self.new_blit_rect2(rect, background, corners='All', border_radius=radius, alpha=255)
+                shortcut, text = buttons[name]
+                if name == 'ready' and ready:
+                    text = 'online-not-ready'
+                draw_line(self, button_text(self, (shortcut, text)), rect.inflate(-16, -int(h*.08)),
+                          colors['menu-text-black'], align='Center')
+            draw_line(self, translate('online-legend'), pygame.Rect(int(w*.045), int(h*.9), int(w*.9), int(h*.045)),
+                      colors['menu-text-white'])
             self.update_screen()
 
-            key = self.rpi.listen_inputs(
-                ['arrows', 'fx', 'alpha'],
-                ['enter', 'escape', 'space', 'single-click'],
-                timeout=200
-            )
-
+            key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha'], ['enter', 'escape', 'space', 'single-click'],
+                                         timeout=200)
             clicked = self.is_clicked(zones, key)
             if clicked:
                 key = clicked
-
+            elif key in keys:
+                key = keys[key]
             if key in ESCAPE_KEYS or key == 'back':
                 return None
-
-            if key in ('ready', 'F8'):
-                from include.cchat import toggle_ready
+            if key in ENTER_KEYS:
+                key = 'room|{}'.format(line) if line is not None else order[selected]
+            if key == 'ready':
                 toggle_ready(self)
-                continue
-
-            if key in ('chat', 'F6'):
+            elif key == 'chat':
                 self.chat_menu()
-                continue
-
-            # Un clic sur la ligne rejoint directement la partie.
-            if isinstance(key, str) and key.startswith('partie|'):
-                try:
-                    n = int(key.split('|', 1)[1])
-                except ValueError:
-                    continue
-
-                if 0 <= n < len(parties):
-                    partie = parties[n]
-                    try:
-                        joueurs = int(partie.get('PLAYERS', 0))
-                    except (TypeError, ValueError):
-                        joueurs = 0
-
-                    if joinable(partie):
-                        self.lobby_game = dict(partie)
-                        return 'netjoin'
-                continue
-
-            if key in LEFT_KEYS and parties:
-                selection_liste = True
-                continue
-
-            if key in RIGHT_KEYS:
-                selection_liste = False
-                selected = 0
-                continue
-
-            if key in UP_KEYS:
-                if selection_liste and parties:
-                    index_partie = (
-                        index_partie - 1
-                    ) % len(parties)
-                else:
-                    selected = (selected - 1) % 4
-
-            elif key in DOWN_KEYS:
-                if selection_liste and parties:
-                    index_partie = (
-                        index_partie + 1
-                    ) % len(parties)
-                else:
-                    selected = (selected + 1) % 4
-
             elif key == 'create':
                 return 'netcreate'
-
-            elif key in ENTER_KEYS:
-                if selection_liste and parties:
-                    partie = parties[index_partie]
-                    try:
-                        joueurs = int(partie.get('PLAYERS', 0))
-                    except (TypeError, ValueError):
-                        joueurs = 0
-
-                    if joinable(partie):
-                        self.lobby_game = dict(partie)
-                        return 'netjoin'
-
-                elif selected == 0:
-                    from include.cchat import toggle_ready
-                    toggle_ready(self)
-                elif selected == 1:
-                    self.chat_menu()
-                elif selected == 2:
-                    return 'netcreate'
+            elif isinstance(key, str) and key.startswith('room|'):
+                # A click on a room waiting for a player joins it
+                index = int(key.split('|', 1)[1])
+                if 0 <= index < len(rooms) and joinable(rooms[index]):
+                    self.lobby_game = dict(rooms[index])
+                    return 'netjoin'
+            elif key in LEFT_KEYS and rooms:
+                line = 0 if line is None else line
+            elif key in RIGHT_KEYS:
+                line = None
+            elif key in UP_KEYS + DOWN_KEYS:
+                move = -1 if key in UP_KEYS else 1
+                if line is not None:
+                    line = (line + move) % len(rooms)
                 else:
-                    return None
+                    selected = (selected + move) % len(order)
 
     def lobby_presence_panel(self):
-        from include.cchat import ensure_session, pump_presence
+        '''
+        Panel of the players online (not shown yet : to be placed on a screen)
+        '''
+        from include.cchat import ensure_session, pump_presence, draw_line, shortcuts
+        translate = self.lang.translate
+        colors = self.colorset
         client = ensure_session(self)
         pump_presence(self)
         if client is None:
-            statut = getattr(self, '_lobby_chat_status', 'CHAT NON CONFIGURE')
-            ident, joueurs = None, []
+            status = getattr(self, '_lobby_chat_status', 'online-chat-unavailable')
+            ident, players = None, []
         else:
-            statut, ident, joueurs, _ = client.snapshot()
-        w, h = self.screen.get_size()
+            status, ident, players, _ = client.snapshot()
+        w, h = self.res['x'], self.res['y']
         rect = pygame.Rect(int(w*.24), int(h*.695), int(w*.29), int(h*.24))
-        panneau = pygame.Surface(rect.size, pygame.SRCALPHA)
         unread = getattr(self, '_lobby_chat_unread', 0)
-        # Unread messages : a soft green pulse, every 1.6 second
-        pulse = (1.0 + math.sin(time.monotonic() * math.tau / 1.6)) / 2.0
-        if unread:
-            panneau.fill((10, 100, 44, int(155 + 45*pulse)))
-        else:
-            panneau.fill((12, 16, 20, 225))
-        self.screen.blit(panneau, rect.topleft)
-        gold, blanc, gris = (235, 174, 35), (245, 245, 245), (170, 180, 190)
-        accent = (55, int(190 + 65*pulse), 110) if unread else gold
-        pygame.draw.rect(self.screen, accent, rect, 3 if unread else 2,
-                         border_radius=max(4, int(h*.012)))
-        marge = max(8, int(w*.008))
-
-        def afficher(message, y, taille, couleur):
-            message = ' '.join(str(message).split())
-            police = pygame.font.Font(None, max(10, int(taille)))
-            largeur = rect.width - 2*marge
-            if police.size(message)[0] > largeur:
-                while message and police.size(message + '...')[0] > largeur:
-                    message = message[:-1]
-                message += '...'
-            self.screen.blit(police.render(message, True, couleur), (rect.x+marge, int(y)))
-
-        titre = ('NOUVEAU MESSAGE ({})'.format(unread) if unread
-                 else 'JOUEURS EN LIGNE ({})'.format(len(joueurs)))
-        afficher(titre, rect.y+h*.01, h*.029, accent)
+        radius = max(4, int(h*.012))
+        # Unread messages : the colour of the theme for a success
+        self.new_blit_rect2(rect, colors['menu-ok'] if unread else colors['menu-header'], corners='All',
+                            border_radius=radius, alpha=255)
+        margin = max(8, int(w*.008))
+        title = translate('online-new-messages').format(count=unread) if unread \
+            else translate('online-players-online').format(count=len(players))
+        # Text of a panel : menu-text ; of a button (and of the panel when coloured) : menu-text-black
+        text_color = colors['menu-text-black'] if unread else colors['menu-text']
+        draw_line(self, title, pygame.Rect(rect.x+margin, int(rect.y+h*.01), rect.width-2*margin, int(h*.035)),
+                  text_color)
         self._lobby_presence_buttons = {}
-        if statut == 'CONNECTE':
-            joueurs = list(joueurs)[:26]
-            maximum = max(0, len(joueurs)-4)
-            depart = min(maximum, max(0, getattr(self, '_lobby_presence_offset', 0)))
-            self._lobby_presence_offset = depart
-            largeur_bouton = int(w*.065)
-            largeur_nom = rect.width - 3*marge - largeur_bouton
-            police = pygame.font.Font(None, max(12, int(h*.026)))
-            for ligne, joueur in enumerate(joueurs[depart:depart+4]):
-                nom = ' '.join(str(joueur.get('name', '?')).split())
-                if joueur.get('id') == ident:
-                    nom += ' (vous)'
-                prefixe = '{:02d}  '.format(depart+ligne+1)
-                if police.size(prefixe+nom)[0] > largeur_nom:
-                    while nom and police.size(prefixe+nom+'...')[0] > largeur_nom:
-                        nom = nom[:-1]
-                    nom += '...'
-                self.screen.blit(
-                    police.render(prefixe+nom, True, blanc),
-                    (rect.x+marge, int(rect.y+h*(.05+ligne*.033)))
-                )
-            if not joueurs:
-                afficher('AUCUN JOUEUR', rect.y+h*.07, h*.023, gris)
-            for cle, label, position, actif in (
-                ('lobby_online_up', 'HAUT', .052, depart > 0),
-                ('lobby_online_down', 'BAS', .117, depart < maximum)
-            ):
-                bouton = pygame.Rect(
-                    rect.right-marge-largeur_bouton,
-                    int(rect.y+h*position),
-                    largeur_bouton, int(h*.052)
-                )
-                pygame.draw.rect(self.screen, (35, 51, 68), bouton,
-                                 border_radius=4)
-                pygame.draw.rect(self.screen, gold if actif else gris,
-                                 bouton, 1, border_radius=4)
-                police_bouton = pygame.font.Font(None, max(10, int(h*.022)))
-                image = police_bouton.render(label, True, blanc if actif else gris)
-                self.screen.blit(image, image.get_rect(center=bouton.center))
-                self._lobby_presence_buttons[cle] = bouton
+        if status == 'online-connected':
+            players = list(players)[:26]
+            last = max(0, len(players)-4)
+            first = min(last, max(0, getattr(self, '_lobby_presence_offset', 0)))
+            self._lobby_presence_offset = first
+            button_width = int(w*.065)
+            name_width = rect.width - 3*margin - button_width
+            for row, player in enumerate(players[first:first+4]):
+                name = str(player.get('name', '?'))
+                if player.get('id') == ident:
+                    name += ' ' + translate('online-you')
+                draw_line(self, '{:02d}  {}'.format(first+row+1, name),
+                          pygame.Rect(rect.x+margin, int(rect.y+h*(.05+row*.033)), name_width, int(h*.03)),
+                          text_color)
+            if not players:
+                draw_line(self, translate('online-no-player'),
+                          pygame.Rect(rect.x+margin, int(rect.y+h*.07), rect.width-2*margin, int(h*.03)),
+                          colors['menu-inactive'])
+            for key, text, position, active in (('lobby_online_up', 'online-up', .052, first > 0),
+                                                ('lobby_online_down', 'online-down', .117, first < last)):
+                button = pygame.Rect(rect.right-margin-button_width, int(rect.y+h*position), button_width, int(h*.052))
+                self.new_blit_rect2(button, colors['menu-buttons'] if active else colors['menu-inactive'],
+                                    corners='All', border_radius=radius, alpha=255)
+                draw_line(self, translate(text), button.inflate(-6, -10), colors['menu-text-black'], align='Center')
+                self._lobby_presence_buttons[key] = button
         else:
-            afficher(statut, rect.y+h*.07, h*.022, gris)
-        unread = getattr(self, '_lobby_chat_unread', 0)
-        footer = '{} message(s) / invitation(s) - F7'.format(unread) if unread else 'CLIC / F7 : OUVRIR LE CHAT'
+            draw_line(self, translate(status), pygame.Rect(rect.x+margin, int(rect.y+h*.07), rect.width-2*margin, int(h*.03)),
+                      colors['menu-inactive'])
+        keys = shortcuts(self, 'online_lobby')
         if not getattr(self, '_lobby_ready_online', False):
-            footer = 'NON DISPONIBLE | F2 : SE RENDRE PRET'
-        afficher(footer, rect.bottom-h*.035, h*.022 if unread else h*.020, accent if unread else gris)
+            footer = translate('online-not-available').format(key=keys.get('ready', ('',))[0] or '')
+        elif unread:
+            footer = translate('online-unread').format(count=unread, key=keys.get('chat', ('',))[0] or '')
+        else:
+            footer = translate('online-open-chat').format(key=keys.get('chat', ('',))[0] or '')
+        draw_line(self, footer, pygame.Rect(rect.x+margin, int(rect.bottom-h*.04), rect.width-2*margin, int(h*.03)),
+                  text_color)
         return rect
 
 

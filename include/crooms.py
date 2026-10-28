@@ -59,19 +59,22 @@ def merge_rooms(waiting, active, host, previous=()):
     return ordered[:12]
 
 
-def label(room, index):
+def label(room, index, translate):
     game=str(room.get('GAMETYPE','?')).replace('_',' ')[:16]
     if room.get('LOBBY_LIVE'):
         import re
         names=[re.sub(r'^\d+\s*·\s*','',n) for n in room.get('LOBBY_NAMES',[])]
         versus=' VS '.join(names) if names else str(room.get('GAMENAME',''))
-        return '{:02d}  {} | {} | EN COURS'.format(index+1,game,versus)
+        return '{:02d}  {} | {} | {}'.format(index+1,game,versus,translate('online-room-playing'))
     creator=str(room.get('GAMECREATOR','?'))[:22]
-    status='EN ATTENTE - REJOINDRE' if joinable(room) else 'COMPLET'
+    status=translate('online-room-join' if joinable(room) else 'online-room-full')
     return '{:02d}  {} | {} | {}/2 | {}'.format(index+1,game,creator,count(room.get('PLAYERS')),status)
 
 
-def colors(room, selected=False):
-    if joinable(room):
-        return ((40,103,65) if selected else (29,77,49)),(146,255,179)
-    return ((111,43,48) if selected else (79,32,40)),(255,155,151)
+def color(room, selected=False):
+    """
+    Colour of the theme of the line of a room : joinable (menu-ok), being played or full (menu-ko)
+    """
+    if selected:
+        return 'menu-selected'
+    return 'menu-ok' if joinable(room) else 'menu-ko'

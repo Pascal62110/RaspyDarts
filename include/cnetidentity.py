@@ -28,7 +28,10 @@ def server_user(session):
 
 
 def wait_user(display, session):
-    import pygame
+    """
+    Account of the session checked by the server, while the screen says it (back : given up)
+    """
+    from include.caccount import wait_screen
     results = queue.Queue(maxsize=1)
     def worker():
         try:
@@ -36,29 +39,15 @@ def wait_user(display, session):
         except Exception:
             results.put((None, True))
     threading.Thread(target=worker, daemon=True).start()
-    clock = pygame.time.Clock()
     previous = getattr(display, '_lobby_auth_open', False)
     display._lobby_auth_open = True
     try:
-        while True:
-            try:
-                user, failed = results.get_nowait()
-                if failed:
-                    raise RuntimeError('Serveur inaccessible. Verifiez Internet puis reessayez.')
-                return user
-            except queue.Empty:
-                pass
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    raise RuntimeError('Verification annulee.')
-            w, h = display.screen.get_size()
-            display.screen.fill((11, 19, 32))
-            font = pygame.font.Font(None, max(22, int(h * .045)))
-            for index, line in enumerate(('PARTIE RESEAU', 'Verification de votre compte...', 'Echap : retour')):
-                image = font.render(line, True, (238, 240, 245))
-                display.screen.blit(image, ((w-image.get_width())//2, int(h*(.3+index*.13))))
-            display.update_screen()
-            clock.tick(30)
+        user, failed = wait_screen(display, ('online-title', 'online-checking-account', 'online-escape-back'), results)
+        if user is None and failed is None:
+            raise RuntimeError('online-check-cancelled')
+        if failed:
+            raise RuntimeError('online-error-unreachable')
+        return user
     finally:
         display._lobby_auth_open = previous
 
@@ -75,7 +64,7 @@ def network_players(display):
         try:
             user = wait_user(display, session)
         except RuntimeError as error:
-            display.message([str(error)], wait=2200)
+            display.message([display.lang.translate(str(error))], wait=2200)
             return 1, 'escape', False
         if user is not None:
             break
@@ -88,7 +77,7 @@ def network_players(display):
         accounts.forget_session()
         session = None
     else:
-        display.message(['Connexion au compte requise. Reessayez.'], wait=1800)
+        display.message([display.lang.translate('online-account-retry')], wait=1800)
         return 1, 'escape', False
     session = dict(session, user=user)
     current = getattr(display, '_lobby_chat_client', None)
@@ -99,8 +88,8 @@ def network_players(display):
     display._lobby_ready_online = True
     display._lobby_chat_retry = 0
     if ensure_session(display, prompt=False) is None:
-        display.message(['Connexion au salon impossible. Reessayez.'], wait=1800)
+        display.message([display.lang.translate('online-chat-impossible')], wait=1800)
         return 1, 'escape', False
     label = '{:03d} · {}'.format(user['id'], user['username'])
-    display.message(['Joueur reseau :', label], wait=1000)
+    display.message([display.lang.translate('online-network-player') + ' ' + label], wait=1000)
     return 1, [label], False

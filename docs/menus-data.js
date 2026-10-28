@@ -374,6 +374,69 @@ const MENUS_DATA = {
    "editor_games": {
     "layout": "grid",
     "columns": 4
+   },
+   "online_lobby": {
+    "buttons": [
+     {
+      "id": "ready",
+      "text": "online-ready",
+      "shortcut": "F8"
+     },
+     {
+      "id": "chat",
+      "text": "online-chat",
+      "shortcut": "F6"
+     },
+     {
+      "id": "create",
+      "text": "online-create",
+      "shortcut": "F3"
+     },
+     {
+      "id": "back",
+      "text": "back",
+      "shortcut": "escape"
+     }
+    ]
+   },
+   "online_chat": {
+    "buttons": [
+     {
+      "id": "write",
+      "text": "online-write",
+      "shortcut": "F1"
+     },
+     {
+      "id": "invite",
+      "text": "online-invite",
+      "shortcut": "F2"
+     },
+     {
+      "id": "accept",
+      "text": "online-accept",
+      "shortcut": "F3"
+     },
+     {
+      "id": "refuse",
+      "text": "online-refuse",
+      "shortcut": "F4"
+     },
+     {
+      "id": "quick",
+      "text": "online-quick",
+      "shortcut": "F5"
+     },
+     {
+      "id": "logout",
+      "text": "online-logout",
+      "shortcut": "F6"
+     },
+     {
+      "id": "back",
+      "text": "back",
+      "shortcut": "escape"
+     }
+    ]
    }
   }
  },
@@ -1460,12 +1523,11 @@ const MENUS_DATA = {
         },
         "shortcut": "F1",
         "exhibition": true,
-        "span": {
-         "rows": 5
-        },
-        "cell": {
-         "row": 0,
-         "column": 0
+        "place": {
+         "x": 0.274,
+         "y": 0.1519,
+         "width": 0.4547,
+         "height": 0.1407
         }
        },
        {
@@ -1473,13 +1535,11 @@ const MENUS_DATA = {
         "action": "network_join",
         "text": "game-type-master",
         "shortcut": "F2",
-        "span": {
-         "rows": 5,
-         "columns": 0.5
-        },
-        "cell": {
-         "row": 11,
-         "column": 0.5
+        "place": {
+         "x": 0.5026,
+         "y": 0.4537,
+         "width": 0.4089,
+         "height": 0.1231
         }
        },
        {
@@ -1487,13 +1547,11 @@ const MENUS_DATA = {
         "action": "network_create",
         "text": "game-type-manual",
         "shortcut": "F3",
-        "span": {
-         "rows": 5,
-         "columns": 0.5
-        },
-        "cell": {
-         "row": 11,
-         "column": 0
+        "place": {
+         "x": 0.0885,
+         "y": 0.4537,
+         "width": 0.4089,
+         "height": 0.1231
         }
        },
        {
@@ -1502,13 +1560,11 @@ const MENUS_DATA = {
         "text": "gallery",
         "shortcut": "F6",
         "exhibition": true,
-        "span": {
-         "rows": 5,
-         "columns": 0.5
-        },
-        "cell": {
-         "row": 16,
-         "column": 0.5
+        "place": {
+         "x": 0.5021,
+         "y": 0.5824,
+         "width": 0.4089,
+         "height": 0.1231
         }
        },
        {
@@ -1516,13 +1572,11 @@ const MENUS_DATA = {
         "action": "menu:miscellaneous",
         "text": "miscellaneous",
         "shortcut": "F4",
-        "span": {
-         "columns": 0.3333,
-         "rows": 5
-        },
-        "cell": {
-         "row": 21,
-         "column": 0
+        "place": {
+         "x": 0.2266,
+         "y": 0.7111,
+         "width": 0.2708,
+         "height": 0.1231
         }
        },
        {
@@ -1531,13 +1585,11 @@ const MENUS_DATA = {
         "text": "trophees",
         "shortcut": "F5",
         "exhibition": true,
-        "span": {
-         "rows": 5,
-         "columns": 0.5
-        },
-        "cell": {
-         "row": 16,
-         "column": 0
+        "place": {
+         "x": 0.0885,
+         "y": 0.5824,
+         "width": 0.4089,
+         "height": 0.1231
         }
        },
        {
@@ -1558,13 +1610,11 @@ const MENUS_DATA = {
         "text": "back-to-desktop",
         "shortcut": "F12",
         "shape": "rectangle",
-        "cell": {
-         "row": 21,
-         "column": 0.3333
-        },
-        "span": {
-         "rows": 5,
-         "columns": 0.3333
+        "place": {
+         "x": 0.5021,
+         "y": 0.7111,
+         "width": 0.2708,
+         "height": 0.1231
         }
        },
        {
@@ -1576,65 +1626,55 @@ const MENUS_DATA = {
         "pressed": {
          "scale": 0.5
         },
-        "cell": {
-         "row": 21,
-         "column": 0.6667
-        },
-        "span": {
-         "rows": 5,
-         "columns": 0.3333
+        "place": {
+         "x": 0.9172,
+         "y": 0.912,
+         "width": 0.0729,
+         "height": 0.062
         }
        },
        {
         "id": "button1",
         "action": "game:Ho_One",
         "text": "'01",
-        "span": {
-         "rows": 6,
-         "columns": 0.25
-        },
-        "cell": {
-         "row": 5,
-         "column": 0
+        "place": {
+         "x": 0.0885,
+         "y": 0.2981,
+         "width": 0.2021,
+         "height": 0.1481
         }
        },
        {
         "id": "button2",
         "action": "game:Cricket",
         "text": "Cricket",
-        "span": {
-         "rows": 6,
-         "columns": 0.25
-        },
-        "cell": {
-         "row": 5,
-         "column": 0.5
+        "place": {
+         "x": 0.5021,
+         "y": 0.2981,
+         "width": 0.2021,
+         "height": 0.1481
         }
        },
        {
         "id": "button3",
         "action": "game:321_Zlip",
         "text": "321 Zlip",
-        "span": {
-         "rows": 6,
-         "columns": 0.25
-        },
-        "cell": {
-         "row": 5,
-         "column": 0.75
+        "place": {
+         "x": 0.7089,
+         "y": 0.2981,
+         "width": 0.2021,
+         "height": 0.1481
         }
        },
        {
         "id": "button4",
         "action": "game:High_Score",
         "text": "High Score",
-        "span": {
-         "columns": 0.25,
-         "rows": 6
-        },
-        "cell": {
-         "row": 5,
-         "column": 0.25
+        "place": {
+         "x": 0.2953,
+         "y": 0.2981,
+         "width": 0.2021,
+         "height": 0.1481
         }
        }
       ],
@@ -1646,7 +1686,10 @@ const MENUS_DATA = {
        "y": 0.8481,
        "width": 0.1073,
        "height": 0.1102
-      }
+      },
+      "removed": [
+       "game-Ho_One"
+      ]
      },
      "miscellaneous": {
       "area": {
@@ -1772,9 +1815,11 @@ const MENUS_DATA = {
         "action": "setup_buttons",
         "text": "setup-buttons",
         "shortcut": "F1",
-        "cell": {
-         "row": 0,
-         "column": 0
+        "place": {
+         "x": 0.1427,
+         "y": 0.1546,
+         "width": 0.2302,
+         "height": 0.1741
         }
        },
        {
@@ -1782,9 +1827,11 @@ const MENUS_DATA = {
         "action": "setup_pins_leds",
         "text": "setup-pinsleds",
         "shortcut": "F2",
-        "cell": {
-         "row": 0,
-         "column": 1
+        "place": {
+         "x": 0.3828,
+         "y": 0.1546,
+         "width": 0.2302,
+         "height": 0.1741
         }
        },
        {
@@ -1792,9 +1839,11 @@ const MENUS_DATA = {
         "action": "setup_leds",
         "text": "setup-leds",
         "shortcut": "F3",
-        "cell": {
-         "row": 0,
-         "column": 2
+        "place": {
+         "x": 0.6229,
+         "y": 0.1546,
+         "width": 0.2302,
+         "height": 0.1741
         }
        },
        {
@@ -1802,9 +1851,11 @@ const MENUS_DATA = {
         "action": "setup_segment_colors",
         "text": "setup-couleurs-segments",
         "shortcut": "F4",
-        "cell": {
-         "row": 1,
-         "column": 0
+        "place": {
+         "x": 0.1427,
+         "y": 0.338,
+         "width": 0.2302,
+         "height": 0.1741
         }
        },
        {
@@ -1812,9 +1863,22 @@ const MENUS_DATA = {
         "action": "setup_camera",
         "text": "setup-cam",
         "shortcut": "F5",
-        "cell": {
-         "row": 1,
-         "column": 1
+        "place": {
+         "x": 0.3828,
+         "y": 0.338,
+         "width": 0.2302,
+         "height": 0.1741
+        }
+       },
+       {
+        "id": "usb-pads",
+        "action": "usb_pads",
+        "text": "usb-pads",
+        "place": {
+         "x": 0.6229,
+         "y": 0.338,
+         "width": 0.2302,
+         "height": 0.1741
         }
        },
        {
@@ -1822,9 +1886,11 @@ const MENUS_DATA = {
         "action": "test_buttons",
         "text": "test-buttons",
         "shortcut": "F6",
-        "cell": {
-         "row": 1,
-         "column": 2
+        "place": {
+         "x": 0.6229,
+         "y": 0.5213,
+         "width": 0.2302,
+         "height": 0.1741
         }
        },
        {
@@ -1832,9 +1898,11 @@ const MENUS_DATA = {
         "action": "test_target",
         "text": "test-target",
         "shortcut": "F7",
-        "cell": {
-         "row": 2,
-         "column": 0
+        "place": {
+         "x": 0.1427,
+         "y": 0.5213,
+         "width": 0.2302,
+         "height": 0.1741
         }
        },
        {
@@ -1842,9 +1910,11 @@ const MENUS_DATA = {
         "action": "test_toys",
         "text": "test-toys",
         "shortcut": "F8",
-        "cell": {
-         "row": 2,
-         "column": 1
+        "place": {
+         "x": 0.3828,
+         "y": 0.5213,
+         "width": 0.2302,
+         "height": 0.1741
         }
        },
        {
@@ -1853,14 +1923,25 @@ const MENUS_DATA = {
         "text": "reset",
         "shortcut": "F9",
         "place": {
-         "x": 0.7646,
-         "y": 0.9056,
-         "width": 0.1203,
-         "height": 0.062
+         "x": 0.8531,
+         "y": 0.8787,
+         "width": 0.0984,
+         "height": 0.0583
         },
         "shape": "pill",
         "background": {
          "color": "#919191"
+        }
+       },
+       {
+        "id": "coins",
+        "action": "coins",
+        "text": "coins",
+        "place": {
+         "x": 0.3828,
+         "y": 0.7046,
+         "width": 0.2302,
+         "height": 0.1741
         }
        },
        {
