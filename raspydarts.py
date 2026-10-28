@@ -247,6 +247,7 @@ from include import cupdate
 from include import cscreen
 from include import clocale
 from include import cclient
+from include import caccount
 from include import cscores
 from include import ccamera
 from include import cgallery
@@ -858,30 +859,18 @@ try:
             ########
             # NETWORK USING MASTER SERVER
             ########
-            if menu == 'serverlist':  # Choice server (when several)
+            if menu == 'serverlist':  # Server of the online games
                 dispatcher.publish('menu', limit=['TARGET', 'STRIP', 'OTHER', 'LIGHT', 'STROBE'])
-                if config_favorites['servers'] == '':
-                    display.message(["Aucun server paramétré."], wait=5, refresh=True)
-                    menu = 'servers'
-                    game_type = 'miscellaneous'
-                else:
-                    net_client = cclient.Client(logs)
-                    if game_type == 'netjoin' and display.lobby_game is not None:
-                        # Room chosen in the online games : on the server whose rooms were listed
-                        Server = config_favorites['servers'].split(',')[0].strip()
-                    else:
-                        # No interaction if only one server on favorites
-                        Server = display.server_menu(net_client, config_favorites['servers'].split(','))
-                    servername = Server.split(':')[0]
-                    serverport = 25005
-                    masterserverport = 25006 #int(Server.split(':')[1])
-                    serveralias = Server.split('.')[0]
-                    logs.debug(f"Using {servername}:{masterserverport}")
-                    if Server == 'escape':
-                        # Back to home
-                        menu = 'gametype'
-                    else:
-                        menu = 'createorjoin'
+                net_client = cclient.Client(logs)
+                # The server of the online games (SectionGlobals > online-server) : the one
+                # whose rooms the lobby listed, where the games are created and joined
+                Server = caccount.SERVER
+                servername = Server.split(':')[0]
+                serverport = 25005
+                masterserverport = 25006 #int(Server.split(':')[1])
+                serveralias = Server.split('.')[0]
+                logs.debug(f"Using {servername}:{masterserverport}")
+                menu = 'createorjoin'
 
 
             if menu == 'createorjoin':

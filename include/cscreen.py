@@ -7977,8 +7977,8 @@ class Screen(pygame.Surface):
 
         caccount.set_server(self.config.get_value('SectionGlobals', 'online-server', False))
 
-        serveurs = self.config.get_value('Favorites', 'servers') or ''
-        host = str(serveurs).split(',')[0].split(':')[0].strip()
+        # Rooms of the server of the online games, as the accounts and the chat
+        host = caccount.SERVER.split(':')[0]
         port = 25006
 
         etat = {
