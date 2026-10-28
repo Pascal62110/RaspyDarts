@@ -203,15 +203,20 @@ def shortcuts(display, name):
     return buttons
 
 
-def button_text(display, button):
+def draw_button(display, rect, button, menu_name, background, text=None):
     """
-    Text of a button, with its key : Inviter (F2)
+    A button of an online screen : its background, its text (translated), its shortcut in its
+    corner as in the menus of the game (hidden when the theme hides them, c shows them)
     """
-    shortcut, text = button
-    text = display.lang.translate(text)
-    if not shortcut:
-        return text
-    return '{} ({})'.format(text, 'ESC' if shortcut == 'escape' else shortcut)
+    import pygame
+    shortcut, label = button
+    display.new_blit_rect2(rect, background, corners='All', border_radius=int(rect.height * .15), alpha=255)
+    draw_line(display, display.lang.translate(text or label), rect.inflate(-int(rect.width * .08), -int(rect.height * .45)),
+              display.colorset['menu-text-black'], align='Center')
+    key = display.button_label({'shortcut': shortcut}, display.menus().menu(menu_name))
+    if key:
+        draw_line(display, key, pygame.Rect(rect.x + 6, rect.y + 3, rect.width // 3, int(rect.height * .3)),
+                  display.colorset['menu-shortcut'])
 
 
 def _notify(display, invitation=False, connexion=False):
@@ -439,9 +444,7 @@ def show(display):
             if 'logout' in buttons:
                 logout_rect = pygame.Rect(int(w*.76), int(h*.105), int(w*.21), int(h*.05))
                 zones['logout'] = logout_rect
-                display.new_blit_rect2(logout_rect, colors['menu-buttons'], corners='All', border_radius=radius, alpha=255)
-                draw_line(display, button_text(display, buttons['logout']), logout_rect.inflate(-10, -6),
-                          colors['menu-text-black'], align='Center')
+                draw_button(display, logout_rect, buttons['logout'], 'online_chat', colors['menu-buttons'])
             players_rect = pygame.Rect(int(w*.03), int(h*.18), int(w*.30), int(h*.55))
             display.new_blit_rect2(players_rect, colors['menu-header'], corners='All', border_radius=radius, alpha=255)
             # Text of a panel : menu-text ; of a button or of the line chosen : menu-text-black
@@ -500,10 +503,8 @@ def show(display):
             for i, name in enumerate(order):
                 rect = pygame.Rect(int(w*(.03+(i%3)*.32)), int(h*(.805+(i//3)*.08)), int(w*.30), int(h*.068))
                 zones[name] = rect
-                display.new_blit_rect2(rect, colors['menu-selected'] if i == action_index else colors['menu-buttons'],
-                                       corners='All', border_radius=radius, alpha=255)
-                draw_line(display, button_text(display, buttons[name]), rect.inflate(-14, -14),
-                          colors['menu-text-black'], align='Center')
+                draw_button(display, rect, buttons[name], 'online_chat',
+                            colors['menu-selected'] if i == action_index else colors['menu-buttons'])
             draw_line(display, translate('online-chat-keys'), pygame.Rect(int(w*.03), int(h*.955), int(w*.94), int(h*.04)),
                       colors['menu-text-white'])
             display.update_screen()
@@ -514,6 +515,10 @@ def show(display):
                 key = clicked
             elif key in keys:
                 key = keys[key]
+            if key == display.REVEAL_KEY:
+                # As in the menus : the shortcuts shown, even when the theme hides them
+                display.reveal_shortcuts()
+                continue
             if key == 'logout':
                 from include.caccount import logout
                 logout(display)

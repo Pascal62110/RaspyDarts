@@ -24,8 +24,14 @@ THEME_FILE = os.path.join('menu', FILE_NAME)
 
 # Actions known by the game, and what the menu returns to the main loop for each of them.
 # A file cannot invent an action : an unknown one is ignored
+# Buttons of the files which replace older ones : a file which still has one of the older ones
+# keeps it (it opens the same screen), the new one is not added to it
+REPLACES = {'network': ('netjoin', 'netcreate')}
+
 ACTIONS = {
     'local_game': 'local',
+    'network': 'network',
+    # Before the online games screen (a file may still have them) : they open it as well
     'network_join': 'netjoin',
     'network_create': 'netcreate',
     'trophies': 'trophees',
@@ -181,7 +187,8 @@ class Menus:
             named = {self.button_id(button) for button in menu['buttons'] if isinstance(button, dict)}
             before = (data.get('menus', {}).get(name) or {}).get('buttons') or []
             extra = [dict(button) for button in before if isinstance(button, dict) and
-                     self.button_id(button) not in named and self.button_id(button) not in removed]
+                     self.button_id(button) not in named and self.button_id(button) not in removed
+                     and not named & set(REPLACES.get(self.button_id(button), ()))]
             # Every button placed by hand (place : the editor of the screens) : no room made for a
             # new one (it was drawn over another one, in the first cell of the grid). Offered by
             # « Ajouter un bouton » of the editor instead

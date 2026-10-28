@@ -47,14 +47,12 @@ menus:
         text: game-type-local
         shortcut: F1
         exhibition: true
-      - id: netjoin
-        action: network_join
-        text: game-type-master
+      # Online games : the rooms of the server, the chat, create or join a game
+      # (include/cscreen.py network_lobby). Replaces netjoin and netcreate
+      - id: network
+        action: network
+        text: online-title
         shortcut: F2
-      - id: netcreate
-        action: network_create
-        text: game-type-manual
-        shortcut: F3
       - id: miscellaneous
         action: menu:miscellaneous
         text: miscellaneous
@@ -263,15 +261,22 @@ menus:
   # their buttons ; the screens draw them themselves (no layout here)
   online_lobby:
     buttons:
+      # ready : a switch (green : the borne is seen online by the others, red : it is not)
       - id: ready
         text: online-ready
-        shortcut: F8
+        shortcut: F1
       - id: chat
         text: online-chat
-        shortcut: F6
+        shortcut: F2
       - id: create
         text: online-create
         shortcut: F3
+      - id: server
+        text: online-change-server
+        shortcut: F4
+      - id: account
+        text: online-change-account
+        shortcut: F5
       - id: back
         text: back
         shortcut: escape

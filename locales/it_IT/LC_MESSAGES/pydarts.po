@@ -4020,10 +4020,31 @@ msgid "online-legend"
 msgstr "Verde: in attesa, da unirsi. Rosso: in corso o completa"
 
 msgid "online-ready"
-msgstr "Pronto a giocare online"
+msgstr "Pronto a giocare"
 
-msgid "online-not-ready"
-msgstr "Non più disponibile"
+msgid "online-change-server"
+msgstr "Cambia server"
+
+msgid "online-change-account"
+msgstr "Cambia account"
+
+msgid "online-account"
+msgstr "Account delle partite online"
+
+msgid "online-account-scan"
+msgstr "Nessun account? Scansiona questo codice QR con il telefono per crearne uno"
+
+msgid "online-login"
+msgstr "Accedi"
+
+msgid "online-account-name"
+msgstr "Account: {name}"
+
+msgid "online-one-server"
+msgstr "Un solo server: aggiungine in Varie > Preferiti > Server"
+
+msgid "online-server-choice"
+msgstr "Server delle partite online"
 
 msgid "online-chat"
 msgstr "Giocatori e chat"

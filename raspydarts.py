@@ -704,7 +704,7 @@ try:
                 # Options of a favorite whose players are chosen at its launch (see FAVORITE)
                 favorite_options = None
                 game_type = display.main_menu()
-                if game_type in ('netjoin', 'netcreate'):
+                if game_type in ('network', 'netjoin', 'netcreate'):
                     game_type = display.network_lobby()
                     if game_type is None:
                         menu = 'gametype'

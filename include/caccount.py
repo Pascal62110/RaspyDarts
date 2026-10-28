@@ -12,7 +12,8 @@ from pathlib import Path
 
 from include import cpaths
 
-# Server of the online games (accounts, chat, rooms) : SectionGlobals > online-server
+# Server of the online games (accounts, chat, rooms) : the first of the favorite servers
+# (Divers > Favoris), chosen again in the online games screen
 SERVER = 'video.chtiraspycard.fr'
 BASE = 'https://' + SERVER
 COOKIE = '__Host-chti_session'
@@ -20,13 +21,15 @@ COOKIE = '__Host-chti_session'
 
 def set_server(host):
     """
-    Server of the online games (name, or name:port), the default one if none given
+    Server of the online games (a favorite server : name, or name:port of the former network
+    games, the port left out), the default one if none given
     """
     global SERVER, BASE
     host = str(host or '').strip().rstrip('/')
     for prefix in ('https://', 'http://', 'wss://'):
         if host.startswith(prefix):
             host = host[len(prefix):]
+    host = host.split('/')[0].split(':')[0]
     if host and host not in ('False', 'None'):
         SERVER = host
         BASE = 'https://' + SERVER
@@ -52,7 +55,9 @@ def load_session():
                 and isinstance(data.get('user'), dict)
                 and isinstance(data['user'].get('id'), int)
                 and isinstance(data['user'].get('username'), str)
-                and data.get('expires', 0) > time.time()):
+                and data.get('expires', 0) > time.time()
+                # An account of this server (sessions of before : asked again)
+                and data.get('server') == SERVER):
             return data
     except (OSError, ValueError, TypeError):
         pass
@@ -89,7 +94,7 @@ def authenticate(username, password, remember=False):
             for value in response.headers.get_all('Set-Cookie', []):
                 cookie.load(value)
             token = cookie[COOKIE].value
-        return {'token':token, 'user':data['user'],
+        return {'token':token, 'user':data['user'], 'server':SERVER,
                 'expires':time.time()+(30*86400 if remember else 12*3600)}
     except urllib.error.HTTPError as error:
         if error.code == 401:
@@ -133,7 +138,9 @@ def login_dialog(display):
     The session, None : given up
     """
     translate = display.lang.translate
-    display.message([translate('online-account-required') + ' : ' + SERVER + '/joueurs'], wait=2500)
+    # Account required : a QR code to create one with a phone
+    if not display.online_account_screen(BASE + '/joueurs'):
+        return None
     name = ''
     while True:
         name = display.input_value_item('string', name, 3, 18, text='online-username')

@@ -4654,10 +4654,31 @@ msgid "online-legend"
 msgstr "Vert : en attente, à rejoindre. Rouge : en cours ou complet"
 
 msgid "online-ready"
-msgstr "Prêt à jouer en ligne"
+msgstr "Prêt à jouer"
 
-msgid "online-not-ready"
-msgstr "Ne plus être disponible"
+msgid "online-change-server"
+msgstr "Changer de serveur"
+
+msgid "online-change-account"
+msgstr "Changer de compte"
+
+msgid "online-account"
+msgstr "Compte des parties en réseau"
+
+msgid "online-account-scan"
+msgstr "Pas encore de compte ? Scannez ce QR code avec votre téléphone pour en créer un"
+
+msgid "online-login"
+msgstr "Se connecter"
+
+msgid "online-account-name"
+msgstr "Compte : {name}"
+
+msgid "online-one-server"
+msgstr "Un seul serveur : ajoutez-en dans Divers > Favoris > Serveurs"
+
+msgid "online-server-choice"
+msgstr "Serveur des parties en réseau"
 
 msgid "online-chat"
 msgstr "Joueurs et chat"

@@ -7965,158 +7965,280 @@ class Screen(pygame.Surface):
         from include.cchat import show
         return show(self)
 
+    def online_account_screen(self, url):
+        '''
+        Account of the online games required : a QR code to create one with a phone, then log
+        in. True : log in, False : back
+        '''
+        import qrcode
+        picture = qrcode.make(url)
+        picture = (picture.get_image() if hasattr(picture, 'get_image') else picture).convert('RGB')
+        side = int(self.res['y'] * 0.45)
+        code = pygame.transform.scale(pygame.image.fromstring(picture.tobytes(), picture.size, 'RGB'), (side, side))
+        selected = 2
+        while True:
+            self.display_background()
+            self.menu_header(self.lang.translate('online-account'), self.lang.translate('online-account-scan'))
+            pos_y = int(self.res['y'] / 5)
+            self.blit(code, (int((self.res['x'] - side) / 2), pos_y))
+            line = int(self.res['y'] / 20)
+            self.blit_text(url, 0, pos_y + side + self.margin * 2, self.res['x'], line, self.colorset['menu-text-white'])
+            click_zones = {'escape': self.display_button(selected == 1, 'back', special='escape'),
+                           'login': self.display_button(selected == 2, 'online-login', special='return')}
+            self.update_screen()
+            key = self.rpi.listen_inputs(['arrows', 'fx'], ['escape', 'enter', 'space', 'single-click'])
+            clicked = self.is_clicked(click_zones, key)
+            if clicked:
+                key = clicked
+            if key in LEFT_KEYS:
+                selected = 1
+            elif key in RIGHT_KEYS:
+                selected = 2
+            elif key == 'login' or (key in ENTER_KEYS and selected == 2):
+                return True
+            elif key in ESCAPE_KEYS or key == 'escape' or key in ENTER_KEYS:
+                return False
+
+    def online_servers(self):
+        '''
+        Favorite servers (Divers > Favoris > Serveurs) : the first one is the server of the
+        online games
+        '''
+        servers = str(self.config.get_value('Favorites', 'servers', False) or '')
+        return [server.strip() for server in servers.split(',') if server.strip() and server.strip() not in ('False', 'None')]
+
+    def online_server_choice(self):
+        '''
+        Another favorite server for the online games : put first of the favorites (kept for the
+        next times). True : changed
+        '''
+        servers = self.online_servers()
+        if len(servers) < 2:
+            self.message([self.lang.translate('online-one-server')], 3000)
+            return False
+        items = [{'id': f'server{index}', 'action': 'server', 'text': server, 'shortcut': f'F{index + 1}' if index < 12 else None}
+                 for index, server in enumerate(servers)]
+        back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
+        choice = self.run_menu('online_servers', items + [back], items + [back],
+                               title=self.lang.translate('online-server-choice')).get('id')
+        if choice in (None, 'back') or choice == 'server0':
+            return False
+        chosen = servers.pop(int(choice[6:]))
+        self.config.config.setdefault('Favorites', {})['servers'] = ','.join([chosen] + servers)
+        self.config.write_file()
+        return True
+
+    def online_session(self):
+        '''
+        Account of the borne on the server of the online games : the one of this session, the
+        one kept on the borne, else asked (QR code to create one). None : given up
+        '''
+        from include import caccount
+        session = getattr(self, '_lobby_account_session', None)
+        if not session or session.get('server') != caccount.SERVER or session.get('expires', 0) <= time.time():
+            session = caccount.load_session()
+        if not session:
+            client = getattr(self, '_lobby_chat_client', None)
+            if client is not None:
+                client.stop()
+                self._lobby_chat_client = None
+            self._lobby_ready_online = False
+            self._lobby_auth_open = True
+            try:
+                session = caccount.login_dialog(self)
+            finally:
+                self._lobby_auth_open = False
+        self._lobby_account_session = session
+        return session
+
     def network_lobby(self):
         '''
-        Online games : rooms waiting for a player and games being played, chat between the
-        players. Returns netjoin (self.lobby_game : the room chosen), netcreate, or None.
-        The keys and texts of its buttons : menu online_lobby of the files of menus
+        Online games : the account of the borne first (asked once, kept), then the rooms waiting
+        for a player and the games being played, the chat. Returns netjoin (self.lobby_game :
+        the room chosen), netcreate, or None. The keys and texts of its buttons : menu
+        online_lobby of the files of menus
         '''
         import socket
         from include import caccount
-        from include.cchat import draw_line, shortcuts, button_text, toggle_ready
+        from include.cchat import draw_line, draw_button, shortcuts, toggle_ready
         from include.crooms import active_rooms, merge_rooms, joinable, label, color
 
-        caccount.set_server(self.config.get_value('SectionGlobals', 'online-server', False))
-        # Rooms of the server of the online games, as the accounts and the chat
-        host = caccount.SERVER.split(':')[0]
-        port = 25006
         translate = self.lang.translate
         buttons = shortcuts(self, 'online_lobby')
-        order = [name for name in ('ready', 'chat', 'create', 'back') if name in buttons]
+        order = [name for name in ('ready', 'chat', 'create', 'server', 'account', 'back') if name in buttons]
         keys = {buttons[name][0]: name for name in buttons if buttons[name][0]}
         self.lobby_game = None
-        # Line of the list chosen (None : the buttons on the right), button chosen
-        line = None
-        selected = 0
-        # status : key of the translations
-        state = {'status': 'online-connecting', 'rooms': [], 'busy': False, 'last': 0}
-
-        def refresh():
-            try:
-                with socket.create_connection((host, port), timeout=3) as sock:
-                    sock.settimeout(3)
-                    sock.sendall(b'{"REQUEST":"LIST"}')
-                    data = b''
-                    while b'|' not in data:
-                        part = sock.recv(4096)
-                        if not part:
-                            break
-                        data += part
-                        if len(data) > 262144:
-                            raise ValueError('Reponse trop volumineuse')
-                    answer = json.loads(data.split(b'|', 1)[0].decode('utf-8'))
-                if isinstance(answer, list):
-                    waiting = [room for room in answer if isinstance(room, dict)]
-                elif isinstance(answer, dict) and answer.get('RESPONSE') == 'EMPTY':
-                    waiting = []
-                else:
-                    raise ValueError('Reponse inconnue')
-                try:
-                    playing = active_rooms(host)
-                    state['status'] = 'online-connected'
-                except Exception:
-                    playing = []
-                    state['status'] = 'online-connected-no-live'
-                state['rooms'] = merge_rooms(waiting, playing, host, state['rooms'])
-            except Exception as error:
-                state['status'] = 'online-offline'
-                state['rooms'] = []
-                self.logs.warning(f"Online games : rooms of {host} unavailable ({error})")
-            finally:
-                state['busy'] = False
-
+        port = 25006
         colors = self.colorset
         w, h = self.res['x'], self.res['y']
         radius = int(h * .012)
+
         while True:
-            now = time.monotonic()
-            if host and not state['busy'] and (state['last'] == 0 or now - state['last'] >= 3):
-                state['busy'] = True
-                state['last'] = now
-                threading.Thread(target=refresh, daemon=True).start()
-            ready = bool(getattr(self, '_lobby_ready_online', False))
-            rooms = list(state['rooms'])[:12]
-            if line is not None and line >= len(rooms):
-                line = len(rooms) - 1 if rooms else None
-
-            # Background of the theme, title, list of the rooms on the left, buttons on the right
-            self.display_background()
-            self.blit_text2('online-title', pygame.Rect(int(w*.045), int(h*.04), int(w*.9), int(h*.1)),
-                            colors['menu-text-white'], align='Left')
-            panel = pygame.Rect(int(w*.04), int(h*.21), int(w*.72), int(h*.66))
-            self.new_blit_rect2(panel, colors['menu-header'], corners='All', border_radius=radius, alpha=255)
-            draw_line(self, translate('online-server').format(server=host or '-'),
-                      pygame.Rect(int(w*.06), int(h*.23), int(w*.68), int(h*.05)), colors['menu-text'])
-            status_color = colors['menu-ok'] if state['status'].startswith('online-connected') \
-                else colors['menu-ko'] if state['status'] == 'online-offline' else colors['menu-inactive']
-            self.new_blit_rect2(pygame.Rect(int(w*.06), int(h*.29), int(w*.02), int(h*.035)), status_color,
-                                corners='All', border_radius=radius, alpha=255)
-            draw_line(self, translate(state['status']), pygame.Rect(int(w*.09), int(h*.285), int(w*.65), int(h*.045)),
-                      colors['menu-text'])
-            zones = {}
-            for index in range(12):
-                zone = pygame.Rect(int(w*.059), int(h*(.345 + index * .043)), int(w*.69), int(h*.038))
-                if index >= len(rooms):
-                    self.new_blit_rect2(zone, colors['menu-inactive'], corners='All', border_radius=radius, alpha=255)
-                    draw_line(self, '{:02d}   ---'.format(index + 1), zone.inflate(-18, -8), colors['menu-text-black'])
-                    continue
-                zones['room|{}'.format(index)] = zone
-                self.new_blit_rect2(zone, colors[color(rooms[index], line == index)], corners='All',
-                                    border_radius=radius, alpha=255)
-                draw_line(self, label(rooms[index], index, translate), zone.inflate(-18, -8), colors['menu-text-black'])
-            if state['status'] == 'online-connected' and not rooms:
-                draw_line(self, translate('online-no-room'), pygame.Rect(int(w*.07), int(h*.35), int(w*.66), int(h*.04)),
-                          colors['menu-text'])
-
-            for index, name in enumerate(order):
-                rect = pygame.Rect(int(w*.79), int(h*(.21 + index * .17)), int(w*.18), int(h*.14))
-                zones[name] = rect
-                chosen = line is None and selected == index
-                background = colors['menu-selected'] if chosen else \
-                    colors['menu-ok'] if name == 'ready' and ready else colors['menu-buttons']
-                self.new_blit_rect2(rect, background, corners='All', border_radius=radius, alpha=255)
-                shortcut, text = buttons[name]
-                if name == 'ready' and ready:
-                    text = 'online-not-ready'
-                draw_line(self, button_text(self, (shortcut, text)), rect.inflate(-16, -int(h*.08)),
-                          colors['menu-text-black'], align='Center')
-            draw_line(self, translate('online-legend'), pygame.Rect(int(w*.045), int(h*.9), int(w*.9), int(h*.045)),
-                      colors['menu-text-white'])
-            self.update_screen()
-
-            key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha'], ['enter', 'escape', 'space', 'single-click'],
-                                         timeout=200)
-            clicked = self.is_clicked(zones, key)
-            if clicked:
-                key = clicked
-            elif key in keys:
-                key = keys[key]
-            if key in ESCAPE_KEYS or key == 'back':
+            # Server : the first of the favorites ; the account of the borne on it
+            caccount.set_server((self.online_servers() or [''])[0])
+            host = caccount.SERVER
+            session = self.online_session()
+            if not session:
                 return None
-            if key in ENTER_KEYS:
-                key = 'room|{}'.format(line) if line is not None else order[selected]
-            if key == 'ready':
-                toggle_ready(self)
-            elif key == 'chat':
-                self.chat_menu()
-            elif key == 'create':
-                return 'netcreate'
-            elif isinstance(key, str) and key.startswith('room|'):
-                # A click on a room waiting for a player joins it
-                index = int(key.split('|', 1)[1])
-                if 0 <= index < len(rooms) and joinable(rooms[index]):
-                    self.lobby_game = dict(rooms[index])
-                    return 'netjoin'
-            elif key in LEFT_KEYS and rooms:
-                line = 0 if line is None else line
-            elif key in RIGHT_KEYS:
-                line = None
-            elif key in UP_KEYS + DOWN_KEYS:
-                move = -1 if key in UP_KEYS else 1
-                if line is not None:
-                    line = (line + move) % len(rooms)
-                else:
-                    selected = (selected + move) % len(order)
+            # Line of the list chosen (None : the buttons on the right), button chosen
+            line = None
+            selected = 0
+            # status : key of the translations
+            state = {'status': 'online-connecting', 'rooms': [], 'busy': False, 'last': 0, 'host': host}
+
+            def refresh(state=state):
+                try:
+                    with socket.create_connection((state['host'], port), timeout=3) as sock:
+                        sock.settimeout(3)
+                        sock.sendall(b'{"REQUEST":"LIST"}')
+                        data = b''
+                        while b'|' not in data:
+                            part = sock.recv(4096)
+                            if not part:
+                                break
+                            data += part
+                            if len(data) > 262144:
+                                raise ValueError('Reponse trop volumineuse')
+                        answer = json.loads(data.split(b'|', 1)[0].decode('utf-8'))
+                    if isinstance(answer, list):
+                        waiting = [room for room in answer if isinstance(room, dict)]
+                    elif isinstance(answer, dict) and answer.get('RESPONSE') == 'EMPTY':
+                        waiting = []
+                    else:
+                        raise ValueError('Reponse inconnue')
+                    try:
+                        playing = active_rooms(state['host'])
+                        state['status'] = 'online-connected'
+                    except Exception:
+                        playing = []
+                        state['status'] = 'online-connected-no-live'
+                    state['rooms'] = merge_rooms(waiting, playing, state['host'], state['rooms'])
+                except Exception as error:
+                    state['status'] = 'online-offline'
+                    state['rooms'] = []
+                    self.logs.warning(f"Online games : rooms of {state['host']} unavailable ({error})")
+                finally:
+                    state['busy'] = False
+
+            again = False
+            while not again:
+                now = time.monotonic()
+                if not state['busy'] and (state['last'] == 0 or now - state['last'] >= 3):
+                    state['busy'] = True
+                    state['last'] = now
+                    threading.Thread(target=refresh, daemon=True).start()
+                ready = bool(getattr(self, '_lobby_ready_online', False))
+                rooms = list(state['rooms'])[:12]
+                if line is not None and line >= len(rooms):
+                    line = len(rooms) - 1 if rooms else None
+
+                # Background of the theme, title, list of the rooms on the left, buttons on the right
+                self.display_background()
+                self.blit_text2('online-title', pygame.Rect(int(w*.045), int(h*.04), int(w*.9), int(h*.1)),
+                                colors['menu-text-white'], align='Left')
+                panel = pygame.Rect(int(w*.04), int(h*.19), int(w*.72), int(h*.70))
+                self.new_blit_rect2(panel, colors['menu-header'], corners='All', border_radius=radius, alpha=255)
+                user = session.get('user') or {}
+                draw_line(self, translate('online-server').format(server=host), pygame.Rect(int(w*.06), int(h*.205), int(w*.68), int(h*.045)),
+                          colors['menu-text'])
+                draw_line(self, translate('online-account-name').format(name='{:03d} · {}'.format(user.get('id', 0), user.get('username', '?'))),
+                          pygame.Rect(int(w*.06), int(h*.255), int(w*.68), int(h*.045)), colors['menu-text'])
+                status_color = colors['menu-ok'] if state['status'].startswith('online-connected') \
+                    else colors['menu-ko'] if state['status'] == 'online-offline' else colors['menu-inactive']
+                self.new_blit_rect2(pygame.Rect(int(w*.06), int(h*.31), int(w*.02), int(h*.035)), status_color,
+                                    corners='All', border_radius=radius, alpha=255)
+                draw_line(self, translate(state['status']), pygame.Rect(int(w*.09), int(h*.305), int(w*.65), int(h*.045)),
+                          colors['menu-text'])
+                zones = {}
+                for index in range(12):
+                    zone = pygame.Rect(int(w*.059), int(h*(.365 + index * .042)), int(w*.69), int(h*.037))
+                    if index >= len(rooms):
+                        self.new_blit_rect2(zone, colors['menu-inactive'], corners='All', border_radius=radius, alpha=255)
+                        draw_line(self, '{:02d}   ---'.format(index + 1), zone.inflate(-18, -8), colors['menu-text-black'])
+                        continue
+                    zones['room|{}'.format(index)] = zone
+                    self.new_blit_rect2(zone, colors[color(rooms[index], line == index)], corners='All',
+                                        border_radius=radius, alpha=255)
+                    draw_line(self, label(rooms[index], index, translate), zone.inflate(-18, -8), colors['menu-text-black'])
+                if state['status'] == 'online-connected' and not rooms:
+                    draw_line(self, translate('online-no-room'), pygame.Rect(int(w*.07), int(h*.37), int(w*.66), int(h*.035)),
+                              colors['menu-text'])
+
+                for index, name in enumerate(order):
+                    rect = pygame.Rect(int(w*.79), int(h*(.19 + index * .118)), int(w*.18), int(h*.10))
+                    zones[name] = rect
+                    if name == 'ready':
+                        # A switch : green when the borne is seen online by the others, red otherwise
+                        background = colors['menu-ok'] if ready else colors['menu-ko']
+                        text = '{} : {}'.format(translate(buttons[name][1]), translate('yes' if ready else 'no'))
+                    else:
+                        background = colors['menu-buttons']
+                        text = None
+                    chosen = line is None and selected == index
+                    if chosen and name != 'ready':
+                        background = colors['menu-selected']
+                    draw_button(self, rect, buttons[name], 'online_lobby', background, text)
+                    if chosen and name == 'ready':
+                        # The switch keeps its colour : chosen, a frame around it
+                        self.blit_border(rect, colors['menu-selected'], max(3, int(h * .005)), corners='All',
+                                         border_radius=int(rect.height * .15), alpha=255)
+                draw_line(self, translate('online-legend'), pygame.Rect(int(w*.045), int(h*.91), int(w*.9), int(h*.045)),
+                          colors['menu-text-white'])
+                self.update_screen()
+
+                key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha'], ['enter', 'escape', 'space', 'single-click'],
+                                             timeout=200)
+                clicked = self.is_clicked(zones, key)
+                if clicked:
+                    key = clicked
+                elif key in keys:
+                    key = keys[key]
+                if key == self.REVEAL_KEY:
+                    # As in the menus : the shortcuts shown, even when the theme hides them
+                    self.reveal_shortcuts()
+                    continue
+                if key in ESCAPE_KEYS or key == 'back':
+                    return None
+                if key in ENTER_KEYS:
+                    key = 'room|{}'.format(line) if line is not None else order[selected]
+                if key == 'ready':
+                    toggle_ready(self)
+                elif key == 'chat':
+                    self.chat_menu()
+                    # Logged out in the chat : an account asked again
+                    again = getattr(self, '_lobby_account_session', None) is None
+                elif key == 'create':
+                    return 'netcreate'
+                elif key == 'server':
+                    # Another server : its rooms, and the account of the borne on it
+                    again = self.online_server_choice()
+                    if again:
+                        # The chat of the server before stopped
+                        client = getattr(self, '_lobby_chat_client', None)
+                        if client is not None:
+                            client.stop()
+                            self._lobby_chat_client = None
+                        self._lobby_ready_online = False
+                elif key == 'account':
+                    # Another account : the one of the borne forgotten, another one asked
+                    caccount.logout(self)
+                    again = True
+                elif isinstance(key, str) and key.startswith('room|'):
+                    # A click on a room waiting for a player joins it
+                    index = int(key.split('|', 1)[1])
+                    if 0 <= index < len(rooms) and joinable(rooms[index]):
+                        self.lobby_game = dict(rooms[index])
+                        return 'netjoin'
+                elif key in LEFT_KEYS and rooms:
+                    line = 0 if line is None else line
+                elif key in RIGHT_KEYS:
+                    line = None
+                elif key in UP_KEYS + DOWN_KEYS:
+                    move = -1 if key in UP_KEYS else 1
+                    if line is not None:
+                        line = (line + move) % len(rooms)
+                    else:
+                        selected = (selected + move) % len(order)
 
     def lobby_presence_panel(self):
         '''

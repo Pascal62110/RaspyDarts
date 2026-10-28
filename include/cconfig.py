@@ -122,13 +122,13 @@ DefaultConfig['SectionAdvanced'] = {
     'victory-celebration-delay': 5000,
     'launch-game-celebration': False,
     'game-options-list':'',
-    'richard-mode': False,
-    # Server of the online games : accounts of the players, chat, rooms (include/caccount.py)
-    'online-server': 'video.chtiraspycard.fr'
+    'richard-mode': False
     }
 #
 DefaultConfig['Favorites'] = {
-    'servers': 'raspydarts.synology.me:5005',
+    # The first one : server of the online games (include/caccount.py), chosen again in their
+    # screen
+    'servers': 'video.chtiraspycard.fr',
     'firstnames': 'Joueur 1',
     'games': '',
     'players_color': ''

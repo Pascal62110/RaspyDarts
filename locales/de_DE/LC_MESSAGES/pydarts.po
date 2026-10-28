@@ -1330,10 +1330,31 @@ msgid "online-legend"
 msgstr "Grün: wartet, beitreten. Rot: läuft oder voll"
 
 msgid "online-ready"
-msgstr "Bereit zum Online-Spiel"
+msgstr "Spielbereit"
 
-msgid "online-not-ready"
-msgstr "Nicht mehr verfügbar"
+msgid "online-change-server"
+msgstr "Server wechseln"
+
+msgid "online-change-account"
+msgstr "Konto wechseln"
+
+msgid "online-account"
+msgstr "Konto für Online-Spiele"
+
+msgid "online-account-scan"
+msgstr "Noch kein Konto? Diesen QR-Code mit dem Handy scannen, um eines zu erstellen"
+
+msgid "online-login"
+msgstr "Anmelden"
+
+msgid "online-account-name"
+msgstr "Konto: {name}"
+
+msgid "online-one-server"
+msgstr "Nur ein Server: weitere unter Verschiedenes > Favoriten > Server hinzufügen"
+
+msgid "online-server-choice"
+msgstr "Server der Online-Spiele"
 
 msgid "online-chat"
 msgstr "Spieler und Chat"

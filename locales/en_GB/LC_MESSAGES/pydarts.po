@@ -3566,10 +3566,31 @@ msgid "online-legend"
 msgstr "Green: waiting, to join. Red: in progress or full"
 
 msgid "online-ready"
-msgstr "Ready to play online"
+msgstr "Ready to play"
 
-msgid "online-not-ready"
-msgstr "No longer available"
+msgid "online-change-server"
+msgstr "Change server"
+
+msgid "online-change-account"
+msgstr "Change account"
+
+msgid "online-account"
+msgstr "Online games account"
+
+msgid "online-account-scan"
+msgstr "No account yet? Scan this QR code with your phone to create one"
+
+msgid "online-login"
+msgstr "Log in"
+
+msgid "online-account-name"
+msgstr "Account: {name}"
+
+msgid "online-one-server"
+msgstr "Only one server: add some in Misc > Favorites > Servers"
+
+msgid "online-server-choice"
+msgstr "Server of the online games"
 
 msgid "online-chat"
 msgstr "Players and chat"

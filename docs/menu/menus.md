@@ -408,8 +408,8 @@ Une action par bouton. Le jeu refuse une action inconnue (§3).
 | Action | Effet (aujourd'hui) |
 |---|---|
 | `local_game` | partie simple (F1) |
-| `network_join` | rejoindre une partie en réseau (F2) |
-| `network_create` | créer une partie en réseau (F3) |
+| `network` | partie en réseau (F2) : d'abord le compte de la borne sur le serveur (le premier des serveurs favoris, *Divers* > *Favoris*), puis les parties à rejoindre ou en cours, la création d'une partie, le chat, le changement de serveur ou de compte. Les touches et textes de ses boutons sont dans les menus `online_lobby` et `online_chat` |
+| `network_join`, `network_create` | anciens boutons « rejoindre » et « créer une partie en réseau » : ils ouvrent le même écran que `network` ; un fichier qui les a encore ne reçoit pas le bouton `network` en plus |
 | `trophies` | trophées et progression (F5) |
 | `gallery` | galerie des photos et vidéos (F6) |
 | `infos` | informations (F9) |
@@ -708,7 +708,7 @@ menus:
       - action: gallery
         shortcut: F6
         exhibition: true
-      - action: network_join
+      - action: network
         shortcut: F2
       - action: menu:miscellaneous
         icon: images/icons/gear.png

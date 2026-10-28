@@ -1336,10 +1336,31 @@ msgid "online-legend"
 msgstr "Verde: en espera, para unirse. Rojo: en curso o completa"
 
 msgid "online-ready"
-msgstr "Listo para jugar en línea"
+msgstr "Listo para jugar"
 
-msgid "online-not-ready"
-msgstr "Dejar de estar disponible"
+msgid "online-change-server"
+msgstr "Cambiar de servidor"
+
+msgid "online-change-account"
+msgstr "Cambiar de cuenta"
+
+msgid "online-account"
+msgstr "Cuenta de partidas en línea"
+
+msgid "online-account-scan"
+msgstr "¿Aún sin cuenta? Escanee este código QR con su teléfono para crear una"
+
+msgid "online-login"
+msgstr "Iniciar sesión"
+
+msgid "online-account-name"
+msgstr "Cuenta: {name}"
+
+msgid "online-one-server"
+msgstr "Un solo servidor: añada más en Varios > Favoritos > Servidores"
+
+msgid "online-server-choice"
+msgstr "Servidor de las partidas en línea"
 
 msgid "online-chat"
 msgstr "Jugadores y chat"

@@ -90,16 +90,10 @@ const MENUS_DATA = {
       "exhibition": true
      },
      {
-      "id": "netjoin",
-      "action": "network_join",
-      "text": "game-type-master",
+      "id": "network",
+      "action": "network",
+      "text": "online-title",
       "shortcut": "F2"
-     },
-     {
-      "id": "netcreate",
-      "action": "network_create",
-      "text": "game-type-manual",
-      "shortcut": "F3"
      },
      {
       "id": "miscellaneous",
@@ -380,17 +374,27 @@ const MENUS_DATA = {
      {
       "id": "ready",
       "text": "online-ready",
-      "shortcut": "F8"
+      "shortcut": "F1"
      },
      {
       "id": "chat",
       "text": "online-chat",
-      "shortcut": "F6"
+      "shortcut": "F2"
      },
      {
       "id": "create",
       "text": "online-create",
       "shortcut": "F3"
+     },
+     {
+      "id": "server",
+      "text": "online-change-server",
+      "shortcut": "F4"
+     },
+     {
+      "id": "account",
+      "text": "online-change-account",
+      "shortcut": "F5"
      },
      {
       "id": "back",
@@ -455,6 +459,7 @@ const MENUS_DATA = {
   "gallery",
   "infos",
   "local_game",
+  "network",
   "network_create",
   "network_join",
   "players_bank",
@@ -1531,26 +1536,14 @@ const MENUS_DATA = {
         }
        },
        {
-        "id": "netjoin",
-        "action": "network_join",
-        "text": "game-type-master",
+        "id": "network",
+        "action": "network",
+        "text": "online-title",
         "shortcut": "F2",
-        "place": {
-         "x": 0.5026,
-         "y": 0.4537,
-         "width": 0.4089,
-         "height": 0.1231
-        }
-       },
-       {
-        "id": "netcreate",
-        "action": "network_create",
-        "text": "game-type-manual",
-        "shortcut": "F3",
         "place": {
          "x": 0.0885,
          "y": 0.4537,
-         "width": 0.4089,
+         "width": 0.823,
          "height": 0.1231
         }
        },
@@ -2248,6 +2241,18 @@ const MENUS_DATA = {
    "left": "Reste",
    "miscellaneous": "Divers (Favoris, paramétrage,...)",
    "no": "Non",
+   "online-accept": "Accepter",
+   "online-change-account": "Changer de compte",
+   "online-change-server": "Changer de serveur",
+   "online-chat": "Joueurs et chat",
+   "online-create": "Créer une partie",
+   "online-invite": "Inviter",
+   "online-logout": "Déconnexion",
+   "online-quick": "Réponses rapides",
+   "online-ready": "Prêt à jouer",
+   "online-refuse": "Refuser",
+   "online-title": "Partie en réseau",
+   "online-write": "Écrire",
    "parameters": "Paramètres",
    "players-bank": "Banque de prénoms",
    "players-names": "Nom des joueurs",
@@ -2347,6 +2352,18 @@ const MENUS_DATA = {
    "left": "Left",
    "miscellaneous": "Miscellaneous",
    "no": "No",
+   "online-accept": "Accept",
+   "online-change-account": "Change account",
+   "online-change-server": "Change server",
+   "online-chat": "Players and chat",
+   "online-create": "Create a game",
+   "online-invite": "Invite",
+   "online-logout": "Log out",
+   "online-quick": "Quick replies",
+   "online-ready": "Ready to play",
+   "online-refuse": "Decline",
+   "online-title": "Online game",
+   "online-write": "Write",
    "parameters": "Paramètres",
    "players-bank": "Players database",
    "players-names": "Players' name",
@@ -2419,6 +2436,18 @@ const MENUS_DATA = {
    "game-type-manual": "Netzwerk Spiel erstellen (oder manuell beitreten)",
    "game-type-master": "Netzwerk Spiel beitreten",
    "left": "Übrig",
+   "online-accept": "Annehmen",
+   "online-change-account": "Konto wechseln",
+   "online-change-server": "Server wechseln",
+   "online-chat": "Spieler und Chat",
+   "online-create": "Spiel erstellen",
+   "online-invite": "Einladen",
+   "online-logout": "Abmelden",
+   "online-quick": "Schnellantworten",
+   "online-ready": "Spielbereit",
+   "online-refuse": "Ablehnen",
+   "online-title": "Online-Spiel",
+   "online-write": "Schreiben",
    "players-names": "Bitte gebe den Spielern Namen",
    "players-names-subtitle": "Druecke + fuer hinzuzufuegen, - zum entfernen, <Tab> für zufaellig",
    "raspy2dmd": "DMD-Anzeige (Raspy2DMD)",
@@ -2475,6 +2504,18 @@ const MENUS_DATA = {
    "game-type-manual": "Crear o conectarse manualmente a una partida online",
    "game-type-master": "Unirse a partida online",
    "left": "Faltan",
+   "online-accept": "Aceptar",
+   "online-change-account": "Cambiar de cuenta",
+   "online-change-server": "Cambiar de servidor",
+   "online-chat": "Jugadores y chat",
+   "online-create": "Crear una partida",
+   "online-invite": "Invitar",
+   "online-logout": "Cerrar sesión",
+   "online-quick": "Respuestas rápidas",
+   "online-ready": "Listo para jugar",
+   "online-refuse": "Rechazar",
+   "online-title": "Partida en línea",
+   "online-write": "Escribir",
    "players-names": "Por favor escriba el nombre de los juegadores:",
    "players-names-subtitle": "Presione tecla + para añadir, - para eliminar, <Tab> aleatorio.",
    "raspy2dmd": "Pantalla DMD (Raspy2DMD)",
@@ -2556,6 +2597,18 @@ const MENUS_DATA = {
    "left": "Resta",
    "miscellaneous": "Divers (Favoris, paramétrage,...)",
    "no": "No",
+   "online-accept": "Accetta",
+   "online-change-account": "Cambia account",
+   "online-change-server": "Cambia server",
+   "online-chat": "Giocatori e chat",
+   "online-create": "Crea una partita",
+   "online-invite": "Invita",
+   "online-logout": "Esci",
+   "online-quick": "Risposte rapide",
+   "online-ready": "Pronto a giocare",
+   "online-refuse": "Rifiuta",
+   "online-title": "Partita online",
+   "online-write": "Scrivi",
    "parameters": "Paramètres",
    "players-bank": "Banque de prénoms",
    "players-names": "Nomi dei Giocatori",
