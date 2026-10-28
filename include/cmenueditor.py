@@ -195,6 +195,10 @@ class Editor:
         for index in sorted(range(1, len(self.items) + 1), key=lambda number: number == self.selected):
             item = self.items[index - 1]
             button = item['button']
+            if button.get('action') == 'online_players':
+                # The panel of the players online as it will be shown, at its size
+                screen.online_players_panel(item['rect'], index == self.selected)
+                continue
             shown = screen.favorite_button(button) if self.name == 'main' else button
             style = screen.button_style(self.menu, shown)
             state = 'selected' if index == self.selected else ('disabled' if shown.get('unavailable') else 'normal')
