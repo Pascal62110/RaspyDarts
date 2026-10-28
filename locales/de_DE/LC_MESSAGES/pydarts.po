@@ -860,6 +860,9 @@ msgstr "Diese Taste löschen?"
 msgid "editor-add-title"
 msgstr "Element hinzufügen"
 
+msgid "editor-version"
+msgstr "Versionsnummer"
+
 msgid "editor-add-game"
 msgstr "Ein Spiel…"
 

@@ -866,6 +866,9 @@ msgstr "¿Borrar este botón?"
 msgid "editor-add-title"
 msgstr "Añadir un elemento"
 
+msgid "editor-version"
+msgstr "Número de versión"
+
 msgid "editor-add-game"
 msgstr "Un juego…"
 

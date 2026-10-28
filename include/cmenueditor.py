@@ -54,6 +54,9 @@ SNAP = 0.01
 GUIDE = (0, 200, 255)
 # Shapes a button can be given (over the one of its style)
 SHAPES = ('rectangle', 'rounded', 'pill')
+# The version (V4.6) of the menus which show it : an element placed as the buttons, kept in
+# show_version of the menu (not in its buttons)
+VERSION_ID = '__version__'
 # Buttons arranged in a zone : the spaces between them (parts of the screen), the zone drawn
 GAPS = (0, 0.005, 0.01, 0.02, 0.03, 0.05)
 FIRST_GAP = 2
@@ -94,6 +97,10 @@ class Editor:
         for index, button in enumerate(shown, 1):
             if index in rects:
                 self.items.append({'button': self.clean(button), 'rect': pygame.Rect(rects[index])})
+        self.version_shown = self.menu.get('show_version') or False
+        if self.version_shown:
+            self.items.append({'button': {'id': VERSION_ID, 'version': True},
+                               'rect': screen.menu_version_rect(self.version_shown)})
         self.selected = 1
 
     @staticmethod
@@ -110,6 +117,8 @@ class Editor:
         return self.screen.lang.translate(key)
 
     def button_name(self, button):
+        if button.get('version'):
+            return self.translate('editor-version')
         return self.screen.lang.translate(self.screen.button_text(button))
 
     # ------------------------------------------------------------------ drawing
@@ -195,6 +204,10 @@ class Editor:
         for index in sorted(range(1, len(self.items) + 1), key=lambda number: number == self.selected):
             item = self.items[index - 1]
             button = item['button']
+            if button.get('version'):
+                # The version, as the menu shows it, filling its box
+                screen.draw_version(item['rect'], self.version_shown or True)
+                continue
             if button.get('action') == 'online_players':
                 # The panel of the players online as it will be shown, at its size
                 screen.online_players_panel(item['rect'], index == self.selected)
@@ -416,8 +429,9 @@ class Editor:
                 if square.inflate(10, 10).collidepoint(position):
                     self.drag(position, number)
                     return None
-        # The button on top first : the chosen one is drawn over the others
-        order = sorted(range(1, len(self.items) + 1), key=lambda number: number == self.selected, reverse=True)
+        # The button on top first : the chosen one is drawn over the others, then the last ones
+        # over those before them
+        order = sorted(range(1, len(self.items) + 1), key=lambda number: (number == self.selected, number), reverse=True)
         index = next((number for number in order if self.items[number - 1]['rect'].collidepoint(position)), None)
         self.screen.logs.debug(f"Menu editor : click at {position}, button {index}")
         if index is None:
@@ -536,6 +550,9 @@ class Editor:
                      {'id': 'shape', 'action': 'shape', 'shortcut': 'F4',
                       'text': f"{self.translate('editor-shape')} : {self.translate(self.shape_text(item['button']))}"},
                      {'id': 'delete', 'action': 'delete', 'text': 'editor-delete', 'shortcut': 'F5'}]
+            if item['button'].get('version'):
+                # The version : no shortcut nor shape, it is only a text
+                items = [entry for entry in items if entry['id'] not in ('shortcut', 'shape')]
             back = {'id': 'back', 'action': 'back', 'text': 'back', 'footer': 'left', 'shortcut': 'escape'}
             choice = self.screen.run_menu('editor_button', items + [back], items + [back], title=name,
                                           initial=choice if choice in ('shortcut', 'shape') else None).get('id')
@@ -550,7 +567,7 @@ class Editor:
                 self.handle = 4
             elif choice == 'delete' and self.screen.ask_yes_no(f"{self.translate('editor-delete-confirm')} ({name})"):
                 ident = self.menus.button_id(item['button'])
-                if not item.get('new'):
+                if not item.get('new') and not item['button'].get('version'):
                     self.removed.append(ident)
                 del self.items[self.selected - 1]
                 self.selected = max(1, min(self.selected, len(self.items)))
@@ -747,9 +764,11 @@ class Editor:
         '''
         The buttons to arrange : all of them, or those whose centre is in the zone
         '''
+        # The version stays where it is
+        items = [item for item in self.items if not item['button'].get('version')]
         if not self.arrangement['inside']:
-            return list(self.items)
-        return [item for item in self.items if self.zone.collidepoint(item['rect'].center)]
+            return items
+        return [item for item in items if self.zone.collidepoint(item['rect'].center)]
 
     def arrange_menu(self):
         '''
@@ -860,6 +879,9 @@ class Editor:
                                     {'id': f'category-{category}', 'action': f'category:{category}',
                                      'text': text, 'logo': logo}))
             choices.append((self.translate('editor-add-game'), 'game'))
+            # The version, deleted before
+            if not any(item['button'].get('version') for item in self.items):
+                choices.append((self.translate('editor-version'), {'id': VERSION_ID, 'version': True}))
             # The panel of the players online (include/cscreen.py online_players_panel)
             if 'online_players' not in actions:
                 choices.append((self.translate('online-players-panel'),
@@ -920,6 +942,9 @@ class Editor:
         widths = sorted(item['rect'].width for item in self.items) or [int(self.size[0] / 4)]
         heights = sorted(item['rect'].height for item in self.items) or [int(self.size[1] / 10)]
         rect = pygame.Rect(0, 0, widths[len(widths) // 2], heights[len(heights) // 2])
+        if button.get('version'):
+            # The version : the size it has by default
+            rect = self.screen.menu_version_rect(True)
         rect.center = (self.size[0] // 2, self.size[1] // 2)
         self.items.append({'button': button, 'rect': rect, 'new': True})
         if ident in self.removed:
@@ -963,6 +988,14 @@ class Editor:
             menu = menus.get(self.name) if isinstance(menus.get(self.name), dict) else {}
             menus[self.name] = menu
             placed = {self.menus.button_id(item['button']): item for item in self.items}
+            # The version : in show_version (its colour and font kept), not in the buttons
+            version = placed.pop(VERSION_ID, None)
+            if version is not None:
+                look = dict(self.version_shown) if isinstance(self.version_shown, dict) else {}
+                look.update(self.place_of(version['rect']))
+                menu['show_version'] = look
+            elif self.version_shown:
+                menu['show_version'] = False
             buttons = []
             for button in self.menu.get('buttons') or []:
                 if not isinstance(button, dict):

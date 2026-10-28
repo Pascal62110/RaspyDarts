@@ -4184,6 +4184,9 @@ msgstr "Supprimer ce bouton ?"
 msgid "editor-add-title"
 msgstr "Ajouter un élément"
 
+msgid "editor-version"
+msgstr "Numéro de version"
+
 msgid "editor-add-game"
 msgstr "Un jeu…"
 

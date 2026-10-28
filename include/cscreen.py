@@ -10323,15 +10323,28 @@ class Screen(pygame.Surface):
         '''
         if not show:
             return
+        self.draw_version(self.menu_version_rect(show), show)
+
+    def menu_version_rect(self, show):
+        '''
+        Box of the version of a menu (see menu_version) : the editor of the screens places it
+        '''
         look = show if isinstance(show, dict) else {}
         units = cmenustyle.Units(self.screen.get_size(), self.menus().data.get('resolution'))
         width = int(units.length(look['width'], 'x')) if 'width' in look else self.res_x_16
         height = int(units.length(look['height'], 'y')) if 'height' in look else self.res_y_16
         pos_x = int(units.length(look['x'], 'x')) if 'x' in look else self.res['x'] - width
         pos_y = int(units.length(look['y'], 'y')) if 'y' in look else int(self.res['y'] * 3 / 4) - height
+        return pygame.Rect(pos_x, pos_y, width, height)
+
+    def draw_version(self, rect, show):
+        '''
+        The version (V4.6) filling this box, in the colour and font of the menu
+        '''
+        look = show if isinstance(show, dict) else {}
         color = self.menu_painter().color(look.get('color'), None) or self.colorset['menu-text-white']
         font = self.file_class.get_full_filename(str(look.get('font') or 'Impact'), 'fonts')
-        self.blit_text(f"V{self.config.pyDartsVersion[0:3]}", pos_x, pos_y, width, height, tuple(color[:3]), dafont=font)
+        self.blit_text(f"V{self.config.pyDartsVersion[0:3]}", rect.x, rect.y, rect.width, rect.height, tuple(color[:3]), dafont=font)
 
     def display_version(self):
         self.blit_text(self.config.pyDartsFullVersion, self.margin, \
