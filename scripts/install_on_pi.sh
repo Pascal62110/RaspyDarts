@@ -38,7 +38,7 @@ MARK_END='# --- RaspyDarts (fin) ---'
 
 # Paquets systeme indispensables
 APT_REQUIRED="python3-pip python3-dev python3-tk python3-pygame python3-numpy python3-pil python3-psutil
-python3-requests python3-yaml python3-evdev python3-usb python3-rpi-lgpio python3-lgpio python3-libgpiod python3-smbus python3-serial python3-netifaces python3-qrcode
+python3-requests python3-yaml python3-evdev python3-usb python3-rpi-lgpio python3-lgpio python3-libgpiod python3-smbus python3-serial python3-netifaces python3-qrcode python3-websocket
 python3-googleapi python3-google-auth-oauthlib python3-google-auth-httplib2
 i2c-tools vlc ffmpeg v4l-utils espeak mpg123 alsa-utils pipewire-alsa pulseaudio-utils
 xdotool scrot feh picom gettext git curl swig
@@ -75,7 +75,7 @@ adafruit-circuitpython-mcp230xx adafruit-circuitpython-neopixel rpi_ws281x"
 PIP_OPTIONAL="rgbxy"
 
 # Modules verifies en fin d'installation
-PY_CHECK="pygame paho.mqtt.client netifaces qrcode board busio digitalio adafruit_mcp230xx
+PY_CHECK="pygame paho.mqtt.client netifaces qrcode websocket board busio digitalio adafruit_mcp230xx
 adafruit_blinka_raspberry_pi_pwm
 neopixel rpi_ws281x googleapiclient google_auth_oauthlib RPi.GPIO PIL numpy psutil
 requests smbus tkinter"

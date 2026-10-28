@@ -2,7 +2,7 @@
 import json
 import urllib.request
 
-URL = 'https://video.chtiraspycard.fr/joueurs-salles'
+from include import caccount
 
 
 def count(value):
@@ -13,12 +13,12 @@ def count(value):
 
 
 def joinable(room):
-    return (not room.get('CHTI_EN_COURS') and count(room.get('PLAYERS')) == 1
+    return (not room.get('LOBBY_LIVE') and count(room.get('PLAYERS')) == 1
             and bool(room.get('GAMENAME')))
 
 
 def active_rooms(host):
-    request = urllib.request.Request(URL, headers={'Accept':'application/json'})
+    request = urllib.request.Request(caccount.BASE + '/joueurs-salles', headers={'Accept':'application/json'})
     with urllib.request.urlopen(request, timeout=2) as response:
         raw = response.read(262145)
     if len(raw)>262144:
@@ -35,7 +35,7 @@ def merge_rooms(waiting, active, host, previous=()):
     for room in waiting:
         if not isinstance(room,dict) or not room.get('GAMENAME'):
             continue
-        row = dict(room);row['CHTI_EN_COURS'] = False
+        row = dict(room);row['LOBBY_LIVE'] = False
         rows[str(row['GAMENAME'])] = row
     for room in active:
         if not isinstance(room,dict) or room.get('state')!='En cours':
@@ -50,7 +50,7 @@ def merge_rooms(waiting, active, host, previous=()):
         if not isinstance(names,list):names=[]
         row={'GAMENAME':name,'GAMETYPE':str(room.get('game','?')),
              'GAMECREATOR':'','PLAYERS':count(room.get('count')),
-             'CHTI_EN_COURS':True,'CHTI_NOMS':[str(x) for x in names[:26]]}
+             'LOBBY_LIVE':True,'LOBBY_NAMES':[str(x) for x in names[:26]]}
         rows[name]=row  # La partie qui demarre remplace sa ligne en attente.
     order=[str(r.get('GAMENAME')) for r in previous if isinstance(r,dict)]
     ordered=[]
@@ -61,9 +61,9 @@ def merge_rooms(waiting, active, host, previous=()):
 
 def label(room, index):
     game=str(room.get('GAMETYPE','?')).replace('_',' ')[:16]
-    if room.get('CHTI_EN_COURS'):
+    if room.get('LOBBY_LIVE'):
         import re
-        names=[re.sub(r'^\d+\s*·\s*','',n) for n in room.get('CHTI_NOMS',[])]
+        names=[re.sub(r'^\d+\s*·\s*','',n) for n in room.get('LOBBY_NAMES',[])]
         versus=' VS '.join(names) if names else str(room.get('GAMENAME',''))
         return '{:02d}  {} | {} | EN COURS'.format(index+1,game,versus)
     creator=str(room.get('GAMECREATOR','?'))[:22]

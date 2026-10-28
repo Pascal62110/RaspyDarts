@@ -704,7 +704,7 @@ try:
                 favorite_options = None
                 game_type = display.main_menu()
                 if game_type in ('netjoin', 'netcreate'):
-                    game_type = display.chti_network_menu()
+                    game_type = display.network_lobby()
                     if game_type is None:
                         menu = 'gametype'
                         continue
@@ -808,7 +808,7 @@ try:
                     display.prepare_sound('game_start')
 
                 if game_type in ('netjoin', 'netcreate'):
-                    from include.chti_network_identity import network_players
+                    from include.cnetidentity import network_players
                     nb_sets, players_list, competition_mode = network_players(display)
                     nb_sets = 1
                 else:
@@ -866,8 +866,12 @@ try:
                     game_type = 'miscellaneous'
                 else:
                     net_client = cclient.Client(logs)
-                    # No interaction if only one server on favorites
-                    Server = display.server_menu(net_client, config_favorites['servers'].split(','))
+                    if game_type == 'netjoin' and display.lobby_game is not None:
+                        # Room chosen in the online games : on the server whose rooms were listed
+                        Server = config_favorites['servers'].split(',')[0].strip()
+                    else:
+                        # No interaction if only one server on favorites
+                        Server = display.server_menu(net_client, config_favorites['servers'].split(','))
                     servername = Server.split(':')[0]
                     serverport = 25005
                     masterserverport = 25006 #int(Server.split(':')[1])
@@ -882,7 +886,11 @@ try:
 
             if menu == 'createorjoin':
                 menu = 'connect'
-                if game_type == 'netjoin':
+                if game_type == 'netjoin' and display.lobby_game is not None:
+                    # Room chosen in the online games
+                    netgamename = str(display.lobby_game.get('GAMENAME'))
+                    logs.debug(f"Join the room {netgamename} chosen on {servername}")
+                elif game_type == 'netjoin':
                     logs.debug(f"Get remote game list on {servername}:{masterserverport}")
                     netgamename = display.net_game_list(NetMasterClient, players_count, servername, masterserverport)
                     if netgamename == 'escape':

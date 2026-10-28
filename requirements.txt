@@ -12,6 +12,7 @@ requests
 psutil
 netifaces
 qrcode
+websocket-client
 
 # --- Raspberry Pi : GPIO et extension de ports ---
 RPi.GPIO

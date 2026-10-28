@@ -1,4 +1,4 @@
-"""Connexion ChtiDarts pour borne : TLS, mot de passe masqué, session privée."""
+"""Compte du joueur en ligne de la borne : TLS, mot de passe masqué, session privée."""
 import json
 import os
 import queue
@@ -10,12 +10,30 @@ import urllib.error
 from http.cookies import SimpleCookie
 from pathlib import Path
 
-BASE = 'https://video.chtiraspycard.fr'
+from include import cpaths
+
+# Server of the online games (accounts, chat, rooms) : SectionGlobals > online-server
+SERVER = 'video.chtiraspycard.fr'
+BASE = 'https://' + SERVER
 COOKIE = '__Host-chti_session'
 
 
+def set_server(host):
+    """
+    Server of the online games (name, or name:port), the default one if none given
+    """
+    global SERVER, BASE
+    host = str(host or '').strip().rstrip('/')
+    for prefix in ('https://', 'http://', 'wss://'):
+        if host.startswith(prefix):
+            host = host[len(prefix):]
+    if host and host not in ('False', 'None'):
+        SERVER = host
+        BASE = 'https://' + SERVER
+
+
 def session_file():
-    return Path(os.path.expanduser('~/.pydarts/chat_account.json'))
+    return Path(cpaths.user_dir()) / 'online_account.json'
 
 
 def forget_session():
@@ -90,13 +108,13 @@ def login_dialog(display):
     values = ['', '']
     focus = 0
     remember = False
-    notice = 'Compte obligatoire. Inscription sur video.chtiraspycard.fr/joueurs'
+    notice = 'Compte obligatoire. Inscription sur ' + SERVER + '/joueurs'
     results = queue.Queue(maxsize=1)
     busy = False
     clock = pygame.time.Clock()
     backdrop = display.screen.copy()
-    old_open = getattr(display, '_chti_chat_open', False)
-    display._chti_chat_open = True
+    old_open = getattr(display, '_lobby_chat_open', False)
+    display._lobby_chat_open = True
     old_repeat = pygame.key.get_repeat()
     pygame.key.set_repeat(450, 35)
     def worker(name, password, saved):
@@ -135,7 +153,7 @@ def login_dialog(display):
                     while value and police.size(value)[0]>width:
                         value=value[1:]
                 display.screen.blit(police.render(value,True,color),(int(x),int(y)))
-            text('CONNEXION AU COMPTE CHTIDARTS',w*.07,h*.08,(245,189,55),title)
+            text('CONNEXION AU COMPTE EN LIGNE',w*.07,h*.08,(245,189,55),title)
             zones=[]
             for i,label in enumerate(('Pseudo','Mot de passe')):
                 y=h*(.23+i*.17)
@@ -215,20 +233,20 @@ def login_dialog(display):
     finally:
         values[1]=''
         pygame.key.set_repeat(*old_repeat)
-        display._chti_chat_open=old_open
+        display._lobby_chat_open=old_open
         display.screen.blit(backdrop,(0,0))
 
 
 def logout(display):
-    session = getattr(display, '_chti_account_session', None)
-    client = getattr(display, '_chti_chat_client', None)
+    session = getattr(display, '_lobby_account_session', None)
+    client = getattr(display, '_lobby_chat_client', None)
     if client:
         client.stop()
-    display._chti_chat_client = None
-    display._chti_account_session = None
-    display._chti_ready_online = False
-    display._chti_chat_status = 'CONNEXION AU COMPTE REQUISE'
-    display._chti_chat_retry = 0
+    display._lobby_chat_client = None
+    display._lobby_account_session = None
+    display._lobby_ready_online = False
+    display._lobby_chat_status = 'CONNEXION AU COMPTE REQUISE'
+    display._lobby_chat_retry = 0
     try:
         forget_session()
     except OSError:

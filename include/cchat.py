@@ -1,4 +1,4 @@
-"""Client du salon ChtiDarts (Python 3.7+, websocket-client)."""
+"""Client du salon des joueurs en ligne (Python 3.7+, websocket-client)."""
 import json
 import os
 import queue
@@ -8,8 +8,11 @@ import time
 from collections import deque
 from pathlib import Path
 
-URL = 'wss://video.chtiraspycard.fr/borne-lobby'
-# CHTI BORNE COMPTES V1
+from include import caccount
+
+
+def lobby_url():
+    return 'wss://' + caccount.SERVER + '/borne-lobby'
 
 
 class ChatClient:
@@ -17,7 +20,7 @@ class ChatClient:
         self.name, self.token = name, token
         self.visible = visible
         self.auth_failed = False
-        self.match_live = None  # CHTI SPECTATEUR V1
+        self.match_live = None  # Spectators (not used yet)
         self.game_activity = {'playing': False}
         self.activity_version = 0
         self.commands = queue.Queue(maxsize=30)
@@ -68,7 +71,7 @@ class ChatClient:
             connection = None
             try:
                 connection = websocket.create_connection(
-                    URL, timeout=4,
+                    lobby_url(), timeout=4,
                     header=['Authorization: Bearer ' + self.token],
                     sslopt={'cert_reqs': ssl.CERT_REQUIRED})
                 self.ws = connection
@@ -145,7 +148,7 @@ class ChatClient:
                     self.auth_failed = True
                     self.stopped.set()
                     try:
-                        from include.chti_chat_account import forget_session
+                        from include.caccount import forget_session
                         forget_session()
                     except OSError:
                         pass
@@ -169,7 +172,7 @@ class ChatClient:
             self.stopped.wait(3)
 
 
-# CHTI CHAT V2 : saisie et notifications
+# Typing and notifications
 class MessageEditor:
     def __init__(self):
         self.text = ''
@@ -201,11 +204,12 @@ def _notify(display, invitation=False, connexion=False):
             'chat_invitation' if invitation else 'chat_message')
     try:
         # Meme lecture et meme volume que les autres sons de RaspyDarts.
-        channel = display.play_sound('/pydarts/sounds/' + name + '.wav')
+        # Sound of the theme (sounds/chat_message...), the default one otherwise
+        channel = display.play_sound(name)
         if channel is None:
-            print('[CHTI CHAT AUDIO] Lecture non confirmee : ' + name, flush=True)
+            print('[LOBBY CHAT] Lecture non confirmee : ' + name, flush=True)
     except Exception as error:
-        print('[CHTI CHAT AUDIO] ' + name + ' : ' + str(error), flush=True)
+        print('[LOBBY CHAT] ' + name + ' : ' + str(error), flush=True)
 
 
 def _new_events(display, client, seen):
@@ -295,91 +299,91 @@ def compose_message(display, keys, client, seen, recipient):
 
 def ensure_session(display, prompt=False):
     """Connexion uniquement avec un compte enregistré ; aucun accès invité."""
-    if getattr(display, '_chti_auth_open', False):
+    if getattr(display, '_lobby_auth_open', False):
         return None
-    current = getattr(display, '_chti_chat_client', None)
-    ready = bool(getattr(display, '_chti_ready_online', False))
+    current = getattr(display, '_lobby_chat_client', None)
+    ready = bool(getattr(display, '_lobby_ready_online', False))
     if current is not None and current.auth_failed:
-        display._chti_account_session = None
-        display._chti_chat_status = 'CONNEXION AU COMPTE REQUISE'
+        display._lobby_account_session = None
+        display._lobby_chat_status = 'CONNEXION AU COMPTE REQUISE'
     if current is not None and not current.stopped.is_set():
         if current.visible == ready:
             return current
         current.stop()
-    display._chti_chat_client = None
+    display._lobby_chat_client = None
     now = time.monotonic()
-    if not prompt and now < getattr(display, '_chti_chat_retry', 0):
+    if not prompt and now < getattr(display, '_lobby_chat_retry', 0):
         return None
-    display._chti_chat_retry = now + 3
+    display._lobby_chat_retry = now + 3
     try:
         import websocket
-        from include.chti_chat_account import load_session, login_dialog
-        session = getattr(display, '_chti_account_session', None)
+        from include.caccount import load_session, login_dialog
+        session = getattr(display, '_lobby_account_session', None)
         if session is None:
             session = load_session()
         if session and session.get('expires', 0) <= time.time():
             session = None
         if session is None and prompt:
-            display._chti_auth_open = True
+            display._lobby_auth_open = True
             try:
                 session = login_dialog(display)
             finally:
-                display._chti_auth_open = False
+                display._lobby_auth_open = False
         if not session:
-            display._chti_chat_status = 'CONNEXION AU COMPTE REQUISE'
+            display._lobby_chat_status = 'CONNEXION AU COMPTE REQUISE'
             return None
-        display._chti_account_session = session
+        display._lobby_account_session = session
         account = session['user']
         name = '{:03d} · {} (borne)'.format(account['id'], account['username'])
         current = ChatClient(name, session['token'], visible=ready)
-        display._chti_chat_client = current
-        display._chti_chat_seen = set()
-        display._chti_chat_resolved = set()
-        display._chti_chat_unread = 0
-        current.set_activity(getattr(display, '_chti_game_activity', {'playing': False}))
+        display._lobby_chat_client = current
+        display._lobby_chat_seen = set()
+        display._lobby_chat_resolved = set()
+        display._lobby_chat_unread = 0
+        current.set_activity(getattr(display, '_lobby_game_activity', {'playing': False}))
         current.start()
         import atexit
         atexit.register(current.stop)
         return current
     except Exception:
-        display._chti_chat_status = 'CHAT INDISPONIBLE'
+        display._lobby_chat_status = 'CHAT INDISPONIBLE'
         if prompt:
             display.message(['Chat indisponible : vérifier Internet et python3-websocket.'])
         # Aucun mot de passe ni jeton dans les logs.
-        print('[CHTI PRESENCE] Connexion au compte indisponible', flush=True)
+        print('[LOBBY PRESENCE] Connexion au compte indisponible', flush=True)
         return None
 
 
 def toggle_ready(display):
-    previous = bool(getattr(display, '_chti_ready_online', False))
-    display._chti_ready_online = not previous
-    display._chti_chat_retry = 0
-    current = getattr(display, '_chti_chat_client', None)
+    previous = bool(getattr(display, '_lobby_ready_online', False))
+    display._lobby_ready_online = not previous
+    display._lobby_chat_retry = 0
+    current = getattr(display, '_lobby_chat_client', None)
     if current is not None:
         current.stop()
-        display._chti_chat_client = None
+        display._lobby_chat_client = None
     client = ensure_session(display, prompt=not previous)
     if client is None:
-        display._chti_ready_online = previous
-        display._chti_chat_retry = 0
+        display._lobby_ready_online = previous
+        display._lobby_chat_retry = 0
         ensure_session(display)
-    return bool(getattr(display, '_chti_ready_online', False))
+    return bool(getattr(display, '_lobby_ready_online', False))
 
 
 def pump_presence(display):
     """Notifications sur le thread d'affichage, jamais dans le thread reseau."""
-    if getattr(display, '_chti_chat_open', False):
+    if getattr(display, '_lobby_chat_open', False):
         return
     now = time.monotonic()
-    if now < getattr(display, '_chti_chat_next_pump', 0):
+    if now < getattr(display, '_lobby_chat_next_pump', 0):
         return
-    display._chti_chat_next_pump = now + .1
-    client = getattr(display, '_chti_chat_client', None)
+    display._lobby_chat_next_pump = now + .1
+    client = getattr(display, '_lobby_chat_client', None)
     if client is None:
         return
-    for event in _new_events(display, client, display._chti_chat_seen):
+    for event in _new_events(display, client, display._lobby_chat_seen):
         if not event.get('outgoing') and event.get('type') in ('chat', 'invite'):
-            display._chti_chat_unread = min(99, display._chti_chat_unread + 1)
+            display._lobby_chat_unread = min(99, display._lobby_chat_unread + 1)
 
 
 QUICK_REPLIES = (
@@ -446,19 +450,19 @@ def choose_quick_reply(display, keys, client, seen_events, recipient_id, recipie
 def show(display, keys):
     import pygame
     up, down, left, right, enter, escape = keys
-    if not getattr(display, '_chti_ready_online', False):
+    if not getattr(display, '_lobby_ready_online', False):
         display.message(['F2 : active PRET A JOUER EN LIGNE pour utiliser le chat'])
         return
     client = ensure_session(display, prompt=True)
     if client is None:
         return
     name = client.name
-    display._chti_chat_open = True
-    display._chti_chat_unread = 0
+    display._lobby_chat_open = True
+    display._lobby_chat_unread = 0
     selected = None
     action_index = 0
-    resolved = display._chti_chat_resolved
-    seen_events = display._chti_chat_seen
+    resolved = display._lobby_chat_resolved
+    seen_events = display._lobby_chat_seen
     note = 'Selectionne un joueur puis ECRIRE ou INVITER.'
     try:
         while True:
@@ -474,7 +478,7 @@ def show(display, keys):
                     note = 'Invitation envoyee - en attente de reponse.'
             status, ident, players, events = client.snapshot()
             if client.auth_failed:
-                display._chti_account_session = None
+                display._lobby_account_session = None
                 display.message(['Session expirée : reconnectez-vous à votre compte.'])
                 return
             players = [p for p in players if isinstance(p, dict) and p.get('id') != ident]
@@ -502,7 +506,7 @@ def show(display, keys):
                     value = value[:-1]
                 display.screen.blit(police.render(value, True, color), (int(x), int(y)))
 
-            text('CHTIDARTS - JOUEURS ET CHAT', w*.03, h*.035, w*.94, gold, title)
+            text('JOUEURS ET CHAT', w*.03, h*.035, w*.94, gold, title)
             text(client.name + ' | ' + status, w*.03, h*.11, w*.71, grey)
             zones = {}
             logout_rect = pygame.Rect(int(w*.76), int(h*.105), int(w*.21), int(h*.05))
@@ -575,7 +579,7 @@ def show(display, keys):
             if clicked:
                 key = clicked
             if key == 'F6':
-                from include.chti_chat_account import logout
+                from include.caccount import logout
                 logout(display)
                 return
             if key in escape or key == 'back':
@@ -626,16 +630,16 @@ def show(display, keys):
                 else:
                     note = 'Chat deconnecte : reponse non envoyee.'
     finally:
-        display._chti_chat_open = False
-        display._chti_chat_unread = 0
+        display._lobby_chat_open = False
+        display._lobby_chat_unread = 0
 
 
 def set_game_activity(display, playing=False, room='', game='', server='', players=()):
     """Appelé par le match ; aucune requête réseau sur le thread du jeu."""
     data = {'playing':bool(playing),'room':str(room),'game':str(game),
             'server':str(server),'players':list(players)[:26]}
-    display._chti_game_activity = data
-    client = getattr(display, '_chti_chat_client', None)
+    display._lobby_game_activity = data
+    client = getattr(display, '_lobby_chat_client', None)
     if client is None and playing:
         client = ensure_session(display, prompt=False)
     if client is not None:

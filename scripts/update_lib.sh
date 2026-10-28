@@ -10,11 +10,12 @@
 # Adafruit-Blinka-Raspberry-Pi-PWM (module Python) : Blinka 10 le demande au demarrage
 # (« Blinka detected missing or outdated platform dependencies… [Y/n] ») ; pose avant que la
 # borne n'installe Blinka 10
+# python3-websocket : le jeu en ligne (salon des joueurs, include/cchat.py)
 # python3-usb et la regle udev des paves USB (Parametres > Paves USB) : le jeu les programme
 # sans etre root ; la regle vaut des le prochain branchement du pave (ou le redemarrage)
 set -e
 
-PAQUETS="fonts-noto-color-emoji python3-usb"
+PAQUETS="fonts-noto-color-emoji python3-usb python3-websocket"
 
 for paquet in $PAQUETS; do
     if dpkg -s "$paquet" >/dev/null 2>&1; then

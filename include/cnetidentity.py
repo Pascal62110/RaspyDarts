@@ -9,7 +9,7 @@ import urllib.request
 
 
 def server_user(session):
-    from include.chti_chat_account import BASE, COOKIE
+    from include.caccount import BASE, COOKIE
     token = session.get('token', '')
     if not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{30,128}', token):
         return None
@@ -37,8 +37,8 @@ def wait_user(display, session):
             results.put((None, True))
     threading.Thread(target=worker, daemon=True).start()
     clock = pygame.time.Clock()
-    previous = getattr(display, '_chti_auth_open', False)
-    display._chti_auth_open = True
+    previous = getattr(display, '_lobby_auth_open', False)
+    display._lobby_auth_open = True
     try:
         while True:
             try:
@@ -60,13 +60,13 @@ def wait_user(display, session):
             display.update_screen()
             clock.tick(30)
     finally:
-        display._chti_auth_open = previous
+        display._lobby_auth_open = previous
 
 
 def network_players(display):
-    from include import chti_chat_account as accounts
-    from include.chti_chat import ensure_session
-    session = getattr(display, '_chti_account_session', None) or accounts.load_session()
+    from include import caccount as accounts
+    from include.cchat import ensure_session
+    session = getattr(display, '_lobby_account_session', None) or accounts.load_session()
     for attempt in range(2):
         if not isinstance(session, dict) or session.get('expires', 0) <= time.time():
             session = accounts.login_dialog(display)
@@ -80,24 +80,24 @@ def network_players(display):
         if user is not None:
             break
         # Session refusee par le VPS : ne jamais utiliser son identite locale.
-        current = getattr(display, '_chti_chat_client', None)
+        current = getattr(display, '_lobby_chat_client', None)
         if current is not None:
             current.stop()
-        display._chti_chat_client = None
-        display._chti_account_session = None
+        display._lobby_chat_client = None
+        display._lobby_account_session = None
         accounts.forget_session()
         session = None
     else:
         display.message(['Connexion au compte requise. Reessayez.'], wait=1800)
         return 1, 'escape', False
     session = dict(session, user=user)
-    current = getattr(display, '_chti_chat_client', None)
+    current = getattr(display, '_lobby_chat_client', None)
     if current is not None and (current.token != session['token'] or current.auth_failed):
         current.stop()
-        display._chti_chat_client = None
-    display._chti_account_session = session
-    display._chti_ready_online = True
-    display._chti_chat_retry = 0
+        display._lobby_chat_client = None
+    display._lobby_account_session = session
+    display._lobby_ready_online = True
+    display._lobby_chat_retry = 0
     if ensure_session(display, prompt=False) is None:
         display.message(['Connexion au salon impossible. Reessayez.'], wait=1800)
         return 1, 'escape', False

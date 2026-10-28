@@ -122,7 +122,9 @@ DefaultConfig['SectionAdvanced'] = {
     'victory-celebration-delay': 5000,
     'launch-game-celebration': False,
     'game-options-list':'',
-    'richard-mode': False
+    'richard-mode': False,
+    # Server of the online games : accounts of the players, chat, rooms (include/caccount.py)
+    'online-server': 'video.chtiraspycard.fr'
     }
 #
 DefaultConfig['Favorites'] = {

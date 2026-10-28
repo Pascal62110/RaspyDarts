@@ -7314,6 +7314,8 @@ class Screen(pygame.Surface):
     # Secret key of the menus : the shortcut of each button shown, or hidden again (until the
     # game is left ; in a game, c is the cheat dart)
     REVEAL_KEY = 'c'
+    # Room chosen in the online games (network_lobby)
+    lobby_game = None
     revealed = False
     # The entries of the colours which hid them, given a value while they are shown
     hidden_shortcuts = []
@@ -7954,21 +7956,26 @@ class Screen(pygame.Surface):
                     continue
             return button
 
-    def chti_chat_menu(self):
-        from include.chti_chat import show
+    def chat_menu(self):
+        from include.cchat import show
         return show(self, (UP_KEYS, DOWN_KEYS, LEFT_KEYS, RIGHT_KEYS, ENTER_KEYS, ESCAPE_KEYS))
 
-    def chti_network_menu(self):
-        """Interface reseau ChtiDarts plein ecran."""
+    def network_lobby(self):
+        """
+        Online games : rooms waiting for a player and games being played, chat between the
+        players. Returns netjoin (self.lobby_game : the room chosen), netcreate, or None
+        """
         selected = 0
         index_partie = 0
         selection_liste = False
-        self.chti_selected_network_game = None
+        self.lobby_game = None
         actions = ['netjoin', 'netcreate']
 
         import socket
-        # CHTI SALLES COULEURS V1
-        from include.chti_salles_menu import active_rooms, merge_rooms, joinable, label, colors
+        from include import caccount
+        from include.crooms import active_rooms, merge_rooms, joinable, label, colors
+
+        caccount.set_server(self.config.get_value('SectionGlobals', 'online-server', False))
 
         serveurs = self.config.get_value('Favorites', 'servers') or ''
         host = str(serveurs).split(',')[0].split(':')[0].strip()
@@ -8019,22 +8026,10 @@ class Screen(pygame.Surface):
             except Exception as erreur:
                 etat['statut'] = 'HORS LIGNE'
                 etat['parties'] = []
-                print('[CHTI RESEAU]', erreur, flush=True)
+                print('[LOBBY]', erreur, flush=True)
 
             finally:
                 etat['busy'] = False
-
-        # Fond ChtiDarts : chargement une seule fois
-        try:
-            fond_source = pygame.image.load(
-                '/pydarts/images/background.png'
-            ).convert()
-        except Exception as erreur:
-            print('[CHTI RESEAU] Erreur fond :', erreur)
-            fond_source = None
-
-        fond = None
-        taille_fond = None
 
         while True:
             maintenant = time.monotonic()
@@ -8048,15 +8043,8 @@ class Screen(pygame.Surface):
                     target=actualiser, daemon=True
                 ).start()
             w, h = self.screen.get_size()
-            if fond_source is not None:
-                if taille_fond != (w, h):
-                    fond = pygame.transform.smoothscale(
-                        fond_source, (w, h)
-                    )
-                    taille_fond = (w, h)
-                self.screen.blit(fond, (0, 0))
-            else:
-                self.screen.fill((11, 19, 32))
+            # Background of the theme
+            self.display_background()
 
             titre = pygame.font.Font(None, max(32, int(h * .072)))
             texte = pygame.font.Font(None, max(22, int(h * .041)))
@@ -8076,7 +8064,7 @@ class Screen(pygame.Surface):
             pygame.draw.rect(self.screen, or_,
                              (0, int(h * .18), w, 3))
 
-            afficher("CHTIDARTS - PARTIE RESEAU",
+            afficher("PARTIE EN RESEAU",
                      w * .045, h * .058, titre, or_)
 
             gauche = pygame.Rect(int(w*.04), int(h*.24),
@@ -8112,7 +8100,7 @@ class Screen(pygame.Surface):
                          w*.065, h*.53, petit, gris)
 
 
-            # CHTIDARTS : 12 parties, clic direct
+            # 12 rooms, a click joins
             police_ligne = pygame.font.Font(
                 None, max(17, int(h*.027))
             )
@@ -8168,7 +8156,7 @@ class Screen(pygame.Surface):
                 afficher(ligne, zone.x+9, zone.y+2, police_adaptee, couleur_ligne)
 
             # Disponibilite volontaire : aucun joueur visible sans ce bouton.
-            ready = bool(getattr(self, '_chti_ready_online', False))
+            ready = bool(getattr(self, '_lobby_ready_online', False))
             ready_rect = pygame.Rect(int(w*.79), int(h*.23), int(w*.18), int(h*.13))
             zones['ready'] = ready_rect
             pygame.draw.rect(self.screen,
@@ -8181,7 +8169,7 @@ class Screen(pygame.Surface):
             afficher('DISPONIBLE' if ready else 'EN LIGNE (F8)',
                      ready_rect.x+10, ready_rect.y+int(h*.065), petit, blanc)
 
-            # CHTI CHAT V1 : salon des joueurs
+            # Chat of the players
             chat_rect = pygame.Rect(int(w*.79), int(h*.39), int(w*.18), int(h*.11))
             zones['chat'] = chat_rect
             pygame.draw.rect(self.screen,
@@ -8255,12 +8243,12 @@ class Screen(pygame.Surface):
                 return None
 
             if key in ('ready', 'F8'):
-                from include.chti_chat import toggle_ready
+                from include.cchat import toggle_ready
                 toggle_ready(self)
                 continue
 
             if key in ('chat', 'F6'):
-                self.chti_chat_menu()
+                self.chat_menu()
                 continue
 
             # Un clic sur la ligne rejoint directement la partie.
@@ -8278,7 +8266,7 @@ class Screen(pygame.Surface):
                         joueurs = 0
 
                     if joinable(partie):
-                        self.chti_selected_network_game = dict(partie)
+                        self.lobby_game = dict(partie)
                         return 'netjoin'
                 continue
 
@@ -8319,33 +8307,33 @@ class Screen(pygame.Surface):
                         joueurs = 0
 
                     if joinable(partie):
-                        self.chti_selected_network_game = dict(partie)
+                        self.lobby_game = dict(partie)
                         return 'netjoin'
 
                 elif selected == 0:
-                    from include.chti_chat import toggle_ready
+                    from include.cchat import toggle_ready
                     toggle_ready(self)
                 elif selected == 1:
-                    self.chti_chat_menu()
+                    self.chat_menu()
                 elif selected == 2:
                     return 'netcreate'
                 else:
                     return None
 
-    def chti_accueil_reseau(self):
-        from include.chti_chat import ensure_session, pump_presence
+    def lobby_presence_panel(self):
+        from include.cchat import ensure_session, pump_presence
         client = ensure_session(self)
         pump_presence(self)
         if client is None:
-            statut = getattr(self, '_chti_chat_status', 'CHAT NON CONFIGURE')
+            statut = getattr(self, '_lobby_chat_status', 'CHAT NON CONFIGURE')
             ident, joueurs = None, []
         else:
             statut, ident, joueurs, _ = client.snapshot()
         w, h = self.screen.get_size()
         rect = pygame.Rect(int(w*.24), int(h*.695), int(w*.29), int(h*.24))
         panneau = pygame.Surface(rect.size, pygame.SRCALPHA)
-        unread = getattr(self, '_chti_chat_unread', 0)
-        # CHTI ALERTE VERTE : pulsation douce toutes les 1,6 secondes.
+        unread = getattr(self, '_lobby_chat_unread', 0)
+        # Unread messages : a soft green pulse, every 1.6 second
         pulse = (1.0 + math.sin(time.monotonic() * math.tau / 1.6)) / 2.0
         if unread:
             panneau.fill((10, 100, 44, int(155 + 45*pulse)))
@@ -8371,12 +8359,12 @@ class Screen(pygame.Surface):
         titre = ('NOUVEAU MESSAGE ({})'.format(unread) if unread
                  else 'JOUEURS EN LIGNE ({})'.format(len(joueurs)))
         afficher(titre, rect.y+h*.01, h*.029, accent)
-        self._chti_presence_buttons = {}
+        self._lobby_presence_buttons = {}
         if statut == 'CONNECTE':
             joueurs = list(joueurs)[:26]
             maximum = max(0, len(joueurs)-4)
-            depart = min(maximum, max(0, getattr(self, '_chti_presence_offset', 0)))
-            self._chti_presence_offset = depart
+            depart = min(maximum, max(0, getattr(self, '_lobby_presence_offset', 0)))
+            self._lobby_presence_offset = depart
             largeur_bouton = int(w*.065)
             largeur_nom = rect.width - 3*marge - largeur_bouton
             police = pygame.font.Font(None, max(12, int(h*.026)))
@@ -8396,8 +8384,8 @@ class Screen(pygame.Surface):
             if not joueurs:
                 afficher('AUCUN JOUEUR', rect.y+h*.07, h*.023, gris)
             for cle, label, position, actif in (
-                ('chti_online_up', 'HAUT', .052, depart > 0),
-                ('chti_online_down', 'BAS', .117, depart < maximum)
+                ('lobby_online_up', 'HAUT', .052, depart > 0),
+                ('lobby_online_down', 'BAS', .117, depart < maximum)
             ):
                 bouton = pygame.Rect(
                     rect.right-marge-largeur_bouton,
@@ -8411,12 +8399,12 @@ class Screen(pygame.Surface):
                 police_bouton = pygame.font.Font(None, max(10, int(h*.022)))
                 image = police_bouton.render(label, True, blanc if actif else gris)
                 self.screen.blit(image, image.get_rect(center=bouton.center))
-                self._chti_presence_buttons[cle] = bouton
+                self._lobby_presence_buttons[cle] = bouton
         else:
             afficher(statut, rect.y+h*.07, h*.022, gris)
-        unread = getattr(self, '_chti_chat_unread', 0)
+        unread = getattr(self, '_lobby_chat_unread', 0)
         footer = '{} message(s) / invitation(s) - F7'.format(unread) if unread else 'CLIC / F7 : OUVRIR LE CHAT'
-        if not getattr(self, '_chti_ready_online', False):
+        if not getattr(self, '_lobby_ready_online', False):
             footer = 'NON DISPONIBLE | F2 : SE RENDRE PRET'
         afficher(footer, rect.bottom-h*.035, h*.022 if unread else h*.020, accent if unread else gris)
         return rect
