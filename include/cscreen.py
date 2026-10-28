@@ -7954,6 +7954,475 @@ class Screen(pygame.Surface):
                     continue
             return button
 
+    def chti_chat_menu(self):
+        from include.chti_chat import show
+        return show(self, (UP_KEYS, DOWN_KEYS, LEFT_KEYS, RIGHT_KEYS, ENTER_KEYS, ESCAPE_KEYS))
+
+    def chti_network_menu(self):
+        """Interface reseau ChtiDarts plein ecran."""
+        selected = 0
+        index_partie = 0
+        selection_liste = False
+        self.chti_selected_network_game = None
+        actions = ['netjoin', 'netcreate']
+
+        import socket
+        # CHTI SALLES COULEURS V1
+        from include.chti_salles_menu import active_rooms, merge_rooms, joinable, label, colors
+
+        serveurs = self.config.get_value('Favorites', 'servers') or ''
+        host = str(serveurs).split(',')[0].split(':')[0].strip()
+        port = 25006
+
+        etat = {
+            'statut': 'CONNEXION...',
+            'parties': [],
+            'busy': False,
+            'dernier': 0
+        }
+
+        def actualiser():
+            try:
+                with socket.create_connection((host, port), timeout=3) as sock:
+                    sock.settimeout(3)
+                    sock.sendall(b'{"REQUEST":"LIST"}')
+
+                    data = b''
+                    while b'|' not in data:
+                        morceau = sock.recv(4096)
+                        if not morceau:
+                            break
+                        data += morceau
+                        if len(data) > 262144:
+                            raise ValueError('Reponse trop volumineuse')
+
+                    reponse = json.loads(
+                        data.split(b'|', 1)[0].decode('utf-8')
+                    )
+
+                if isinstance(reponse, list):
+                    attente = [p for p in reponse if isinstance(p, dict)]
+                elif (isinstance(reponse, dict)
+                      and reponse.get('RESPONSE') == 'EMPTY'):
+                    attente = []
+                else:
+                    raise ValueError('Reponse inconnue')
+
+                try:
+                    en_cours = active_rooms(host)
+                    etat['statut'] = 'CONNECTE'
+                except Exception:
+                    en_cours = []
+                    etat['statut'] = 'CONNECTE - EN COURS INDISPONIBLES'
+                etat['parties'] = merge_rooms(attente, en_cours, host, etat['parties'])
+
+            except Exception as erreur:
+                etat['statut'] = 'HORS LIGNE'
+                etat['parties'] = []
+                print('[CHTI RESEAU]', erreur, flush=True)
+
+            finally:
+                etat['busy'] = False
+
+        # Fond ChtiDarts : chargement une seule fois
+        try:
+            fond_source = pygame.image.load(
+                '/pydarts/images/background.png'
+            ).convert()
+        except Exception as erreur:
+            print('[CHTI RESEAU] Erreur fond :', erreur)
+            fond_source = None
+
+        fond = None
+        taille_fond = None
+
+        while True:
+            maintenant = time.monotonic()
+            if host and not etat['busy'] and (
+                etat['dernier'] == 0
+                or maintenant - etat['dernier'] >= 3
+            ):
+                etat['busy'] = True
+                etat['dernier'] = maintenant
+                threading.Thread(
+                    target=actualiser, daemon=True
+                ).start()
+            w, h = self.screen.get_size()
+            if fond_source is not None:
+                if taille_fond != (w, h):
+                    fond = pygame.transform.smoothscale(
+                        fond_source, (w, h)
+                    )
+                    taille_fond = (w, h)
+                self.screen.blit(fond, (0, 0))
+            else:
+                self.screen.fill((11, 19, 32))
+
+            titre = pygame.font.Font(None, max(32, int(h * .072)))
+            texte = pygame.font.Font(None, max(22, int(h * .041)))
+            petit = pygame.font.Font(None, max(18, int(h * .031)))
+
+            or_ = (245, 189, 55)
+            blanc = (238, 240, 245)
+            gris = (162, 176, 194)
+
+            def afficher(msg, x, y, police, couleur):
+                img = police.render(msg, True, couleur)
+                self.screen.blit(img, (int(x), int(y)))
+
+            bandeau = pygame.Surface((w, int(h * .18)), pygame.SRCALPHA)
+            bandeau.fill((8, 12, 18, 130))
+            self.screen.blit(bandeau, (0, 0))
+            pygame.draw.rect(self.screen, or_,
+                             (0, int(h * .18), w, 3))
+
+            afficher("CHTIDARTS - PARTIE RESEAU",
+                     w * .045, h * .058, titre, or_)
+
+            gauche = pygame.Rect(int(w*.04), int(h*.24),
+                                 int(w*.72), int(h*.61))
+            pygame.draw.rect(self.screen, (23, 40, 61),
+                             gauche, border_radius=12)
+            pygame.draw.rect(self.screen, (80, 102, 128),
+                             gauche, 2, border_radius=12)
+
+            afficher("SERVEURS ET PARTIES",
+                     w*.065, h*.29, texte, or_)
+
+            afficher("SERVEUR : " + (host or "NON CONFIGURE"),
+                     w*.065, h*.365, petit, blanc)
+
+            couleur_etat = (
+                (90, 230, 135) if etat['statut'].startswith('CONNECTE')
+                else (245, 100, 95)
+                if etat['statut'] == 'HORS LIGNE'
+                else gris
+            )
+
+            afficher(etat['statut'],
+                     w*.065, h*.412, petit, couleur_etat)
+
+            parties = list(etat['parties'])[:12]
+            zones = {}
+            if index_partie >= len(parties):
+                index_partie = 0
+
+            if etat['statut'] == 'CONNECTE' and not parties:
+                afficher("AUCUNE PARTIE DISPONIBLE",
+                         w*.065, h*.53, petit, gris)
+
+
+            # CHTIDARTS : 12 parties, clic direct
+            police_ligne = pygame.font.Font(
+                None, max(17, int(h*.027))
+            )
+
+            for i in range(12):
+                y = .453 + i * .0327
+
+                zone = pygame.Rect(
+                    int(w*.059), int(h*y),
+                    int(w*.69), int(h*.031)
+                )
+
+                if i >= len(parties):
+                    pygame.draw.rect(
+                        self.screen, (30, 46, 65),
+                        zone, border_radius=4
+                    )
+                    afficher(
+                        "{:02d}   ---".format(i+1),
+                        zone.x+9, zone.y+2,
+                        police_ligne, gris
+                    )
+                    continue
+
+                partie = parties[i]
+                zones['partie|{}'.format(i)] = zone
+
+                try:
+                    joueurs = int(partie.get('PLAYERS', 0))
+                except (TypeError, ValueError):
+                    joueurs = 0
+
+                disponible = joinable(partie)
+                surligne = selection_liste and index_partie == i
+
+                fond_ligne, couleur_ligne = colors(partie, surligne)
+
+                pygame.draw.rect(
+                    self.screen, fond_ligne,
+                    zone, border_radius=4
+                )
+
+                ligne = label(partie, i)
+                taille = max(17, int(h*.027))
+                police_adaptee = pygame.font.Font(None, taille)
+                while taille > 12 and police_adaptee.size(ligne)[0] > zone.width-18:
+                    taille -= 1
+                    police_adaptee = pygame.font.Font(None, taille)
+                if police_adaptee.size(ligne)[0] > zone.width-18:
+                    while ligne and police_adaptee.size(ligne+'...')[0] > zone.width-18:
+                        ligne = ligne[:-1]
+                    ligne += '...'
+                afficher(ligne, zone.x+9, zone.y+2, police_adaptee, couleur_ligne)
+
+            # Disponibilite volontaire : aucun joueur visible sans ce bouton.
+            ready = bool(getattr(self, '_chti_ready_online', False))
+            ready_rect = pygame.Rect(int(w*.79), int(h*.23), int(w*.18), int(h*.13))
+            zones['ready'] = ready_rect
+            pygame.draw.rect(self.screen,
+                             (50, 110, 65) if ready else (30, 51, 76),
+                             ready_rect, border_radius=10)
+            pygame.draw.rect(self.screen, or_ if not selection_liste and selected == 0 else gris,
+                             ready_rect, 3 if selected == 0 else 1, border_radius=10)
+            afficher('NE PLUS ETRE' if ready else 'PRET A JOUER',
+                     ready_rect.x+10, ready_rect.y+12, petit, blanc)
+            afficher('DISPONIBLE' if ready else 'EN LIGNE (F8)',
+                     ready_rect.x+10, ready_rect.y+int(h*.065), petit, blanc)
+
+            # CHTI CHAT V1 : salon des joueurs
+            chat_rect = pygame.Rect(int(w*.79), int(h*.39), int(w*.18), int(h*.11))
+            zones['chat'] = chat_rect
+            pygame.draw.rect(self.screen,
+                             (143, 96, 24) if not selection_liste and selected == 1 else (30, 51, 76),
+                             chat_rect, border_radius=10)
+            pygame.draw.rect(self.screen, or_, chat_rect, 2, border_radius=10)
+            afficher('JOUEURS', chat_rect.x+12, chat_rect.y+12, petit, blanc)
+            afficher('CHAT (F6)', chat_rect.x+12, chat_rect.y+int(h*.06), petit, blanc)
+
+            # Boutons de droite : plus de bouton REJOINDRE
+            creation = pygame.Rect(
+                int(w*.79), int(h*.53),
+                int(w*.18), int(h*.13)
+            )
+            zones['create'] = creation
+
+            couleur = (
+                (143, 96, 24) if not selection_liste
+                and selected == 2 else (30, 51, 76)
+            )
+            pygame.draw.rect(
+                self.screen, couleur,
+                creation, border_radius=10
+            )
+            pygame.draw.rect(
+                self.screen, or_,
+                creation, 2, border_radius=10
+            )
+            afficher(
+                "CREER", creation.x+15,
+                creation.y+15, texte, blanc
+            )
+            afficher(
+                "UNE PARTIE", creation.x+15,
+                creation.y+48, petit, blanc
+            )
+
+            retour = pygame.Rect(
+                int(w*.79), int(h*.70),
+                int(w*.18), int(h*.10)
+            )
+            zones['back'] = retour
+
+            pygame.draw.rect(
+                self.screen, (56, 66, 83),
+                retour, border_radius=9
+            )
+            afficher(
+                "RETOUR", retour.x+15,
+                retour.y+15, petit, blanc
+            )
+
+            afficher(
+                "VERT : EN ATTENTE / REJOINDRE - ROUGE : EN COURS",
+                w*.045, h*.92, petit, gris
+            )
+
+            self.update_screen()
+
+            key = self.rpi.listen_inputs(
+                ['arrows', 'fx', 'alpha'],
+                ['enter', 'escape', 'space', 'single-click'],
+                timeout=200
+            )
+
+            clicked = self.is_clicked(zones, key)
+            if clicked:
+                key = clicked
+
+            if key in ESCAPE_KEYS or key == 'back':
+                return None
+
+            if key in ('ready', 'F8'):
+                from include.chti_chat import toggle_ready
+                toggle_ready(self)
+                continue
+
+            if key in ('chat', 'F6'):
+                self.chti_chat_menu()
+                continue
+
+            # Un clic sur la ligne rejoint directement la partie.
+            if isinstance(key, str) and key.startswith('partie|'):
+                try:
+                    n = int(key.split('|', 1)[1])
+                except ValueError:
+                    continue
+
+                if 0 <= n < len(parties):
+                    partie = parties[n]
+                    try:
+                        joueurs = int(partie.get('PLAYERS', 0))
+                    except (TypeError, ValueError):
+                        joueurs = 0
+
+                    if joinable(partie):
+                        self.chti_selected_network_game = dict(partie)
+                        return 'netjoin'
+                continue
+
+            if key in LEFT_KEYS and parties:
+                selection_liste = True
+                continue
+
+            if key in RIGHT_KEYS:
+                selection_liste = False
+                selected = 0
+                continue
+
+            if key in UP_KEYS:
+                if selection_liste and parties:
+                    index_partie = (
+                        index_partie - 1
+                    ) % len(parties)
+                else:
+                    selected = (selected - 1) % 4
+
+            elif key in DOWN_KEYS:
+                if selection_liste and parties:
+                    index_partie = (
+                        index_partie + 1
+                    ) % len(parties)
+                else:
+                    selected = (selected + 1) % 4
+
+            elif key == 'create':
+                return 'netcreate'
+
+            elif key in ENTER_KEYS:
+                if selection_liste and parties:
+                    partie = parties[index_partie]
+                    try:
+                        joueurs = int(partie.get('PLAYERS', 0))
+                    except (TypeError, ValueError):
+                        joueurs = 0
+
+                    if joinable(partie):
+                        self.chti_selected_network_game = dict(partie)
+                        return 'netjoin'
+
+                elif selected == 0:
+                    from include.chti_chat import toggle_ready
+                    toggle_ready(self)
+                elif selected == 1:
+                    self.chti_chat_menu()
+                elif selected == 2:
+                    return 'netcreate'
+                else:
+                    return None
+
+    def chti_accueil_reseau(self):
+        from include.chti_chat import ensure_session, pump_presence
+        client = ensure_session(self)
+        pump_presence(self)
+        if client is None:
+            statut = getattr(self, '_chti_chat_status', 'CHAT NON CONFIGURE')
+            ident, joueurs = None, []
+        else:
+            statut, ident, joueurs, _ = client.snapshot()
+        w, h = self.screen.get_size()
+        rect = pygame.Rect(int(w*.24), int(h*.695), int(w*.29), int(h*.24))
+        panneau = pygame.Surface(rect.size, pygame.SRCALPHA)
+        unread = getattr(self, '_chti_chat_unread', 0)
+        # CHTI ALERTE VERTE : pulsation douce toutes les 1,6 secondes.
+        pulse = (1.0 + math.sin(time.monotonic() * math.tau / 1.6)) / 2.0
+        if unread:
+            panneau.fill((10, 100, 44, int(155 + 45*pulse)))
+        else:
+            panneau.fill((12, 16, 20, 225))
+        self.screen.blit(panneau, rect.topleft)
+        gold, blanc, gris = (235, 174, 35), (245, 245, 245), (170, 180, 190)
+        accent = (55, int(190 + 65*pulse), 110) if unread else gold
+        pygame.draw.rect(self.screen, accent, rect, 3 if unread else 2,
+                         border_radius=max(4, int(h*.012)))
+        marge = max(8, int(w*.008))
+
+        def afficher(message, y, taille, couleur):
+            message = ' '.join(str(message).split())
+            police = pygame.font.Font(None, max(10, int(taille)))
+            largeur = rect.width - 2*marge
+            if police.size(message)[0] > largeur:
+                while message and police.size(message + '...')[0] > largeur:
+                    message = message[:-1]
+                message += '...'
+            self.screen.blit(police.render(message, True, couleur), (rect.x+marge, int(y)))
+
+        titre = ('NOUVEAU MESSAGE ({})'.format(unread) if unread
+                 else 'JOUEURS EN LIGNE ({})'.format(len(joueurs)))
+        afficher(titre, rect.y+h*.01, h*.029, accent)
+        self._chti_presence_buttons = {}
+        if statut == 'CONNECTE':
+            joueurs = list(joueurs)[:26]
+            maximum = max(0, len(joueurs)-4)
+            depart = min(maximum, max(0, getattr(self, '_chti_presence_offset', 0)))
+            self._chti_presence_offset = depart
+            largeur_bouton = int(w*.065)
+            largeur_nom = rect.width - 3*marge - largeur_bouton
+            police = pygame.font.Font(None, max(12, int(h*.026)))
+            for ligne, joueur in enumerate(joueurs[depart:depart+4]):
+                nom = ' '.join(str(joueur.get('name', '?')).split())
+                if joueur.get('id') == ident:
+                    nom += ' (vous)'
+                prefixe = '{:02d}  '.format(depart+ligne+1)
+                if police.size(prefixe+nom)[0] > largeur_nom:
+                    while nom and police.size(prefixe+nom+'...')[0] > largeur_nom:
+                        nom = nom[:-1]
+                    nom += '...'
+                self.screen.blit(
+                    police.render(prefixe+nom, True, blanc),
+                    (rect.x+marge, int(rect.y+h*(.05+ligne*.033)))
+                )
+            if not joueurs:
+                afficher('AUCUN JOUEUR', rect.y+h*.07, h*.023, gris)
+            for cle, label, position, actif in (
+                ('chti_online_up', 'HAUT', .052, depart > 0),
+                ('chti_online_down', 'BAS', .117, depart < maximum)
+            ):
+                bouton = pygame.Rect(
+                    rect.right-marge-largeur_bouton,
+                    int(rect.y+h*position),
+                    largeur_bouton, int(h*.052)
+                )
+                pygame.draw.rect(self.screen, (35, 51, 68), bouton,
+                                 border_radius=4)
+                pygame.draw.rect(self.screen, gold if actif else gris,
+                                 bouton, 1, border_radius=4)
+                police_bouton = pygame.font.Font(None, max(10, int(h*.022)))
+                image = police_bouton.render(label, True, blanc if actif else gris)
+                self.screen.blit(image, image.get_rect(center=bouton.center))
+                self._chti_presence_buttons[cle] = bouton
+        else:
+            afficher(statut, rect.y+h*.07, h*.022, gris)
+        unread = getattr(self, '_chti_chat_unread', 0)
+        footer = '{} message(s) / invitation(s) - F7'.format(unread) if unread else 'CLIC / F7 : OUVRIR LE CHAT'
+        if not getattr(self, '_chti_ready_online', False):
+            footer = 'NON DISPONIBLE | F2 : SE RENDRE PRET'
+        afficher(footer, rect.bottom-h*.035, h*.022 if unread else h*.020, accent if unread else gris)
+        return rect
+
+
+
     def main_menu(self):
         '''
         Choose Game Type : Local - Network. The menu is described by the files of menus

@@ -703,6 +703,11 @@ try:
                 # Options of a favorite whose players are chosen at its launch (see FAVORITE)
                 favorite_options = None
                 game_type = display.main_menu()
+                if game_type in ('netjoin', 'netcreate'):
+                    game_type = display.chti_network_menu()
+                    if game_type is None:
+                        menu = 'gametype'
+                        continue
                 if game_type in ('restart', 'quit', 'shutdown'):
                     rpi.light_toys(['LIGHT_VALIDATE'], False)
                     break
@@ -803,9 +808,8 @@ try:
                     display.prepare_sound('game_start')
 
                 if game_type in ('netjoin', 'netcreate'):
-                    nb_sets, players_list, competition_mode, players_favorite_color = \
-                            display.players_menu(local_players, bank=players_bank, sets=None, context=game_type,
-                                                 colors_available = dispatcher.get_colors(), players_color = players_favorite_color)
+                    from include.chti_network_identity import network_players
+                    nb_sets, players_list, competition_mode = network_players(display)
                     nb_sets = 1
                 else:
                     nb_sets, players_list, competition_mode, players_favorite_color = \
