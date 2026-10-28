@@ -3721,6 +3721,21 @@ msgstr "Stay logged in on this machine (30 days)?"
 msgid "online-logged-in"
 msgstr "Logged in: {name}"
 
+msgid "online-players-panel"
+msgstr "Players online"
+
+msgid "online-identify"
+msgstr "Log in"
+
+msgid "online-account-create"
+msgstr "No account? Scan to create one"
+
+msgid "online-open-lobby"
+msgstr "Validate: online game"
+
+msgid "online-unread-open"
+msgstr "Validate: read them in online game"
+
 msgid "online-checking-account"
 msgstr "Checking the account…"
 
@@ -3765,18 +3780,3 @@ msgstr "(you)"
 
 msgid "online-no-player"
 msgstr "No player"
-
-msgid "online-up"
-msgstr "Up"
-
-msgid "online-down"
-msgstr "Down"
-
-msgid "online-not-available"
-msgstr "Not available: {key} to be ready"
-
-msgid "online-unread"
-msgstr "{count} message(s) or invitation(s): {key}"
-
-msgid "online-open-chat"
-msgstr "{key}: open the chat"

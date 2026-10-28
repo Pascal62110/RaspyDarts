@@ -4175,6 +4175,21 @@ msgstr "Restare connesso su questa macchina (30 giorni)?"
 msgid "online-logged-in"
 msgstr "Connesso: {name}"
 
+msgid "online-players-panel"
+msgstr "Giocatori online"
+
+msgid "online-identify"
+msgstr "Accedi"
+
+msgid "online-account-create"
+msgstr "Nessun account? Scansiona per crearne uno"
+
+msgid "online-open-lobby"
+msgstr "Conferma: partita online"
+
+msgid "online-unread-open"
+msgstr "Conferma: leggi in partita online"
+
 msgid "online-checking-account"
 msgstr "Verifica dell'account…"
 
@@ -4219,18 +4234,3 @@ msgstr "(tu)"
 
 msgid "online-no-player"
 msgstr "Nessun giocatore"
-
-msgid "online-up"
-msgstr "Su"
-
-msgid "online-down"
-msgstr "Giù"
-
-msgid "online-not-available"
-msgstr "Non disponibile: {key} per essere pronto"
-
-msgid "online-unread"
-msgstr "{count} messaggio/i o invito/i: {key}"
-
-msgid "online-open-chat"
-msgstr "{key}: apri la chat"

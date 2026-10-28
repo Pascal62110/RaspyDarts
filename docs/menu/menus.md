@@ -409,6 +409,7 @@ Une action par bouton. Le jeu refuse une action inconnue (§3).
 |---|---|
 | `local_game` | partie simple (F1) |
 | `network` | partie en réseau (F2) : d'abord le compte de la borne sur le serveur (le premier des serveurs favoris, *Divers* > *Favoris*), puis les parties à rejoindre ou en cours, la création d'une partie, le chat, le changement de serveur ou de compte. Les touches et textes de ses boutons sont dans les menus `online_lobby` et `online_chat` |
+| `online_players` | panneau des joueurs en ligne, placé comme un bouton (*Modifier les écrans* > *Ajouter un bouton* > *Joueurs en ligne*) : le nombre et les noms des joueurs connectés au serveur, les messages non lus ; sans compte enregistré sur la borne, un QR code pour en créer un et *S'identifier*. Redessiné chaque seconde ; validé : *Partie en réseau* |
 | `network_join`, `network_create` | anciens boutons « rejoindre » et « créer une partie en réseau » : ils ouvrent le même écran que `network` ; un fichier qui les a encore ne reçoit pas le bouton `network` en plus |
 | `trophies` | trophées et progression (F5) |
 | `gallery` | galerie des photos et vidéos (F6) |

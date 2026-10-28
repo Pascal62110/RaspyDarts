@@ -4809,6 +4809,21 @@ msgstr "Rester connecté sur cette borne (30 jours) ?"
 msgid "online-logged-in"
 msgstr "Connecté : {name}"
 
+msgid "online-players-panel"
+msgstr "Joueurs en ligne"
+
+msgid "online-identify"
+msgstr "S'identifier"
+
+msgid "online-account-create"
+msgstr "Pas de compte ? Scannez pour en créer un"
+
+msgid "online-open-lobby"
+msgstr "Valider : Partie en réseau"
+
+msgid "online-unread-open"
+msgstr "Valider : lire dans Partie en réseau"
+
 msgid "online-checking-account"
 msgstr "Vérification du compte…"
 
@@ -4853,18 +4868,3 @@ msgstr "(vous)"
 
 msgid "online-no-player"
 msgstr "Aucun joueur"
-
-msgid "online-up"
-msgstr "Haut"
-
-msgid "online-down"
-msgstr "Bas"
-
-msgid "online-not-available"
-msgstr "Non disponible : {key} pour être prêt"
-
-msgid "online-unread"
-msgstr "{count} message(s) ou invitation(s) : {key}"
-
-msgid "online-open-chat"
-msgstr "{key} : ouvrir le chat"

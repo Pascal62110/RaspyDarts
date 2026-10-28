@@ -856,6 +856,10 @@ class Editor:
                                     {'id': f'category-{category}', 'action': f'category:{category}',
                                      'text': text, 'logo': logo}))
             choices.append((self.translate('editor-add-game'), 'game'))
+            # The panel of the players online (include/cscreen.py online_players_panel)
+            if 'online_players' not in actions:
+                choices.append((self.translate('online-players-panel'),
+                                {'id': 'online-players', 'action': 'online_players', 'text': 'online-players-panel'}))
         return choices
 
     def choose_game(self):

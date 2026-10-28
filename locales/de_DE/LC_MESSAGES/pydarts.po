@@ -1485,6 +1485,21 @@ msgstr "Auf diesem Automaten angemeldet bleiben (30 Tage)?"
 msgid "online-logged-in"
 msgstr "Angemeldet: {name}"
 
+msgid "online-players-panel"
+msgstr "Spieler online"
+
+msgid "online-identify"
+msgstr "Anmelden"
+
+msgid "online-account-create"
+msgstr "Kein Konto? Scannen, um eines zu erstellen"
+
+msgid "online-open-lobby"
+msgstr "Bestätigen: Online-Spiel"
+
+msgid "online-unread-open"
+msgstr "Bestätigen: im Online-Spiel lesen"
+
 msgid "online-checking-account"
 msgstr "Konto wird geprüft…"
 
@@ -1529,18 +1544,3 @@ msgstr "(du)"
 
 msgid "online-no-player"
 msgstr "Kein Spieler"
-
-msgid "online-up"
-msgstr "Hoch"
-
-msgid "online-down"
-msgstr "Runter"
-
-msgid "online-not-available"
-msgstr "Nicht verfügbar: {key} für bereit"
-
-msgid "online-unread"
-msgstr "{count} Nachricht(en) oder Einladung(en): {key}"
-
-msgid "online-open-chat"
-msgstr "{key}: Chat öffnen"

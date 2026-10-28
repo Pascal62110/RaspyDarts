@@ -7753,6 +7753,8 @@ class Screen(pygame.Surface):
         shown = listed + footers
         nb_listed, nb_shown = len(listed), len(shown)
         styles = [self.button_style(menu, button) for button in listed]
+        # Panels of the players online placed as buttons : drawn again every second
+        widgets = {index for index, button in enumerate(listed, 1) if button.get('action') == 'online_players'}
         selected = self.selected_menu.get(name, 1) if remember else 1
         if initial is not None:
             selected = next((index for index, button in enumerate(shown, 1) if menus.button_id(button) == initial), selected)
@@ -7776,6 +7778,13 @@ class Screen(pygame.Surface):
                 rects[index] = drawn[index] = pygame.Rect(self.display_button(index == selected, self.button_text(button),
                                                                               self.FOOTERS[button['footer']]))
                 looks[index] = index == selected
+                return
+            if index in widgets:
+                # Panel of the players online : drawn each time (it changes), on its background
+                rect = pygame.Rect(rects[index]).clip(self.screen.get_rect())
+                self.screen.blit(pristine, rect, rect)
+                drawn[index] = self.online_players_panel(rect, index == selected)
+                looks[index] = state(index)
                 return
             look = state(index)
             rect = pygame.Rect(rects[index])
@@ -7878,7 +7887,7 @@ class Screen(pygame.Surface):
                     # of the buttons drawn now, unseen (the first move took up to 240 ms)
                     for index in rects:
                         for look in ('selected', 'normal'):
-                            if not listed[index - 1].get('unavailable'):
+                            if not listed[index - 1].get('unavailable') and index not in widgets:
                                 composed(index, look)
             else:
                 changed = [index for index in drawn if looks.get(index) != (state(index) if index <= nb_listed else index == selected)]
@@ -7897,8 +7906,16 @@ class Screen(pygame.Surface):
             key = self.rpi.listen_inputs(['arrows', 'fx', 'alpha', 'math'],
                ['escape', 'PLAYERBUTTON', 'BACKUPBUTTON', 'TOGGLEFULLSCREEN', 'GAMEBUTTON',
                 'single-click', 'double-click', 'resize', 'VOLUME-UP', 'VOLUME-DOWN', 'enter', 'space'],
-                 events=[(self.wait_event_time, 'EVENT', 'wait')])
+                 events=[(self.wait_event_time, 'EVENT', 'wait')], timeout=1000 if widgets else 0)
 
+            if key in (None, False) and widgets:
+                # A second without a key : the panels of the players online drawn again
+                again = [index for index in widgets if index in rects]
+                for index in again:
+                    draw(index)
+                if again:
+                    self.update_screen(rect_array=[pygame.Rect(drawn[index]) for index in again])
+                continue
             if key == 'resize':
                 full = True
                 continue
@@ -7939,7 +7956,12 @@ class Screen(pygame.Surface):
                 continue
             if button.get('unavailable'):
                 continue
-            if button in listed and listed.index(button) + 1 in drawn:
+            if button.get('action') == 'online_players' and not self.online_known_session():
+                # No account : S'identifier (a QR code to create one first), then the menu again
+                self.online_session()
+                full = True
+                continue
+            if button in listed and listed.index(button) + 1 in drawn and listed.index(button) + 1 not in widgets:
                 # Pressed : seen for a moment
                 index = listed.index(button) + 1
                 old = pygame.Rect(drawn[index])
@@ -8255,75 +8277,103 @@ class Screen(pygame.Surface):
                     else:
                         selected = (selected + move) % len(order)
 
-    def lobby_presence_panel(self):
+    def online_qrcode(self, url, side):
         '''
-        Panel of the players online (not shown yet : to be placed on a screen)
+        QR code of an address, at this size (made once : about 200 ms on a Pi 3)
         '''
-        from include.cchat import ensure_session, pump_presence, draw_line, shortcuts
+        key = (url, side)
+        codes = getattr(self, '_online_qrcodes', {})
+        if key not in codes:
+            import qrcode
+            picture = qrcode.make(url)
+            picture = (picture.get_image() if hasattr(picture, 'get_image') else picture).convert('RGB')
+            codes[key] = pygame.transform.scale(pygame.image.fromstring(picture.tobytes(), picture.size, 'RGB'), (side, side))
+            self._online_qrcodes = codes
+        return codes[key]
+
+    def online_known_session(self):
+        '''
+        Account of the borne on the server of the online games, without asking it : the one of
+        this session, or the one kept on the borne. None : none
+        '''
+        from include import caccount
+        caccount.set_server((self.online_servers() or [''])[0])
+        session = getattr(self, '_lobby_account_session', None)
+        if not session or session.get('server') != caccount.SERVER or session.get('expires', 0) <= time.time():
+            session = caccount.load_session()
+            self._lobby_account_session = session
+        return session
+
+    def online_players_panel(self, rect, chosen=False):
+        '''
+        Panel of the players online, placed as a button in a menu (action online_players of
+        the files of menus). Without an account : a QR code to create one, and S'identifier.
+        Drawn again every second by the menu
+        '''
+        from include import caccount
+        from include.cchat import ensure_session, pump_presence, draw_line
         translate = self.lang.translate
         colors = self.colorset
-        client = ensure_session(self)
-        pump_presence(self)
-        if client is None:
-            status = getattr(self, '_lobby_chat_status', 'online-chat-unavailable')
-            ident, players = None, []
-        else:
-            status, ident, players, _ = client.snapshot()
-        w, h = self.res['x'], self.res['y']
-        rect = pygame.Rect(int(w*.24), int(h*.695), int(w*.29), int(h*.24))
-        unread = getattr(self, '_lobby_chat_unread', 0)
-        radius = max(4, int(h*.012))
-        # Unread messages : the colour of the theme for a success
+        rect = pygame.Rect(rect)
+        radius = max(4, int(rect.height * .06))
+        margin = max(6, int(rect.height * .05))
+        session = self.online_known_session()
+        unread = getattr(self, '_lobby_chat_unread', 0) if session else 0
+        # Messages not read : the colour of the theme for a success
         self.new_blit_rect2(rect, colors['menu-ok'] if unread else colors['menu-header'], corners='All',
                             border_radius=radius, alpha=255)
-        margin = max(8, int(w*.008))
-        title = translate('online-new-messages').format(count=unread) if unread \
-            else translate('online-players-online').format(count=len(players))
         # Text of a panel : menu-text ; of a button (and of the panel when coloured) : menu-text-black
         text_color = colors['menu-text-black'] if unread else colors['menu-text']
-        draw_line(self, title, pygame.Rect(rect.x+margin, int(rect.y+h*.01), rect.width-2*margin, int(h*.035)),
-                  text_color)
-        self._lobby_presence_buttons = {}
-        if status == 'online-connected':
-            players = list(players)[:26]
-            last = max(0, len(players)-4)
-            first = min(last, max(0, getattr(self, '_lobby_presence_offset', 0)))
-            self._lobby_presence_offset = first
-            button_width = int(w*.065)
-            name_width = rect.width - 3*margin - button_width
-            for row, player in enumerate(players[first:first+4]):
+        line = max(12, int(rect.height * .13))
+        if not session:
+            # No account : a QR code to create one with a phone, and the button to log in
+            side = min(rect.height - 2 * margin, int(rect.width * .4))
+            self.blit(self.online_qrcode(caccount.BASE + '/joueurs', side), (rect.x + margin, rect.y + margin))
+            left = rect.x + 2 * margin + side
+            width = rect.right - margin - left
+            draw_line(self, translate('online-account-required'), pygame.Rect(left, rect.y + margin, width, line), text_color)
+            draw_line(self, translate('online-account-create'), pygame.Rect(left, rect.y + margin + line, width, line),
+                      text_color, size=line * .55)
+            button = pygame.Rect(left, rect.bottom - margin - int(line * 1.6), width, int(line * 1.6))
+            self.new_blit_rect2(button, colors['menu-selected'] if chosen else colors['menu-buttons'], corners='All',
+                                border_radius=radius, alpha=255)
+            draw_line(self, translate('online-identify'), button.inflate(-margin, -int(line * .6)), colors['menu-text-black'],
+                      align='Center')
+        else:
+            client = ensure_session(self)
+            pump_presence(self)
+            if client is None:
+                status = getattr(self, '_lobby_chat_status', 'online-chat-unavailable')
+                ident, players = None, []
+            else:
+                status, ident, players, _ = client.snapshot()
+            players = [player for player in players if isinstance(player, dict)]
+            title = translate('online-new-messages').format(count=unread) if unread \
+                else translate('online-players-online').format(count=len(players))
+            draw_line(self, title, pygame.Rect(rect.x + margin, rect.y + margin, rect.width - 2 * margin, line), text_color)
+            top = rect.y + margin + int(line * 1.2)
+            rows = max(1, int((rect.bottom - margin - line - top) / line))
+            if status != 'online-connected':
+                draw_line(self, translate(status), pygame.Rect(rect.x + margin, top, rect.width - 2 * margin, line),
+                          colors['menu-inactive'])
+            elif not players:
+                draw_line(self, translate('online-no-player'), pygame.Rect(rect.x + margin, top, rect.width - 2 * margin, line),
+                          colors['menu-inactive'])
+            for row, player in enumerate(players[:rows]):
                 name = str(player.get('name', '?'))
                 if player.get('id') == ident:
                     name += ' ' + translate('online-you')
-                draw_line(self, '{:02d}  {}'.format(first+row+1, name),
-                          pygame.Rect(rect.x+margin, int(rect.y+h*(.05+row*.033)), name_width, int(h*.03)),
-                          text_color)
-            if not players:
-                draw_line(self, translate('online-no-player'),
-                          pygame.Rect(rect.x+margin, int(rect.y+h*.07), rect.width-2*margin, int(h*.03)),
-                          colors['menu-inactive'])
-            for key, text, position, active in (('lobby_online_up', 'online-up', .052, first > 0),
-                                                ('lobby_online_down', 'online-down', .117, first < last)):
-                button = pygame.Rect(rect.right-margin-button_width, int(rect.y+h*position), button_width, int(h*.052))
-                self.new_blit_rect2(button, colors['menu-buttons'] if active else colors['menu-inactive'],
-                                    corners='All', border_radius=radius, alpha=255)
-                draw_line(self, translate(text), button.inflate(-6, -10), colors['menu-text-black'], align='Center')
-                self._lobby_presence_buttons[key] = button
-        else:
-            draw_line(self, translate(status), pygame.Rect(rect.x+margin, int(rect.y+h*.07), rect.width-2*margin, int(h*.03)),
-                      colors['menu-inactive'])
-        keys = shortcuts(self, 'online_lobby')
-        if not getattr(self, '_lobby_ready_online', False):
-            footer = translate('online-not-available').format(key=keys.get('ready', ('',))[0] or '')
-        elif unread:
-            footer = translate('online-unread').format(count=unread, key=keys.get('chat', ('',))[0] or '')
-        else:
-            footer = translate('online-open-chat').format(key=keys.get('chat', ('',))[0] or '')
-        draw_line(self, footer, pygame.Rect(rect.x+margin, int(rect.bottom-h*.04), rect.width-2*margin, int(h*.03)),
-                  text_color)
+                if row == rows - 1 and len(players) > rows:
+                    name = '+ {}'.format(len(players) - rows + 1)
+                draw_line(self, name, pygame.Rect(rect.x + margin, top + row * line, rect.width - 2 * margin, line),
+                          text_color, size=line * .7)
+            footer = translate('online-unread-open') if unread else translate('online-open-lobby')
+            draw_line(self, footer, pygame.Rect(rect.x + margin, rect.bottom - margin - line, rect.width - 2 * margin, line),
+                      text_color, size=line * .6)
+        if chosen:
+            self.blit_border(rect, colors['menu-selected'], max(3, int(rect.height * .02)), corners='All',
+                             border_radius=radius, alpha=255)
         return rect
-
-
 
     def main_menu(self):
         '''

@@ -1491,6 +1491,21 @@ msgstr "¿Mantener la sesión en esta máquina (30 días)?"
 msgid "online-logged-in"
 msgstr "Conectado: {name}"
 
+msgid "online-players-panel"
+msgstr "Jugadores en línea"
+
+msgid "online-identify"
+msgstr "Identificarse"
+
+msgid "online-account-create"
+msgstr "¿Sin cuenta? Escanee para crear una"
+
+msgid "online-open-lobby"
+msgstr "Validar: partida en línea"
+
+msgid "online-unread-open"
+msgstr "Validar: leer en partida en línea"
+
 msgid "online-checking-account"
 msgstr "Comprobando la cuenta…"
 
@@ -1535,18 +1550,3 @@ msgstr "(usted)"
 
 msgid "online-no-player"
 msgstr "Ningún jugador"
-
-msgid "online-up"
-msgstr "Arriba"
-
-msgid "online-down"
-msgstr "Abajo"
-
-msgid "online-not-available"
-msgstr "No disponible: {key} para estar listo"
-
-msgid "online-unread"
-msgstr "{count} mensaje(s) o invitación(es): {key}"
-
-msgid "online-open-chat"
-msgstr "{key}: abrir el chat"

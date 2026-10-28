@@ -462,6 +462,7 @@ const MENUS_DATA = {
   "network",
   "network_create",
   "network_join",
+  "online_players",
   "players_bank",
   "raspy2dmd",
   "reset",

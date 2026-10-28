@@ -31,6 +31,8 @@ REPLACES = {'network': ('netjoin', 'netcreate')}
 ACTIONS = {
     'local_game': 'local',
     'network': 'network',
+    # Panel of the players online (a button placed by the editor) : validated, Partie en réseau
+    'online_players': 'network',
     # Before the online games screen (a file may still have them) : they open it as well
     'network_join': 'netjoin',
     'network_create': 'netcreate',
