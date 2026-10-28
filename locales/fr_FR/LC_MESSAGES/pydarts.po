@@ -4806,6 +4806,9 @@ msgstr "Mot de passe (10 caractères minimum)"
 msgid "online-remember"
 msgstr "Rester connecté sur cette borne (30 jours) ?"
 
+msgid "online-logged-in"
+msgstr "Connecté : {name}"
+
 msgid "online-checking-account"
 msgstr "Vérification du compte…"
 

@@ -1482,6 +1482,9 @@ msgstr "Passwort (mindestens 10 Zeichen)"
 msgid "online-remember"
 msgstr "Auf diesem Automaten angemeldet bleiben (30 Tage)?"
 
+msgid "online-logged-in"
+msgstr "Angemeldet: {name}"
+
 msgid "online-checking-account"
 msgstr "Konto wird geprüft…"
 

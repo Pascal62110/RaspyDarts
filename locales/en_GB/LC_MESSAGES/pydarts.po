@@ -3718,6 +3718,9 @@ msgstr "Password (10 characters minimum)"
 msgid "online-remember"
 msgstr "Stay logged in on this machine (30 days)?"
 
+msgid "online-logged-in"
+msgstr "Logged in: {name}"
+
 msgid "online-checking-account"
 msgstr "Checking the account…"
 

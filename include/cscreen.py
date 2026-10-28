@@ -8053,6 +8053,17 @@ class Screen(pygame.Surface):
 
     def network_lobby(self):
         '''
+        Online games screen (see online_lobby). Left : the borne is not ready any more (not seen
+        online by the others until it comes back and says it is)
+        '''
+        from include.cchat import set_ready
+        try:
+            return self.online_lobby()
+        finally:
+            set_ready(self, False)
+
+    def online_lobby(self):
+        '''
         Online games : the account of the borne first (asked once, kept), then the rooms waiting
         for a player and the games being played, the chat. Returns netjoin (self.lobby_game :
         the room chosen), netcreate, or None. The keys and texts of its buttons : menu
@@ -8201,6 +8212,9 @@ class Screen(pygame.Surface):
                     return None
                 if key in ENTER_KEYS:
                     key = 'room|{}'.format(line) if line is not None else order[selected]
+                if key == 'back':
+                    # Retour chosen, then validated
+                    return None
                 if key == 'ready':
                     toggle_ready(self)
                 elif key == 'chat':

@@ -213,7 +213,11 @@ def draw_button(display, rect, button, menu_name, background, text=None):
     display.new_blit_rect2(rect, background, corners='All', border_radius=int(rect.height * .15), alpha=255)
     draw_line(display, display.lang.translate(text or label), rect.inflate(-int(rect.width * .08), -int(rect.height * .45)),
               display.colorset['menu-text-black'], align='Center')
-    key = display.button_label({'shortcut': shortcut}, display.menus().menu(menu_name))
+    # Shown as in the menus of the theme : main-sub-menu-shortcuts None (sombre) hides them
+    # (c shows them), the menu of the files decides over it
+    settings = dict(show=display.colorset.get('main-sub-menu-shortcuts') is not None)
+    settings.update(display.menus().menu(menu_name).get('shortcuts') or {})
+    key = display.button_label({'shortcut': shortcut}, {'shortcuts': settings})
     if key:
         draw_line(display, key, pygame.Rect(rect.x + 6, rect.y + 3, rect.width // 3, int(rect.height * .3)),
                   display.colorset['menu-shortcut'])
@@ -322,6 +326,14 @@ def ensure_session(display, prompt=False):
         # Aucun mot de passe ni jeton dans les logs.
         print('[LOBBY PRESENCE] Connexion au compte indisponible', flush=True)
         return None
+
+
+def set_ready(display, ready):
+    """
+    The borne seen online by the others (ready) or not : its chat connected again so
+    """
+    if bool(getattr(display, '_lobby_ready_online', False)) != bool(ready):
+        toggle_ready(display)
 
 
 def toggle_ready(display):
@@ -538,6 +550,9 @@ def show(display):
                 continue
             if key in ENTER_KEYS:
                 key = order[action_index]
+            if key == 'back':
+                # Retour chosen, then validated
+                return
             if key in ('write', 'invite', 'quick'):
                 if not selected:
                     note = translate('online-no-player-selected')

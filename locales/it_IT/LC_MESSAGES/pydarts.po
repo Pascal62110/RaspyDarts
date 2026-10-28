@@ -4172,6 +4172,9 @@ msgstr "Password (minimo 10 caratteri)"
 msgid "online-remember"
 msgstr "Restare connesso su questa macchina (30 giorni)?"
 
+msgid "online-logged-in"
+msgstr "Connesso: {name}"
+
 msgid "online-checking-account"
 msgstr "Verifica dell'account…"
 

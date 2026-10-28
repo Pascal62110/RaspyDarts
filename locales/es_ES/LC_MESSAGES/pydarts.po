@@ -1488,6 +1488,9 @@ msgstr "Contraseña (10 caracteres mínimo)"
 msgid "online-remember"
 msgstr "¿Mantener la sesión en esta máquina (30 días)?"
 
+msgid "online-logged-in"
+msgstr "Conectado: {name}"
+
 msgid "online-checking-account"
 msgstr "Comprobando la cuenta…"
 
