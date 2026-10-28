@@ -88,9 +88,9 @@ DefaultConfig['SectionAdvanced'] = {
     'selectedgame': False,
     'gametype': False,
     'netgamename': False,
-    'servername': 'raspydarts.synology.me',
+    'servername': 'video.chtiraspycard.fr',
     'serverport': 5005,
-    'masterserver': 'raspydarts.synology.me',
+    'masterserver': 'video.chtiraspycard.fr',
     'masterport': '5006',
     'serveralias': False,
     'listen': 'eth0',
@@ -125,6 +125,9 @@ DefaultConfig['SectionAdvanced'] = {
     'richard-mode': False
     }
 #
+# Former server of the network games, which answers no more (removed from the favorites)
+OLD_SERVER = 'raspydarts.synology.me'
+
 DefaultConfig['Favorites'] = {
     # The first one : server of the online games (include/caccount.py), chosen again in their
     # screen
@@ -1692,6 +1695,15 @@ class Config:
             if config_v2:
                 for option in options:
                     options[option] = AlternateConfig[section][option]
+
+        if section == 'Favorites':
+            # The former server of the network games answers no more : left out of the favorite
+            # servers, the one of the online games instead if it was the only one
+            servers = [server.strip() for server in str(options.get('servers') or '').split(',') if server.strip()]
+            kept = [server for server in servers if server.split(':')[0] != OLD_SERVER]
+            if kept != servers:
+                options['servers'] = ','.join(kept or [DefaultConfig['Favorites']['servers']])
+                self.logs.info(f"Favorite servers : {OLD_SERVER} removed ({options['servers']})")
 
         # Store in local object
         self.config[section] = options

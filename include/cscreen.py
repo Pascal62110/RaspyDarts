@@ -8149,20 +8149,21 @@ class Screen(pygame.Surface):
                                 colors['menu-text-white'], align='Left')
                 panel = pygame.Rect(int(w*.04), int(h*.19), int(w*.72), int(h*.70))
                 self.new_blit_rect2(panel, colors['menu-header'], corners='All', border_radius=radius, alpha=255)
+                # Server, account and state on one line
                 user = session.get('user') or {}
-                draw_line(self, translate('online-server').format(server=host), pygame.Rect(int(w*.06), int(h*.205), int(w*.68), int(h*.045)),
+                draw_line(self, translate('online-server').format(server=host), pygame.Rect(int(w*.06), int(h*.21), int(w*.27), int(h*.045)),
                           colors['menu-text'])
                 draw_line(self, translate('online-account-name').format(name='{:03d} · {}'.format(user.get('id', 0), user.get('username', '?'))),
-                          pygame.Rect(int(w*.06), int(h*.255), int(w*.68), int(h*.045)), colors['menu-text'])
+                          pygame.Rect(int(w*.34), int(h*.21), int(w*.24), int(h*.045)), colors['menu-text'])
                 status_color = colors['menu-ok'] if state['status'].startswith('online-connected') \
                     else colors['menu-ko'] if state['status'] == 'online-offline' else colors['menu-inactive']
-                self.new_blit_rect2(pygame.Rect(int(w*.06), int(h*.31), int(w*.02), int(h*.035)), status_color,
+                self.new_blit_rect2(pygame.Rect(int(w*.59), int(h*.216), int(w*.015), int(h*.033)), status_color,
                                     corners='All', border_radius=radius, alpha=255)
-                draw_line(self, translate(state['status']), pygame.Rect(int(w*.09), int(h*.305), int(w*.65), int(h*.045)),
+                draw_line(self, translate(state['status']), pygame.Rect(int(w*.612), int(h*.21), int(w*.14), int(h*.045)),
                           colors['menu-text'])
                 zones = {}
                 for index in range(12):
-                    zone = pygame.Rect(int(w*.059), int(h*(.365 + index * .042)), int(w*.69), int(h*.037))
+                    zone = pygame.Rect(int(w*.059), int(h*(.275 + index * .05)), int(w*.69), int(h*.044))
                     if index >= len(rooms):
                         self.new_blit_rect2(zone, colors['menu-inactive'], corners='All', border_radius=radius, alpha=255)
                         draw_line(self, '{:02d}   ---'.format(index + 1), zone.inflate(-18, -8), colors['menu-text-black'])
@@ -8172,7 +8173,7 @@ class Screen(pygame.Surface):
                                         border_radius=radius, alpha=255)
                     draw_line(self, label(rooms[index], index, translate), zone.inflate(-18, -8), colors['menu-text-black'])
                 if state['status'] == 'online-connected' and not rooms:
-                    draw_line(self, translate('online-no-room'), pygame.Rect(int(w*.07), int(h*.37), int(w*.66), int(h*.035)),
+                    draw_line(self, translate('online-no-room'), pygame.Rect(int(w*.07), int(h*.28), int(w*.66), int(h*.035)),
                               colors['menu-text'])
 
                 for index, name in enumerate(order):

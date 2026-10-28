@@ -1542,8 +1542,8 @@ const MENUS_DATA = {
         "shortcut": "F2",
         "place": {
          "x": 0.0885,
-         "y": 0.4537,
-         "width": 0.823,
+         "y": 0.4509,
+         "width": 0.8229,
          "height": 0.1231
         }
        },
@@ -1555,7 +1555,7 @@ const MENUS_DATA = {
         "exhibition": true,
         "place": {
          "x": 0.5021,
-         "y": 0.5824,
+         "y": 0.5796,
          "width": 0.4089,
          "height": 0.1231
         }
@@ -1567,7 +1567,7 @@ const MENUS_DATA = {
         "shortcut": "F4",
         "place": {
          "x": 0.2266,
-         "y": 0.7111,
+         "y": 0.7083,
          "width": 0.2708,
          "height": 0.1231
         }
@@ -1580,7 +1580,7 @@ const MENUS_DATA = {
         "exhibition": true,
         "place": {
          "x": 0.0885,
-         "y": 0.5824,
+         "y": 0.5796,
          "width": 0.4089,
          "height": 0.1231
         }
@@ -1605,7 +1605,7 @@ const MENUS_DATA = {
         "shape": "rectangle",
         "place": {
          "x": 0.5021,
-         "y": 0.7111,
+         "y": 0.7083,
          "width": 0.2708,
          "height": 0.1231
         }
