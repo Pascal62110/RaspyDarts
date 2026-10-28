@@ -8319,9 +8319,10 @@ class Screen(pygame.Surface):
         margin = max(6, int(rect.height * .05))
         session = self.online_known_session()
         unread = getattr(self, '_lobby_chat_unread', 0) if session else 0
-        # Messages not read : the colour of the theme for a success
-        self.new_blit_rect2(rect, colors['menu-ok'] if unread else colors['menu-header'], corners='All',
-                            border_radius=radius, alpha=255)
+        # Messages not read : the colour of the theme for a success ; chosen (arrows) : the colour
+        # of a button chosen, as the others (a frame alone was hardly seen on a light panel)
+        background = colors['menu-ok'] if unread else colors['menu-selected'] if chosen else colors['menu-header']
+        self.new_blit_rect2(rect, background, corners='All', border_radius=radius, alpha=255)
         # Text of a panel : menu-text ; of a button (and of the panel when coloured) : menu-text-black
         text_color = colors['menu-text-black'] if unread else colors['menu-text']
         line = max(12, int(rect.height * .13))
@@ -8335,8 +8336,7 @@ class Screen(pygame.Surface):
             draw_line(self, translate('online-account-create'), pygame.Rect(left, rect.y + margin + line, width, line),
                       text_color, size=line * .55)
             button = pygame.Rect(left, rect.bottom - margin - int(line * 1.6), width, int(line * 1.6))
-            self.new_blit_rect2(button, colors['menu-selected'] if chosen else colors['menu-buttons'], corners='All',
-                                border_radius=radius, alpha=255)
+            self.new_blit_rect2(button, colors['menu-buttons'], corners='All', border_radius=radius, alpha=255)
             draw_line(self, translate('online-identify'), button.inflate(-margin, -int(line * .6)), colors['menu-text-black'],
                       align='Center')
         else:
@@ -8370,8 +8370,9 @@ class Screen(pygame.Surface):
             footer = translate('online-unread-open') if unread else translate('online-open-lobby')
             draw_line(self, footer, pygame.Rect(rect.x + margin, rect.bottom - margin - line, rect.width - 2 * margin, line),
                       text_color, size=line * .6)
-        if chosen:
-            self.blit_border(rect, colors['menu-selected'], max(3, int(rect.height * .02)), corners='All',
+        if chosen and unread:
+            # Coloured by its messages : chosen, a frame of the colour of a button chosen
+            self.blit_border(rect, colors['menu-selected'], max(4, int(rect.height * .02)), corners='All',
                              border_radius=radius, alpha=255)
         return rect
 
