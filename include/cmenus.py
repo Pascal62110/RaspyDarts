@@ -203,7 +203,9 @@ class Menus:
             for button in extra:
                 ids = [self.button_id(other) if isinstance(other, dict) else None for other in menu['buttons']]
                 # Its shortcut already taken by a button of the file (the files moved them) : none
-                if button.get('shortcut') in {other.get('shortcut') for other in menu['buttons'] if isinstance(other, dict)}:
+                # (one without shortcut : nothing to compare, other buttons may have none either)
+                if button.get('shortcut') and \
+                        button.get('shortcut') in {other.get('shortcut') for other in menu['buttons'] if isinstance(other, dict)}:
                     button.pop('shortcut')
                 # The button before it in the files, already in this list : just after it
                 order = [self.button_id(other) if isinstance(other, dict) else None for other in before]

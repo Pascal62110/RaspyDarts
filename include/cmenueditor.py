@@ -909,7 +909,8 @@ class Editor:
             number += 1
         # Its shortcut already taken by a button of the screen (the theme moved them : the coin
         # acceptor came with F7, the one of Test de la cible) : none, one can be given after
-        if button.get('shortcut') in {item['button'].get('shortcut') for item in self.items}:
+        # (one without shortcut : nothing to compare, other buttons may have none either)
+        if button.get('shortcut') and button.get('shortcut') in {item['button'].get('shortcut') for item in self.items}:
             button = dict(button)
             button.pop('shortcut')
         widths = sorted(item['rect'].width for item in self.items) or [int(self.size[0] / 4)]
