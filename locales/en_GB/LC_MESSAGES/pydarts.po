@@ -3094,7 +3094,7 @@ msgid "editor-delete-confirm"
 msgstr "Delete this button?"
 
 msgid "editor-add-title"
-msgstr "Add a button"
+msgstr "Add an element"
 
 msgid "editor-add-game"
 msgstr "A game…"

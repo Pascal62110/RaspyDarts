@@ -864,7 +864,7 @@ msgid "editor-delete-confirm"
 msgstr "¿Borrar este botón?"
 
 msgid "editor-add-title"
-msgstr "Añadir un botón"
+msgstr "Añadir un elemento"
 
 msgid "editor-add-game"
 msgstr "Un juego…"

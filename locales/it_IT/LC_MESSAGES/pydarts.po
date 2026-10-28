@@ -3548,7 +3548,7 @@ msgid "editor-delete-confirm"
 msgstr "Eliminare questo pulsante?"
 
 msgid "editor-add-title"
-msgstr "Aggiungi un pulsante"
+msgstr "Aggiungi un elemento"
 
 msgid "editor-add-game"
 msgstr "Un gioco…"

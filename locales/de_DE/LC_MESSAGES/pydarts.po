@@ -858,7 +858,7 @@ msgid "editor-delete-confirm"
 msgstr "Diese Taste löschen?"
 
 msgid "editor-add-title"
-msgstr "Taste hinzufügen"
+msgstr "Element hinzufügen"
 
 msgid "editor-add-game"
 msgstr "Ein Spiel…"

@@ -4182,7 +4182,7 @@ msgid "editor-delete-confirm"
 msgstr "Supprimer ce bouton ?"
 
 msgid "editor-add-title"
-msgstr "Ajouter un bouton"
+msgstr "Ajouter un élément"
 
 msgid "editor-add-game"
 msgstr "Un jeu…"
