@@ -494,8 +494,9 @@ class Game(cgame.Game):
         self.display.play_sound('miss')
         players[actual_player].darts_thrown += 1
         check = False
+        hit = 'MISS'
         if not check :
-            self.infos += "What a mess. You reached {self.score_map[hit]}{self.lf}"
+            self.infos += f"What a mess. You reached {self.score_map.get(hit, 0)}{self.lf}"
             players[actual_player].score -= players[actual_player].get_col_value(1)
             players[actual_player].points -= players[actual_player].get_col_value(1)
             players[actual_player].columns[player_launch +3] = (f'{hit}', 'str')

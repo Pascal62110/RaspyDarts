@@ -110,7 +110,6 @@ DefaultConfig['SectionAdvanced'] = {
     'target-bgcolor2': 'red',
     'target-bgcolor3': 'white',
     'target-bgbrightness': 10,
-    'directplay': 'False',
     'prefered_game': '',
     'preferedclassicgame': '',
     'preferedfungame': '',
@@ -1737,7 +1736,8 @@ class Config:
 
         if key in self.config[section]:
             if self.config[section][key] in ('True', 'False'):
-                return bool(self.config[section][key])
+                # A text True / False : bool('False') was True (an option said off was on)
+                return self.config[section][key] == 'True'
             else:
                 if self.config[section][key] is False and default_value is not None and default_value != 'None':
                     return default_value
@@ -1783,7 +1783,10 @@ class Config:
         """
         players_color = self.get_value('Favorites', 'players_color')
         if players_color:
-            return eval(players_color)
+            try:
+                return ast.literal_eval(players_color)
+            except (ValueError, SyntaxError):
+                return {}
         return {}
     
     def get_colorset(self, personnal_dir, colorset):

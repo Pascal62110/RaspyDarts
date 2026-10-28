@@ -480,6 +480,7 @@ class Game(cgame.Game):
         """
         Whan missed button pressed
         """
+        handler = self.init_handler()
         #self.logs.debug(f"MissButtonPressed : {player_launch}")
         #players[actual_player].columns[player_launch - 1] = ('MISS', 'image')
         players[actual_player].columns[player_launch] = ('MISS', 'txt')
@@ -494,6 +495,8 @@ class Game(cgame.Game):
         players[actual_player].columns[5] = (players[actual_player].show_ppd(), 'int')
         players[actual_player].columns[6] = (players[actual_player].show_ppr(), 'int')
         self.refresh_stats(players, actual_round)
+        # The main loop waits for a return code (as cgame.miss_button)
+        return handler['return_code']
 
     def update_stats(self, players, actual_player, hit):
         """

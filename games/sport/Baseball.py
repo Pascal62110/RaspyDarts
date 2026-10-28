@@ -248,6 +248,9 @@ class Game(cgame.Game):
 
 
     def early_player_button(self, players, actual_player, actual_round):
+        return_code = 1
+        # Numero de la prochaine fléchette (1 à nb_darts) : le moteur ne le transmet pas à cette méthode
+        player_launch = sum(1 for dart in players[actual_player].darts if dart is not None) + 1
 
         if self.noequal and player_launch == self.nb_darts and actual_round >= self.max_round \
                 and actual_player == len(players) - 1:
@@ -464,9 +467,9 @@ class Game(cgame.Game):
     def refresh_stats(self, players, actual_round):
         """
         Method to frefresh player.stat - Adapt to the stats you want. They represent mathematical formulas used to calculate stats. Refreshed after every launch
-        for player in players:
         """
-        player.stats['Points Per Round'] = player.show_ppr()
+        for player in players:
+            player.stats['Points Per Round'] = player.show_ppr()
 
     def miss_button(self, players, actual_player, actual_round, player_launch):
         '''

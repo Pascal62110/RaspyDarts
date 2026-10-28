@@ -89,7 +89,7 @@ class Scores:
         self.nb_players = data['nb_players']
         self.connect()
         # Replaced CURRENT_TIMESTAMP by datetime('now','localtime'),
-        sql = f"""
+        sql = """
               INSERT INTO games (
               date,
               gamename,
@@ -97,16 +97,14 @@ class Scores:
               nbplayers)
               VALUES (
               datetime('now','localtime'),
-              '{self.game_name}',
-              '{self.game_options}',
-              {self.nb_players}
+              ?, ?, ?
               )
-              """;
+              """
 
         # Get cursor
         cur = self.cx.cursor()
-        # Exsecute query
-        cur.execute(sql)
+        # Exsecute query (parametres lies : une apostrophe dans un nom ne casse plus la requete)
+        cur.execute(sql, (str(self.game_name), str(self.game_options), self.nb_players))
         # Get last inserted id
         game_id = cur.lastrowid
         # Commit changes
@@ -125,25 +123,20 @@ class Scores:
         score = data['score']
         player_name = data['player_name']
 
-        sql = f"""
+        sql = """
               INSERT INTO scores (
               game_id,
               scorename,
               score,
               playername)
-              VALUES (
-              '{self.game_id}',
-              '{score_name}',
-              '{score}',
-              '{player_name}'
-              )
-              """;
+              VALUES (?, ?, ?, ?)
+              """
 
         self.connect()
         # Get cursor
         cur = self.cx.cursor()
         # Exsecute query
-        cur.execute(sql)
+        cur.execute(sql, (str(self.game_id), str(score_name), str(score), str(player_name)))
         # Commit changes
         self.cx.commit()
         # Close cx if its still open
@@ -156,15 +149,21 @@ class Scores:
         """
         self.connect()
         #
+        # orderby ne peut pas etre un parametre SQL : on n'accepte que ASC / DESC
+        orderby = str(orderby).strip().upper()
+        if orderby not in ('ASC', 'DESC'):
+            raise ValueError(f"orderby must be ASC or DESC, got {orderby!r}")
+        params = [str(self.game_id), str(self.game_options), str(self.game_name), str(score_name)]
         if current:
-            sql_this_game_only = f"AND games.id='{self.game_id}'"
+            sql_this_game_only = "AND games.id=?"
+            params.append(str(self.game_id))
         else:
             sql_this_game_only = ""
         #
         sql = f"""
               SELECT
                  CASE games.id
-                    WHEN '{self.game_id}' THEN 1
+                    WHEN ? THEN 1
                     ELSE 0
                  END hiscore,
                  date,
@@ -172,18 +171,18 @@ class Scores:
                  score
               FROM scores
               LEFT JOIN games on scores.game_id=games.id
-              WHERE gameoptions = '{self.game_options}'
-              AND gamename = '{self.game_name}'
-              AND scorename = '{score_name}'
+              WHERE gameoptions = ?
+              AND gamename = ?
+              AND scorename = ?
               {sql_this_game_only}
               ORDER BY score {orderby}
               LIMIT 12
-              """;
+              """
 
         # Get cursor
         cur = self.cx.cursor()
         # Exsecute query
-        cur.execute(sql)
+        cur.execute(sql, params)
         # Get rows
         rows = cur.fetchall()
 

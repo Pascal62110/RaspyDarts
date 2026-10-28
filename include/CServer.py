@@ -190,9 +190,10 @@ class CServer():
 #
     def SendMessage2(self,conn,gamename,addr,msg):
         # Try to determine color
+        userid = "{}-{}".format(addr[0],addr[1])
         try:
             MsgColor = self.color[userid]
-        except:
+        except KeyError:
             MsgColor = '31' # FallBaaaack to Blaaaaaack
         #self.logs.debug("\033[{}m[{}][{}-{}] Sending : {}\033[0m".format(MsgColor,gamename,addr[0],addr[1],msg))
         #conn.send(msg)

@@ -144,7 +144,7 @@ def init_gateway(gateway):
 
     if gateway is None:
         try:
-            request = requests.get('https://discovery.meethue.com/')
+            request = requests.get('https://discovery.meethue.com/', timeout=5)
             gateway = request.json()[0]['internalipaddress']
         except:
             gateway = None
@@ -157,7 +157,7 @@ def get_username(gateway):
     """
     try:
         data = {"devicetype": "raspydarts"}
-        post = requests.post(f'http://{gateway}{API}', json=data)
+        post = requests.post(f'http://{gateway}{API}', json=data, timeout=5)
         username = post.json()[0]['success']['username']
         return username
     except:
@@ -195,7 +195,7 @@ def list_lights(gateway, username):
     """
     Print a list of avalaible lights
     """
-    get = requests.get(f'http://{gateway}{API}/{username}/lights')
+    get = requests.get(f'http://{gateway}{API}/{username}/lights', timeout=5)
     lights = get.json()
 
     test = None
@@ -229,7 +229,7 @@ def test_light(gateway, username, light):
         else:
             data = '{"on": false}'
 
-        put = requests.put(f'http://{gateway}{API}/{username}/lights/{light}/state', data=data)
+        put = requests.put(f'http://{gateway}{API}/{username}/lights/{light}/state', data=data, timeout=5)
         debug(f"Respond {put.json()}")
         if index < 3:
             time.sleep(3)
@@ -243,7 +243,7 @@ def change_light(gateway, username, light, on=True):
     else:
         data = '{"on": false}'
 
-    put = requests.put(f'http://{gateway}{API}/{username}/lights/{light}/state', data=data)
+    put = requests.put(f'http://{gateway}{API}/{username}/lights/{light}/state', data=data, timeout=5)
     debug(f"Respond {put.json()}")
 
 def change_color(gateway, username, light, X, Y, Z=None):
@@ -252,7 +252,7 @@ def change_color(gateway, username, light, X, Y, Z=None):
     """
     #data = f'{{"on":true, "hue":{int(X * 65536)}, "sat":255,"bri":255}}'
     data = f'{{"on":true, "xy": [{X}, {Y}]}}'
-    put = requests.put(f'http://{gateway}{API}/{username}/lights/{light}/state', data=data)
+    put = requests.put(f'http://{gateway}{API}/{username}/lights/{light}/state', data=data, timeout=5)
     debug(f"Respond {put.json()}")
 
 def on_connect(client, userdata, flags, reason_code, properties):

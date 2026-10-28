@@ -49,7 +49,7 @@ def on_message(client, userdata, msg):
             time.sleep(wait_time/1000)
         elif msg[0:4:1] == 'Data':
             data = [('u', OLA_UNIVERSE),('d',msg.split(':')[1])]
-            requests.post("{}/set_dmx".format(OLA_HOST),data=data)
+            requests.post("{}/set_dmx".format(OLA_HOST),data=data, timeout=5)
             print("[DEBUG] Dmx_Server : send {} to {}".format(data,OLA_HOST))
             #curl -d u=OLA_UNIVERSE -d d=0,0,0,0,0,0,0,0 http://localhost:9090/set_dmx
 

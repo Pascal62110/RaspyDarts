@@ -336,6 +336,10 @@ class Game(cgame.Game):
         Function launched when the  put player button before having launched all his darts
         '''
         return_code = 1
+        penality = 0
+
+        # Numero de la prochaine fléchette (1 à nb_darts) : le moteur ne le transmet pas à cette méthode
+        player_launch = sum(1 for dart in players[actual_player].darts if dart is not None) + 1
 
         if player_launch == 1:
                 penality = 30

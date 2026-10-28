@@ -806,6 +806,7 @@ class Game(cgame.Game):
         """
         If player Hit the Player button before having threw all his darts
         """
+        handler = self.init_handler()
         # Jump to next player by default
         handler['return_code'] = 1
         self.infos += "You hit Player button before throwing all your darts \
@@ -826,7 +827,7 @@ class Game(cgame.Game):
             handler['return_code'] = 2
             
         self.logs.log("DEBUG", self.infos)            
-        return handler
+        return handler['return_code']
 
     def refresh_stats(self, players, actual_round):
         """
@@ -910,6 +911,7 @@ class Game(cgame.Game):
         """
         Miss button pressed
         """
+        handler = self.init_handler()
         handler['return_code'] = 0
         self.logs.log("DEBUG", "MissButtonPressed")
         players[actual_player].darts_thrown += 1

@@ -355,6 +355,7 @@ class Game(cgame.Game):
         '''
         Miss button
         '''
+        handler = self.init_handler()
         players[actual_player].score -= self.penality
         players[actual_player].columns[player_launch-1] = ('MISS', 'str')
         handler['sound'] = 'treasure_crane_jaune'
@@ -383,6 +384,8 @@ class Game(cgame.Game):
             # anim leds for the penality
             #Event.Publish('penalty')
         self.display.message([self.display.lang.translate('Color-miss')], 1000, None, 'middle', 'big')
+        # The main loop waits for a return code (as cgame.miss_button)
+        return handler['return_code']
             
 
     def early_player_button(self, players, actual_player, actual_round):

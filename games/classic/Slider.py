@@ -24,6 +24,15 @@ def check_players_allowed(nb_players):
     """
     return nb_players >= 1 and nb_players <= 12, VERSION, 12
     
+GEO_NEIGHBORS = {
+    1: [20, 18, 4], 2: [17, 15, 10], 3: [19, 17, 2], 4: [18, 13, 1],
+    5: [20, 12, 9], 6: [10, 13, 15], 7: [19, 16, 8], 8: [16, 11, 7],
+    9: [14, 12, 5], 10: [15, 6, 2], 11: [14, 8, 16], 12: [9, 5, 20],
+    13: [6, 4, 11], 14: [9, 11, 16], 15: [10, 2, 6], 16: [7, 8, 11],
+    17: [2, 3, 15], 18: [4, 1, 20], 19: [7, 3, 2], 20: [1, 5, 12]
+}  # Voisins géographiques sur la cible standard (comme dans Tennis.py)
+
+
 class CPlayerExtended(cplayer.Player):
     """
     Exetended player class
@@ -204,8 +213,8 @@ class Game(cgame.Game):
         rand_val = random.randrange(100)
         if rand_val < levels[lvl_idx][1]:
             segment = current_target
-        elif current_target in geo_neighbors and rand_val < levels[lvl_idx][1] + levels[lvl_idx][4]:
-            segment = random.choice(geo_neighbors[current_target])
+        elif current_target in GEO_NEIGHBORS and rand_val < levels[lvl_idx][1] + levels[lvl_idx][4]:
+            segment = random.choice(GEO_NEIGHBORS[current_target])
         else:
             segment = random.randint(1, 20)
 

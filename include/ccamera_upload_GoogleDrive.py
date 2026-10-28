@@ -212,7 +212,7 @@ class CameraUploadGoogleDrive:
                 if self.folder_id is not None:
                     for file_name in os.listdir(image_folder_path):
                         if file_name.lower().endswith(('.jpg', '.jpeg', '.png', '.mp4')):
-                            file_path = os.path.join(image_dir, file_name)
+                            file_path = os.path.join(image_folder_path, file_name)
                             metadata = {
                                 'name': file_name,
                                 'parents': [self.folder_id]
